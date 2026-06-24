@@ -103,28 +103,31 @@ streamlit run app/streamlit_app.py
 | Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette` |
 | Accessibility | `palette_safety`, `simulate_cvd` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot` |
-| Estimation and tables | `estimation_plot`, `summary_table` |
-| Model estimates | `coefficient_plot`, `tidy_estimates` |
-| Diagnostics | `qq_plot`, `influence_plot`, `vif_plot`, `binned_residual_plot` |
+| Estimation and tables | `estimation_plot` (single- or two-panel Gardner-Altman), `summary_table` |
+| Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot` |
+| Diagnostics | `qq_plot`, `influence_plot`, `vif_plot`, `binned_residual_plot`, `residual_diagnostics_plot`, `model_report` |
 | Classification | `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`, `calibration_plot`, `gain_plot`, `lift_plot`, `threshold_plot` |
 | Multivariate | `pca_plot`, `scree_plot`, `cluster_plot`, `dendrogram_plot`, `silhouette_plot` |
-| Survival | `survival_plot` |
+| Survival | `survival_plot` (with an optional number-at-risk table) |
 | Time series | `acf_plot`, `decompose_plot`, `seasonal_plot`, `timeseries_plot` |
-| Composition | `save_plot` |
+| Composition | `arrange_plots`, `save_plot` |
 
 ## Status
 
-This is an early release (0.1.0). The colourblind-safe theme, the accessibility
-check, and most of the R package's single-figure functions across the EDA,
-estimation, model-estimate, diagnostic, classification, multivariate, survival
-and time-series families are in place and tested.
+This is an early release (0.1.0), but coverage is now broad: the colourblind-safe
+theme, the accessibility check, and the R package's plotting functions across
+every family (EDA, estimation, model estimates, diagnostics, classification,
+multivariate, survival and time series) are in place and tested. Multi-panel
+composites are built on `arrange_plots`, which uses plotnine's native plot
+composition: the four-panel `residual_diagnostics_plot`, the `model_report`
+dashboard, the two-panel Gardner-Altman `estimation_plot`, the
+frequentist-over-Bayesian overlay, and the survival number-at-risk table.
 
-Still to come are the multi-panel composites, which need a patchwork-style
-composition layer that plotnine does not provide natively: the four-panel
-`residual_diagnostics_plot`, the `model_report` dashboard, the full
-Gardner-Altman two-panel `estimation_plot` (the single-panel Cumming form is
-already here), the frequentist-over-Bayesian overlay, and a number-at-risk table
-under the survival curves. Adding a small composition helper is the next step.
+Two known limitations remain. plotnine compositions have no figure-level title,
+so a grid carries its titles on each panel (the survival and estimation
+composites place the title on their top panel). And `optimizer_fixef_plot` from
+the R package is not ported, as there is no clean statsmodels equivalent of
+`lme4::allFit`.
 
 ## Relationship to the R package
 

@@ -13,8 +13,19 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from plotnine import aes, geom_step, ggplot, labs, scale_y_continuous
+from plotnine import (
+    aes,
+    element_blank,
+    geom_step,
+    geom_text,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+    theme,
+)
 
+from .compose import arrange_plots
 from .theme import scale_colour_depictr, theme_depictr
 
 
@@ -29,8 +40,8 @@ def _require_lifelines():
     return lifelines
 
 
-def survival_plot(time, event, group=None, conf_level=0.95, title=None,
-                  x_lab="Time", y_lab="Survival probability"):
+def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
+                  title=None, x_lab="Time", y_lab="Survival probability"):
     """Kaplan-Meier survival curves, optionally by group, with a log-rank test.
 
     Parameters
@@ -96,10 +107,31 @@ def survival_plot(time, event, group=None, conf_level=0.95, title=None,
         p_txt = "< 0.0001" if logrank_p < 1e-4 else f"= {logrank_p:.4f}"
         subtitle = f"Log-rank χ²({len(levels) - 1}) = {logrank_stat:.1f}, p {p_txt}"
 
+    at_risk_df = pd.DataFrame(at_risk_rows)
+    tmax = float(np.max(time))
     p = (p
          + scale_y_continuous(limits=(0, 1))
+         + scale_x_continuous(limits=(0, tmax))
          + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
          + theme_depictr())
-    p.at_risk = pd.DataFrame(at_risk_rows)
+    p.at_risk = at_risk_df
     p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
-    return p
+    if not risk_table:
+        return p
+
+    # Compose a number-at-risk table sharing the time axis beneath the curves.
+    tbl_df = at_risk_df.copy()
+    tbl_df["group"] = pd.Categorical(
+        tbl_df["group"], categories=[str(lvl) for lvl in levels][::-1], ordered=True)
+    tbl = (
+        ggplot(tbl_df, aes(x="time", y="group"))
+        + geom_text(aes(label="n_at_risk"), size=8, color="#1a1a1a")
+        + scale_x_continuous(limits=(0, tmax))
+        + labs(x=x_lab, y=None, title="Number at risk")
+        + theme_depictr(grid="none")
+        + theme(panel_grid_major=element_blank())
+    )
+    composed = arrange_plots(p, tbl, ncol=1)
+    composed.at_risk = at_risk_df
+    composed.logrank_p, composed.logrank_stat = logrank_p, logrank_stat
+    return composed

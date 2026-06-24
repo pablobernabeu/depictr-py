@@ -51,6 +51,15 @@ def test_estimation_effsize_variants_build(effsize):
                                    effsize=effsize, seed=1, n_boot=200))
 
 
+def test_estimation_two_panel_composes_and_carries_differences():
+    # The Gardner-Altman layout returns a composition (not a bare ggplot) that
+    # still draws and still carries the differences table.
+    p = estimation_plot(CY, "yield", "treatment", two_panel=True,
+                        seed=1, n_boot=200)
+    p.draw(show=False)
+    assert len(p.differences) == 1
+
+
 def test_estimation_bootstrap_is_reproducible_with_seed():
     a = estimation_plot(CY, "yield", "treatment", seed=7, n_boot=300).differences
     b = estimation_plot(CY, "yield", "treatment", seed=7, n_boot=300).differences

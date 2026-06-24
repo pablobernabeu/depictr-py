@@ -55,3 +55,11 @@ def test_survival_plot_carries_logrank_and_at_risk():
     _builds(p)
     assert p.logrank_p is not None and 0 <= p.logrank_p <= 1
     assert len(p.at_risk) > 0
+
+
+def test_survival_risk_table_composes():
+    pytest.importorskip("lifelines")
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                         risk_table=True)
+    p.draw(show=False)  # composition (curve + at-risk table) draws
+    assert len(p.at_risk) > 0

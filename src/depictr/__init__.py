@@ -25,7 +25,7 @@ from .classification import (
     roc_curve_plot,
     threshold_plot,
 )
-from .compose import save_plot
+from .compose import arrange_plots, save_plot
 from .cvd import palette_safety, simulate_cvd
 from .data import DATASETS, clinical_trial, crop_yield, lexical_decision, wellbeing_survey
 from .diagnostics import binned_residual_plot, influence_plot, qq_plot, vif_plot
@@ -61,6 +61,13 @@ from .theme import (
     theme_depictr,
 )
 from .timeseries import acf_plot, decompose_plot, seasonal_plot, timeseries_plot
+# Multi-panel composites and model-specific plots
+from .diagnostics_panels import model_report, residual_diagnostics_plot
+from .eda_extra import explore_pairs, raincloud_plot
+from .mixed import random_effects_plot
+from .posterior import frequentist_bayesian_plot, posterior_plot
+from .power import power_curve_plot
+from .predictions import compare_models, effects_plot, interaction_plot
 
 __version__ = "0.1.0"
 
@@ -75,12 +82,16 @@ __all__ = [
     "explore_distribution", "explore_categorical", "explore_bivariate",
     "scatter_trend", "correlation_heatmap", "missingness_map", "ecdf_plot",
     "ridgeline_plot", "dumbbell_plot", "outlier_plot", "group_comparison_plot",
+    "raincloud_plot", "explore_pairs",
     # Estimation and tables
     "estimation_plot", "summary_table",
     # Model estimates
-    "coefficient_plot", "tidy_estimates",
+    "coefficient_plot", "tidy_estimates", "effects_plot", "interaction_plot",
+    "compare_models", "random_effects_plot", "posterior_plot",
+    "frequentist_bayesian_plot", "power_curve_plot",
     # Diagnostics
     "qq_plot", "influence_plot", "vif_plot", "binned_residual_plot",
+    "residual_diagnostics_plot", "model_report",
     # Classification
     "roc_curve_plot", "pr_curve_plot", "confusion_matrix_plot",
     "calibration_plot", "gain_plot", "lift_plot", "threshold_plot",
@@ -92,7 +103,7 @@ __all__ = [
     # Time series
     "acf_plot", "decompose_plot", "seasonal_plot", "timeseries_plot",
     # Composition
-    "save_plot",
+    "arrange_plots", "save_plot",
     # Data
     "crop_yield", "wellbeing_survey", "lexical_decision", "clinical_trial",
     "DATASETS",

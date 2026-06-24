@@ -2,6 +2,56 @@
 
 from __future__ import annotations
 
+from functools import reduce
+
+
+def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
+                  title: str | None = None):
+    """Arrange several plots into one composed figure.
+
+    Builds a grid by joining plots side by side (plotnine's ``|``) into rows of
+    ``ncol``, then stacking the rows (``/``). The result is a plotnine
+    composition, so it still has ``.draw`` and ``.save``. This is the building
+    block behind the multi-panel reports (for example
+    :func:`depictr.diagnostics.residual_diagnostics_plot`).
+
+    Parameters
+    ----------
+    *plots : plotnine.ggplot
+        The plots to arrange. ``None`` entries are dropped.
+    ncol, nrow : int, optional
+        The grid shape. Give one and the other is derived from the count; give
+        neither and a sensible default is chosen (one column for a single plot,
+        two up to four plots, three beyond).
+    title : str, optional
+        A title. Applied only when a single plot is passed: plotnine
+        compositions have no figure-level title, so a grid should carry a title
+        on each panel instead.
+
+    Returns
+    -------
+    plotnine.ggplot or plotnine.composition.Compose
+        A single plot when one is passed, otherwise a composition.
+    """
+    from plotnine import ggplot, ggtitle
+
+    items = [p for p in plots if p is not None]
+    if not items:
+        raise ValueError("arrange_plots needs at least one plot.")
+    n = len(items)
+    if ncol is None and nrow is None:
+        ncol = 1 if n == 1 else (2 if n <= 4 else 3)
+    elif ncol is None:
+        ncol = -(-n // nrow)  # ceil division
+    rows = [reduce(lambda a, b: a | b, items[i:i + ncol])
+            for i in range(0, n, ncol)]
+    composed = reduce(lambda a, b: a / b, rows)
+    # plotnine has no super-title for a composition; adding one would land on the
+    # last panel. So only title a lone plot, and let grids self-title per panel.
+    if title is not None and isinstance(composed, ggplot):
+        composed = composed + ggtitle(title)
+    return composed
+
 
 def save_plot(plot, filename, width: float = 7, height: float = 4.5,
               dpi: int = 300, units: str = "in", **kwargs) -> str:

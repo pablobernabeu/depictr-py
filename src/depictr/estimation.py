@@ -25,6 +25,7 @@ from plotnine import (
     expand_limits,
     geom_errorbar,
     geom_hline,
+    geom_jitter,
     geom_point,
     geom_text,
     ggplot,
@@ -34,6 +35,7 @@ from plotnine import (
     theme,
 )
 
+from .compose import arrange_plots
 from .palette import depictr_brand
 from .theme import theme_depictr
 
@@ -79,13 +81,15 @@ def _effsize_diff(treat, ref):
 
 
 def estimation_plot(data, y, group, reference=None, conf_level=0.95,
-                    n_boot=2000, effsize="hedges_g", title=None, seed=None):
-    """Single-panel Cumming-style estimation plot of mean differences.
+                    n_boot=2000, effsize="hedges_g", two_panel=False,
+                    title=None, seed=None):
+    """Cumming-style estimation plot of mean differences.
 
     For each non-reference group, the mean difference from the reference group is
     drawn as a point with a bootstrap confidence interval. A dashed line marks a
     difference of zero (the reference), and the standardised effect size is
-    annotated beside each point.
+    annotated beside each point. With ``two_panel=True`` this difference axis sits
+    beneath a panel of the raw data and group means (the Gardner-Altman layout).
 
     Parameters
     ----------
@@ -105,6 +109,9 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
     effsize : {"hedges_g", "cohens_d", "none"}
         Standardised effect size annotated beside each difference. Hedges' g is
         the small-sample corrected default; pass ``"none"`` to omit it.
+    two_panel : bool
+        When ``True``, place the difference axis beneath a panel of the raw data
+        and group means (the Gardner-Altman layout), returning a composition.
     title : str, optional
         Plot title.
     seed : int, optional
@@ -112,9 +119,10 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
 
     Returns
     -------
-    plotnine.ggplot
-        The plot carries ``.differences``, a DataFrame of the computed mean
-        differences, their bootstrap intervals, and the effect sizes.
+    plotnine.ggplot or plotnine.composition.Compose
+        A single panel by default, or a two-panel composition when
+        ``two_panel=True``. Either carries ``.differences``, a DataFrame of the
+        computed mean differences, their bootstrap intervals, and effect sizes.
     """
     if y not in data.columns:
         raise KeyError(f"{y!r} is not a column of `data`.")
@@ -181,8 +189,44 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
          # Pad an invisible slot for the reference so the axis reads naturally.
          + scale_x_discrete(limits=others)
          + expand_limits(x=levels)
-         + labs(x=None, y=f"Mean difference\n(vs. {ref})", title=title)
+         + labs(x=None, y=f"Mean difference\n(vs. {ref})",
+                title=None if two_panel else title)
          + theme_depictr(grid="y")
          + theme(axis_text_x=element_text(weight="bold")))
     p.differences = diffs
-    return p
+    if not two_panel:
+        return p
+
+    # Top panel: the raw data with each group's mean and a t-based interval, on
+    # the outcome scale, above the aligned difference axis.
+    from scipy import stats
+
+    summ = []
+    for g in levels:
+        v = d.loc[d[group] == g, y].to_numpy(dtype=float)
+        n = len(v)
+        m = float(v.mean())
+        if n > 1:
+            se = float(v.std(ddof=1)) / np.sqrt(n)
+            tc = float(stats.t.ppf(1 - (1 - conf_level) / 2, n - 1))
+        else:
+            se = tc = 0.0
+        summ.append({"group": g, "mean": m, "lo": m - tc * se, "hi": m + tc * se})
+    summ_df = pd.DataFrame(summ)
+    summ_df["group"] = pd.Categorical(summ_df["group"], categories=levels, ordered=True)
+
+    top = (
+        ggplot(summ_df, aes(x="group", y="mean"))
+        + geom_jitter(aes(x=group, y=y), data=d, width=0.12, alpha=0.25,
+                      color=brand, size=0.9, inherit_aes=False)
+        + geom_errorbar(aes(ymin="lo", ymax="hi"), width=0.12, color=brand, size=0.8)
+        + geom_point(color=brand, size=2.8)
+        # The title rides on the top panel so it reads as the figure title
+        # (plotnine compositions have no super-title).
+        + labs(x=None, y=y, title=title)
+        + theme_depictr(grid="y")
+        + theme(axis_text_x=element_text(weight="bold"))
+    )
+    composed = arrange_plots(top, p, ncol=1)
+    composed.differences = diffs
+    return composed
