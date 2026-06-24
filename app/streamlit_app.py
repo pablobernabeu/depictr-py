@@ -87,47 +87,157 @@ if data is None:
 st.dataframe(data.head(), use_container_width=True)
 num_cols = list(data.select_dtypes("number").columns)
 cat_cols = [c for c in data.columns if c not in num_cols]
+binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 
-stage = st.selectbox(
-    "Plot",
-    ["Distribution", "Categorical", "Correlation heatmap", "Missingness map",
-     "ROC curve", "Survival"],
-)
+
+def _opt(label, options):
+    """A '(none)' + options selectbox returning None for '(none)'."""
+    choice = st.selectbox(label, ["(none)"] + list(options))
+    return None if choice == "(none)" else choice
+
+
+def _fit_ols(outcome, predictors):
+    """Fit a quick OLS; Q() quotes names that are keywords or contain spaces."""
+    import statsmodels.formula.api as smf
+
+    rhs = " + ".join(f'Q("{p}")' for p in predictors)
+    return smf.ols(f'Q("{outcome}") ~ {rhs}', data).fit()
+
+
+FAMILIES = {
+    "Exploratory": ["Distribution", "Categorical", "ECDF", "Ridgeline",
+                    "Raincloud", "Dumbbell", "Outliers", "Group comparison",
+                    "Scatter + trend", "Correlation heatmap", "Pairs matrix",
+                    "Missingness map"],
+    "Estimation": ["Estimation plot"],
+    "Multivariate": ["PCA biplot", "Scree", "Clusters", "Dendrogram",
+                     "Silhouette"],
+    "Classification": ["ROC curve", "PR curve", "Gains", "Lift", "Calibration",
+                       "Confusion matrix", "Threshold"],
+    "Survival": ["Kaplan-Meier"],
+    "Models (fits an OLS)": ["Coefficients", "Residual diagnostics",
+                             "Effect of a predictor"],
+}
+family = st.selectbox("Family", list(FAMILIES))
+stage = st.selectbox("Plot", FAMILIES[family])
 
 try:
     if stage == "Distribution":
         x = st.selectbox("Numeric variable", num_cols)
-        group = st.selectbox("Group (optional)", ["(none)"] + cat_cols)
-        g = None if group == "(none)" else group
+        g = _opt("Group (optional)", cat_cols)
         show(dp.explore_distribution(data, x, group=g, kind="both"),
              f"dp.explore_distribution({data_call}, {x!r}, group={g!r}, kind='both')",
              deficiency)
     elif stage == "Categorical":
         x = st.selectbox("Category", cat_cols)
-        group = st.selectbox("Group (optional)", ["(none)"] + cat_cols)
-        g = None if group == "(none)" else group
+        g = _opt("Group (optional)", cat_cols)
         show(dp.explore_categorical(data, x, group=g),
              f"dp.explore_categorical({data_call}, {x!r}, group={g!r})", deficiency)
+    elif stage == "ECDF":
+        x = st.selectbox("Numeric variable", num_cols)
+        g = _opt("Group (optional)", cat_cols)
+        show(dp.ecdf_plot(data, x, group=g),
+             f"dp.ecdf_plot({data_call}, {x!r}, group={g!r})", deficiency)
+    elif stage == "Ridgeline":
+        x = st.selectbox("Numeric variable", num_cols)
+        g = st.selectbox("Group", cat_cols)
+        show(dp.ridgeline_plot(data, x, g),
+             f"dp.ridgeline_plot({data_call}, {x!r}, {g!r})", deficiency)
+    elif stage == "Raincloud":
+        x = st.selectbox("Numeric variable", num_cols)
+        g = _opt("Group (optional)", cat_cols)
+        show(dp.raincloud_plot(data, x, group=g),
+             f"dp.raincloud_plot({data_call}, {x!r}, group={g!r})", deficiency)
+    elif stage == "Dumbbell":
+        cat = st.selectbox("Category", cat_cols)
+        val = st.selectbox("Value", num_cols)
+        g = st.selectbox("Two-level group", [c for c in binary_cols if c in cat_cols] or cat_cols)
+        show(dp.dumbbell_plot(data, cat, val, g),
+             f"dp.dumbbell_plot({data_call}, {cat!r}, {val!r}, {g!r})", deficiency)
+    elif stage == "Outliers":
+        x = st.selectbox("Numeric variable", num_cols)
+        show(dp.outlier_plot(data, x),
+             f"dp.outlier_plot({data_call}, {x!r})", deficiency)
+    elif stage == "Group comparison":
+        x = st.selectbox("Numeric variable", num_cols)
+        g = st.selectbox("Group", cat_cols)
+        show(dp.group_comparison_plot(data, x, g),
+             f"dp.group_comparison_plot({data_call}, {x!r}, {g!r})", deficiency)
+    elif stage == "Scatter + trend":
+        x = st.selectbox("x", num_cols)
+        y = st.selectbox("y", [c for c in num_cols if c != x])
+        g = _opt("Group (optional)", cat_cols)
+        show(dp.scatter_trend(data, x, y, group=g),
+             f"dp.scatter_trend({data_call}, {x!r}, {y!r}, group={g!r})", deficiency)
     elif stage == "Correlation heatmap":
         show(dp.correlation_heatmap(data),
              f"dp.correlation_heatmap({data_call})", deficiency)
+    elif stage == "Pairs matrix":
+        cols = st.multiselect("Numeric columns (2-5)", num_cols, default=num_cols[:4])
+        show(dp.explore_pairs(data, cols=cols or None),
+             f"dp.explore_pairs({data_call}, cols={cols!r})", deficiency)
     elif stage == "Missingness map":
         show(dp.missingness_map(data),
              f"dp.missingness_map({data_call})", deficiency)
-    elif stage == "ROC curve":
-        target = st.selectbox("Binary outcome", [c for c in data.columns
-                                                 if data[c].nunique() == 2])
-        score = st.selectbox("Score", num_cols)
-        show(dp.roc_curve_plot(data[target], data[score]),
-             f"dp.roc_curve_plot({data_call}[{target!r}], {data_call}[{score!r}])",
+    elif stage == "Estimation plot":
+        y = st.selectbox("Outcome", num_cols)
+        g = st.selectbox("Group", cat_cols)
+        two = st.checkbox("Two-panel (Gardner-Altman)", value=True)
+        show(dp.estimation_plot(data, y, g, two_panel=two, seed=1),
+             f"dp.estimation_plot({data_call}, {y!r}, {g!r}, two_panel={two})",
              deficiency)
-    elif stage == "Survival":
+    elif stage in {"PCA biplot", "Scree", "Clusters", "Dendrogram", "Silhouette"}:
+        g = _opt("Colour by (optional)", cat_cols) if stage == "PCA biplot" else None
+        fn = {"PCA biplot": "pca_plot", "Scree": "scree_plot",
+              "Clusters": "cluster_plot", "Dendrogram": "dendrogram_plot",
+              "Silhouette": "silhouette_plot"}[stage]
+        plot = (dp.pca_plot(data, group=g) if stage == "PCA biplot"
+                else getattr(dp, fn)(data))
+        show(plot, f"dp.{fn}({data_call})", deficiency)
+    elif stage in {"ROC curve", "PR curve", "Gains", "Lift", "Calibration",
+                   "Threshold"}:
+        target = st.selectbox("Binary outcome", binary_cols)
+        score = st.selectbox("Score / probability", num_cols)
+        fn = {"ROC curve": "roc_curve_plot", "PR curve": "pr_curve_plot",
+              "Gains": "gain_plot", "Lift": "lift_plot",
+              "Calibration": "calibration_plot", "Threshold": "threshold_plot"}[stage]
+        show(getattr(dp, fn)(data[target], data[score]),
+             f"dp.{fn}({data_call}[{target!r}], {data_call}[{score!r}])", deficiency)
+    elif stage == "Confusion matrix":
+        target = st.selectbox("Binary outcome", binary_cols)
+        pred = st.selectbox("Predicted label", binary_cols)
+        show(dp.confusion_matrix_plot(data[target], data[pred], normalise="true"),
+             f"dp.confusion_matrix_plot({data_call}[{target!r}], {data_call}[{pred!r}], normalise='true')",
+             deficiency)
+    elif stage == "Kaplan-Meier":
         time = st.selectbox("Time", num_cols)
         event = st.selectbox("Event (1=event, 0=censored)", num_cols)
-        group = st.selectbox("Group (optional)", ["(none)"] + cat_cols)
-        g = None if group == "(none)" else data[group]
-        show(dp.survival_plot(data[time], data[event], group=g),
-             f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], group=...)",
+        g = _opt("Group (optional)", cat_cols)
+        rt = st.checkbox("Number-at-risk table", value=True)
+        gv = None if g is None else data[g]
+        show(dp.survival_plot(data[time], data[event], group=gv, risk_table=rt),
+             f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], group=..., risk_table={rt})",
              deficiency)
+    elif family.startswith("Models"):
+        outcome = st.selectbox("Outcome (numeric)", num_cols)
+        predictors = st.multiselect(
+            "Predictors", [c for c in data.columns if c != outcome],
+            default=[c for c in data.columns if c != outcome][:2])
+        if predictors:
+            model = _fit_ols(outcome, predictors)
+            rhs = " + ".join(predictors)
+            if stage == "Coefficients":
+                show(dp.coefficient_plot(model),
+                     f"dp.coefficient_plot(smf.ols('{outcome} ~ {rhs}', data).fit())",
+                     deficiency)
+            elif stage == "Residual diagnostics":
+                show(dp.residual_diagnostics_plot(model),
+                     f"dp.residual_diagnostics_plot(model)", deficiency)
+            elif stage == "Effect of a predictor":
+                var = st.selectbox("Predictor to vary", [p for p in predictors if p in num_cols])
+                show(dp.effects_plot(model, var),
+                     f"dp.effects_plot(model, {var!r})", deficiency)
+        else:
+            st.info("Choose at least one predictor.")
 except Exception as exc:  # surface a friendly message rather than a stack trace
     st.error(f"Could not draw that plot for this data: {exc}")
