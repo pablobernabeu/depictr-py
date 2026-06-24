@@ -43,6 +43,8 @@ def test_classification_family():
     assert _builds(dp.roc_curve_plot(y, s))
     assert _builds(dp.pr_curve_plot(y, s))
     assert _builds(dp.gain_plot(y, s))
+    assert _builds(dp.lift_plot(y, s))
+    assert _builds(dp.threshold_plot(y, 1 / (1 + np.exp(-s))))
     assert _builds(dp.confusion_matrix_plot(y, (s > 0).astype(int)))
     assert _builds(dp.calibration_plot(y, 1 / (1 + np.exp(-s))))
 

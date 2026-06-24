@@ -102,20 +102,29 @@ streamlit run app/streamlit_app.py
 | --- | --- |
 | Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette` |
 | Accessibility | `palette_safety`, `simulate_cvd` |
-| Exploratory analysis | `explore_distribution`, `explore_categorical`, `correlation_heatmap`, `missingness_map` |
+| Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot` |
+| Estimation and tables | `estimation_plot`, `summary_table` |
 | Model estimates | `coefficient_plot`, `tidy_estimates` |
-| Classification | `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`, `calibration_plot`, `gain_plot` |
+| Diagnostics | `qq_plot`, `influence_plot`, `vif_plot`, `binned_residual_plot` |
+| Classification | `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`, `calibration_plot`, `gain_plot`, `lift_plot`, `threshold_plot` |
+| Multivariate | `pca_plot`, `scree_plot`, `cluster_plot`, `dendrogram_plot`, `silhouette_plot` |
 | Survival | `survival_plot` |
+| Time series | `acf_plot`, `decompose_plot`, `seasonal_plot`, `timeseries_plot` |
 | Composition | `save_plot` |
 
 ## Status
 
-This is an early release (0.1.0): a working foundation rather than a complete
-port of the R package. The colourblind-safe theme, the accessibility check and a
-representative function from each family are in place. The roadmap is to widen
-coverage towards the R package's full surface (estimation plots, regression
-diagnostics, multivariate and time-series families, a number-at-risk table for
-the survival plot) while keeping the delegate-and-reskin approach.
+This is an early release (0.1.0). The colourblind-safe theme, the accessibility
+check, and most of the R package's single-figure functions across the EDA,
+estimation, model-estimate, diagnostic, classification, multivariate, survival
+and time-series families are in place and tested.
+
+Still to come are the multi-panel composites, which need a patchwork-style
+composition layer that plotnine does not provide natively: the four-panel
+`residual_diagnostics_plot`, the `model_report` dashboard, the full
+Gardner-Altman two-panel `estimation_plot` (the single-panel Cumming form is
+already here), the frequentist-over-Bayesian overlay, and a number-at-risk table
+under the survival curves. Adding a small composition helper is the next step.
 
 ## Relationship to the R package
 

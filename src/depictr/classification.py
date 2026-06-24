@@ -16,16 +16,18 @@ from plotnine import (
     aes,
     annotate,
     geom_abline,
+    geom_hline,
     geom_line,
     geom_text,
     geom_tile,
+    geom_vline,
     ggplot,
     labs,
     scale_fill_gradientn,
 )
 
 from .palette import BRAND, depictr_palette
-from .theme import theme_depictr
+from .theme import scale_colour_depictr, theme_depictr
 
 
 def _require_sklearn():
@@ -154,5 +156,76 @@ def gain_plot(y_true, y_score, title=None):
         + geom_abline(intercept=0, slope=1, linetype="dashed", color="#9e9e9e")
         + geom_line(color=BRAND, size=0.9)
         + labs(x="Population targeted", y="Positive cases captured", title=title)
+        + theme_depictr()
+    )
+
+
+def lift_plot(y_true, y_score, title=None):
+    """Cumulative lift chart.
+
+    Lift is the share of positives captured at a given depth of the
+    score-ordered population, divided by that depth. A lift of 3 in the top 10%
+    means that decile holds three times the baseline positive rate. The dashed
+    line at 1 is random targeting.
+    """
+    y_true = np.asarray(y_true)
+    order = np.argsort(-np.asarray(y_score))
+    population = np.arange(1, len(y_true) + 1) / len(y_true)
+    captured = np.cumsum(y_true[order]) / max(y_true.sum(), 1)
+    df = pd.DataFrame({"population": population, "lift": captured / population})
+    return (
+        ggplot(df, aes("population", "lift"))
+        + geom_hline(yintercept=1, linetype="dashed", color="#9e9e9e")
+        + geom_line(color=BRAND, size=0.9)
+        + labs(x="Population targeted", y="Cumulative lift", title=title)
+        + theme_depictr()
+    )
+
+
+def threshold_plot(y_true, y_score, title=None):
+    """Sensitivity, specificity, precision and F1 across the decision threshold.
+
+    Sweeps the probability cut-off and plots each metric, so the trade-off when
+    choosing an operating point is visible at a glance.
+
+    Parameters
+    ----------
+    y_true : array-like
+        Binary outcomes (0/1).
+    y_score : array-like
+        Predicted scores or probabilities for the positive class.
+    title : str, optional
+
+    Returns
+    -------
+    plotnine.ggplot
+    """
+    _require_sklearn()
+    y_true = np.asarray(y_true)
+    y_score = np.asarray(y_score)
+    thresholds = np.unique(y_score)
+    if len(thresholds) > 200:  # keep the sweep cheap on large score sets
+        thresholds = np.quantile(y_score, np.linspace(0, 1, 200))
+    n_pos = int((y_true == 1).sum())
+    n_neg = int((y_true == 0).sum())
+    rows = []
+    for t in thresholds:
+        pred = y_score >= t
+        tp = int(np.sum(pred & (y_true == 1)))
+        fp = int(np.sum(pred & (y_true == 0)))
+        sens = tp / n_pos if n_pos else np.nan
+        spec = (n_neg - fp) / n_neg if n_neg else np.nan
+        prec = tp / (tp + fp) if (tp + fp) else np.nan
+        denom = (prec + sens) if (prec + sens) > 0 else np.nan
+        f1 = 2 * prec * sens / denom
+        rows.append({"threshold": float(t), "Sensitivity": sens,
+                     "Specificity": spec, "Precision": prec, "F1": f1})
+    long = (pd.DataFrame(rows)
+            .melt(id_vars="threshold", var_name="metric", value_name="value"))
+    return (
+        ggplot(long, aes("threshold", "value", color="metric"))
+        + geom_line(size=0.8, na_rm=True)
+        + scale_colour_depictr()
+        + labs(x="Decision threshold", y="Metric value", color=None, title=title)
         + theme_depictr()
     )
