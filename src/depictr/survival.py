@@ -15,18 +15,31 @@ import numpy as np
 import pandas as pd
 from plotnine import (
     aes,
-    element_blank,
+    annotate,
+    geom_hline,
     geom_step,
     geom_text,
     ggplot,
     labs,
     scale_x_continuous,
     scale_y_continuous,
-    theme,
 )
 
-from .compose import arrange_plots
 from .theme import scale_colour_depictr, theme_depictr
+
+
+def _nice_breaks(tmax, n=5):
+    """Round, evenly spaced axis breaks from 0 to about ``tmax``.
+
+    Picks a 1/2/2.5/5/10 step so the time axis reads in round numbers rather
+    than the arbitrary values an even split would give.
+    """
+    if tmax <= 0:
+        return np.array([0.0])
+    raw = tmax / n
+    mag = 10 ** np.floor(np.log10(raw))
+    step = next(m * mag for m in (1, 2, 2.5, 5, 10) if raw <= m * mag)
+    return np.arange(0, tmax + step * 0.5, step)
 
 
 def _require_lifelines():
@@ -76,7 +89,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     levels = list(pd.unique(groups))
 
     curves, at_risk_rows = [], []
-    breaks = np.linspace(0, float(np.max(time)), 6)
+    breaks = _nice_breaks(float(np.max(time)))
     for lvl in levels:
         mask = groups == lvl
         kmf = KaplanMeierFitter()
@@ -109,29 +122,49 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
 
     at_risk_df = pd.DataFrame(at_risk_rows)
     tmax = float(np.max(time))
-    p = (p
-         + scale_y_continuous(limits=(0, 1))
-         + scale_x_continuous(limits=(0, tmax))
-         + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
-         + theme_depictr())
-    p.at_risk = at_risk_df
-    p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
+
     if not risk_table:
+        p = (p
+             + scale_y_continuous(limits=(0, 1))
+             + scale_x_continuous(limits=(0, tmax))
+             + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
+             + theme_depictr())
+        p.at_risk = at_risk_df
+        p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
         return p
 
-    # Compose a number-at-risk table sharing the time axis beneath the curves.
-    tbl_df = at_risk_df.copy()
-    tbl_df["group"] = pd.Categorical(
-        tbl_df["group"], categories=[str(lvl) for lvl in levels][::-1], ordered=True)
-    tbl = (
-        ggplot(tbl_df, aes(x="time", y="group"))
-        + geom_text(aes(label="n_at_risk"), size=8, color="#1a1a1a")
-        + scale_x_continuous(limits=(0, tmax))
-        + labs(x=x_lab, y=None, title="Number at risk")
-        + theme_depictr(grid="none")
-        + theme(panel_grid_major=element_blank())
+    # Number-at-risk table as a thin strip below the y = 0 axis, in the same
+    # panel as the curves so it shares the time axis and stays aligned. The curve
+    # keeps the full 0-1 height; the strip occupies a little negative space.
+    order = [str(lvl) for lvl in levels]
+    row_h, header = 0.08, 0.06
+    y_of = {g: -(header + row_h * (i + 0.5)) for i, g in enumerate(order)}
+    tbl = at_risk_df.copy()
+    tbl["group"] = tbl["group"].astype(str)
+    tbl["y"] = tbl["group"].map(y_of)
+    label_x = -0.05 * tmax  # right edge of the row labels, with a gap before t = 0
+    xlim_lo = -0.38 * tmax  # gutter wide enough for the labels and the header
+    labels_df = pd.DataFrame({"group": order, "y": [y_of[g] for g in order],
+                              "x": label_x})
+    ymin = -(header + row_h * len(order) + 0.04)
+    breaks = [b for b in np.unique(at_risk_df["time"]) if b >= 0]
+
+    p = (
+        p
+        + geom_hline(yintercept=0, color="#cccccc", size=0.4)
+        + geom_text(aes(x="time", y="y", label="n_at_risk", color="group"),
+                    data=tbl, size=8, show_legend=False, inherit_aes=False)
+        + geom_text(aes(x="x", y="y", label="group", color="group"),
+                    data=labels_df, size=8, ha="right", show_legend=False,
+                    inherit_aes=False)
+        + annotate("text", x=xlim_lo, y=-header * 0.5, label="Number at risk",
+                   ha="left", fontweight="bold", color="#1a1a1a", size=9)
+        + scale_colour_depictr()
+        + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0], limits=(ymin, 1.0))
+        + scale_x_continuous(limits=(xlim_lo, tmax), breaks=breaks)
+        + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
+        + theme_depictr(grid="y")
     )
-    composed = arrange_plots(p, tbl, ncol=1)
-    composed.at_risk = at_risk_df
-    composed.logrank_p, composed.logrank_stat = logrank_p, logrank_stat
-    return composed
+    p.at_risk = at_risk_df
+    p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
+    return p
