@@ -40,9 +40,14 @@ all = [
     "streamlit>=1.30",
 ]
 test = ["pytest>=7.0"]
+docs = [
+    "sphinx>=7", "sphinx-gallery>=0.15", "pydata-sphinx-theme>=0.15",
+    "myst-parser>=2",
+]
 
 [project.urls]
 Homepage = "https://github.com/pablobernabeu/depictr-py"
+Documentation = "https://pablobernabeu.github.io/depictr-py/"
 Issues = "https://github.com/pablobernabeu/depictr-py/issues"
 "R sibling" = "https://github.com/pablobernabeu/depictr"
 

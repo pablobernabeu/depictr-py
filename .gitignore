@@ -30,3 +30,9 @@ htmlcov/
 *.pdf
 *.svg
 !docs/**/*.png
+
+# Sphinx build output and generated pages
+docs/_build/
+docs/auto_examples/
+docs/generated/
+docs/sg_execution_times.rst
