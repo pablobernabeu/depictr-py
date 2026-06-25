@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use depictr, please cite it as below."
+title: >-
+  depictr: A unified, colourblind-safe toolkit for publication-ready
+  statistical visualisation
+abstract: >-
+  depictr gives one consistent, accessible, plotnine-based theme and calling
+  convention across the whole statistical workflow (exploratory analysis, model
+  estimates, diagnostics, classification, multivariate analysis, survival and
+  time series), delegating computation to specialist packages and re-skinning
+  the result. The default Okabe-Ito palette is validated with a colour-vision-
+  deficiency simulator and a CIE-Lab distance check. It is the Python sibling of
+  the depictr R package.
+type: software
+authors:
+  - family-names: Bernabeu
+    given-names: Pablo
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/pablobernabeu/depictr-py"
+url: "https://pablobernabeu.github.io/depictr-py/"
+keywords:
+  - visualisation
+  - statistics
+  - plotnine
+  - accessibility
+  - colourblind
+  - reproducible research

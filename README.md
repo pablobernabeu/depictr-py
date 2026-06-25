@@ -5,7 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/MIT)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-📖 **[Documentation & gallery](https://pablobernabeu.github.io/depictr-py/)**
+Documentation and example gallery:
+<https://pablobernabeu.github.io/depictr-py/>
 
 A unified, colourblind-safe toolkit for publication-ready statistical
 visualisation, built on [plotnine](https://plotnine.org). It is the Python
