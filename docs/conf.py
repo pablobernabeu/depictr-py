@@ -6,9 +6,17 @@ are rendered at build time (sphinx-gallery with a custom plotnine scraper), and
 the narrative pages written in Markdown (myst-parser).
 """
 
+import warnings
+
 import matplotlib
 
 matplotlib.use("Agg")  # render figures headlessly during the build
+
+# Keep the benign "Removed N rows containing missing values" notices (the bundled
+# data has deliberate missingness) out of the rendered gallery output.
+from plotnine.exceptions import PlotnineWarning  # noqa: E402
+
+warnings.filterwarnings("ignore", category=PlotnineWarning)
 
 project = "depictr"
 author = "Pablo Bernabeu"
@@ -78,6 +86,11 @@ sphinx_gallery_conf = {
     "gallery_dirs": "auto_examples",
     "filename_pattern": r"plot_",
     "image_scrapers": (_plotnine_scraper,),
+    # A bare plot object on the last line of a cell otherwise prints its
+    # uninformative repr ("<plotnine.ggplot object at 0x...>") as output. The
+    # figure itself comes from the image scraper; explicit print() output is
+    # still shown. So suppress the last-expression repr capture.
+    "capture_repr": (),
     "remove_config_comments": True,
     "matplotlib_animations": False,
     "download_all_examples": False,

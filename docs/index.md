@@ -48,4 +48,3 @@ dp.explore_distribution(ld, "RT", group="condition", kind="both")
 
 The [gallery](auto_examples/index) works through every family with the plots
 rendered, and the [API reference](api) documents each function.
-```
