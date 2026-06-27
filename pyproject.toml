@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "depictr"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A unified, colourblind-safe toolkit for publication-ready statistical visualisation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,13 +18,24 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
     "plotnine>=0.13",
     "pandas>=2.0",
     "numpy>=1.24",
+    # Imported directly by the core modules (palette/cvd colour handling, the
+    # qq and estimation stats). plotnine pulls these in too, but a package
+    # should declare what it imports rather than lean on a transitive pin.
+    "matplotlib>=3.6",
+    "scipy>=1.7",
 ]
 
 [project.optional-dependencies]
@@ -51,8 +62,21 @@ Documentation = "https://pablobernabeu.github.io/depictr-py/"
 Issues = "https://github.com/pablobernabeu/depictr-py/issues"
 "R sibling" = "https://github.com/pablobernabeu/depictr"
 
+[tool.hatch.version]
+# Single source of truth: __version__ in the package.
+path = "src/depictr/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/depictr"]
+
+[tool.hatch.build.targets.sdist]
+# Keep generated Sphinx/gallery output out of the source distribution; it is
+# gitignored but can linger on disk from a local docs build and would otherwise
+# be swept in.
+exclude = [
+    "docs/_build", "docs/auto_examples", "docs/generated",
+    "docs/sg_execution_times.rst",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
