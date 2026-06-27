@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from plotnine import (
     aes,
-    annotate,
     coord_flip,
     geom_abline,
     geom_col,
@@ -24,7 +23,6 @@ from plotnine import (
     geom_line,
     geom_point,
     geom_ribbon,
-    geom_vline,
     ggplot,
     labs,
     scale_size_area,
@@ -136,8 +134,9 @@ def influence_plot(model, title=None):
 
     References
     ----------
-    Cook, R. D. (1977). Detection of influential observations in linear
+    Cook, R. D. (1977). Detection of influential observation in linear
     regression. Technometrics, 19(1), 15-18.
+    https://doi.org/10.1080/00401706.1977.10489493
     """
     _require_statsmodels()
     if not _is_fitted_model(model):

@@ -21,10 +21,9 @@ from plotnine import (
     geom_point,
     ggplot,
     labs,
-    theme,
 )
 
-from .palette import BRAND, depictr_brand
+from .palette import depictr_brand
 from .theme import theme_depictr
 
 

@@ -86,7 +86,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts) and,
         when grouped, ``.logrank_p`` and ``.logrank_stat``.
     """
-    lifelines = _require_lifelines()
+    _require_lifelines()
     from lifelines import KaplanMeierFitter
 
     time = np.asarray(time, dtype=float)

@@ -13,6 +13,7 @@ intervals, and meta-analysis. Routledge.
 
 Hedges, L. V. (1981). Distribution theory for Glass's estimator of effect size
 and related estimators. Journal of Educational Statistics, 6(2), 107-128.
+https://doi.org/10.3102/10769986006002107
 """
 
 from __future__ import annotations

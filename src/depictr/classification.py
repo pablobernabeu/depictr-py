@@ -20,7 +20,6 @@ from plotnine import (
     geom_line,
     geom_text,
     geom_tile,
-    geom_vline,
     ggplot,
     labs,
     scale_fill_gradientn,

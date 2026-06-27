@@ -16,11 +16,9 @@ from plotnine import (
     geom_vline,
     ggplot,
     labs,
-    scale_y_discrete,
-    theme,
 )
 
-from .palette import BRAND, depictr_brand
+from .palette import depictr_brand
 from .theme import theme_depictr
 
 # Tidy columns every downstream function relies on.

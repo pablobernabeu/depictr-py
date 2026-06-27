@@ -11,7 +11,6 @@ import pandas as pd
 from plotnine import (
     aes,
     after_stat,
-    coord_flip,
     element_text,
     geom_bar,
     geom_density,

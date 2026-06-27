@@ -62,6 +62,7 @@ def raincloud_plot(data, x, group=None, title=None):
     Allen, M., Poggiali, D., Whitaker, K., Marshall, T. R., van Langen, J., &
     Kievit, R. A. (2021). Raincloud plots: a multi-platform tool for robust data
     visualization. Wellcome Open Research, 4, 63.
+    https://doi.org/10.12688/wellcomeopenres.15191.2
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
