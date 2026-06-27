@@ -225,6 +225,6 @@ def threshold_plot(y_true, y_score, title=None):
         ggplot(long, aes("threshold", "value", color="metric"))
         + geom_line(size=0.8, na_rm=True)
         + scale_colour_depictr()
-        + labs(x="Decision threshold", y="Metric value", color=None, title=title)
+        + labs(x="Decision threshold", y="Metric value", color="", title=title)
         + theme_depictr()
     )

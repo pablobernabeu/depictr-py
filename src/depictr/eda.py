@@ -186,7 +186,7 @@ def correlation_heatmap(data, cols=None, title=None):
             colors=depictr_palette(7, kind="diverging"), limits=(-1, 1),
             name="Correlation",
         )
-        + labs(x=None, y=None, title=title)
+        + labs(x="", y="", title=title)
         + theme_depictr(grid="none")
         + theme(axis_text_x=element_text(rotation=45, ha="right"))
     )
@@ -230,7 +230,7 @@ def missingness_map(data, sort=True, legend_inside=False, title=None):
         + geom_tile()
         + scale_fill_manual(values={"Present": "#d9d9d9", "Missing": ACCENT},
                             name=None)
-        + labs(x=None, y="Record",
+        + labs(x="", y="Record",
                title=title or f"{overall * 100:.1f}% of all values are missing")
         + theme_depictr(grid="none")
         + theme(axis_text_x=element_text(rotation=45, ha="right"))

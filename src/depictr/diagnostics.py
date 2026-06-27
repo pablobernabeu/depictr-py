@@ -202,7 +202,7 @@ def vif_plot(model, title=None):
         + geom_col(fill=BRAND, width=0.7)
         + geom_hline(yintercept=5, linetype="dashed", color=ACCENT)
         + coord_flip()
-        + labs(x=None, y="Variance inflation factor", title=title)
+        + labs(x="", y="Variance inflation factor", title=title)
         + theme_depictr(grid="x")
     )
 

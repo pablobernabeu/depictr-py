@@ -112,6 +112,6 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         + geom_errorbarh(aes(xmin="conf_low", xmax="conf_high"), height=0.15,
                          color=depictr_brand(), size=0.8)
         + geom_point(color=depictr_brand(), size=2.6)
-        + labs(x="Estimate", y=None, title=title)
+        + labs(x="Estimate", y="", title=title)
         + theme_depictr()
     )

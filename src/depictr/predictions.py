@@ -320,7 +320,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
             labels=term_levels,
             limits=(-0.5, len(term_levels) - 0.5),
         )
-        + labs(x="Estimate", y=None, color="Model", title=title)
+        + labs(x="Estimate", y="", color="Model", title=title)
         + theme_depictr()
         + theme(panel_grid_major_y=element_blank())
     )

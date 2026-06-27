@@ -290,7 +290,7 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     return (
         ggplot(seg, aes(x="x", y="y", xend="xend", yend="yend"))
         + geom_segment(color=BRAND, size=0.6)
-        + labs(x=None, y="Distance", title=title)
+        + labs(x="", y="Distance", title=title)
         + theme_depictr(grid="y")
         + scale_y_continuous(expand=(0, 0, 0.05, 0))
     )

@@ -190,7 +190,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
          # Pad an invisible slot for the reference so the axis reads naturally.
          + scale_x_discrete(limits=others)
          + expand_limits(x=levels)
-         + labs(x=None, y=f"Mean difference\n(vs. {ref})",
+         + labs(x="", y=f"Mean difference\n(vs. {ref})",
                 title=None if two_panel else title)
          + theme_depictr(grid="y")
          + theme(axis_text_x=element_text(weight="bold")))
@@ -224,7 +224,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         + geom_point(color=brand, size=2.8)
         # The title rides on the top panel so it reads as the figure title
         # (plotnine compositions have no super-title).
-        + labs(x=None, y=y, title=title)
+        + labs(x="", y=y, title=title)
         + theme_depictr(grid="y")
         + theme(axis_text_x=element_text(weight="bold"))
     )

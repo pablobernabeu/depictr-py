@@ -192,7 +192,7 @@ def decompose_plot(x, period=None, model="additive", title=None):
         ggplot(long, aes("x", "value"))
         + geom_line(color=BRAND, size=0.7)
         + facet_wrap("component", ncol=1, scales="free_y")
-        + labs(x=None, y=None, title=title)
+        + labs(x="", y="", title=title)
         + theme_depictr()
     )
 
@@ -269,4 +269,4 @@ def timeseries_plot(x, rolling=None, title=None):
     if rolling:
         df = df.assign(roll=df["value"].rolling(int(rolling), center=True).mean())
         p = p + geom_line(aes(y="roll"), data=df, color=ACCENT, size=1.0)
-    return p + labs(x=None, y="Value", title=title) + theme_depictr()
+    return p + labs(x="", y="Value", title=title) + theme_depictr()

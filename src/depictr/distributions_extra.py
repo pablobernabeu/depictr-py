@@ -247,7 +247,7 @@ def outlier_plot(data, x, title=None):
     return (
         p
         + coord_flip()
-        + labs(x=None, y=x, title=title, subtitle=sub)
+        + labs(x="", y=x, title=title, subtitle=sub)
         + theme_depictr(grid="x")
         + theme(axis_text_y=element_blank(), axis_ticks_major_y=element_blank())
     )

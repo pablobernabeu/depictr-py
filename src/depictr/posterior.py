@@ -122,7 +122,7 @@ def posterior_plot(draws, labels=None, title=None):
                          color=BRAND, size=1.8)
         + geom_point(aes(y="median"), color=BRAND, size=2.8)
         + coord_flip()
-        + labs(x=None, y="Estimate", title=title)
+        + labs(x="", y="Estimate", title=title)
         + theme_depictr()
     )
 
@@ -190,6 +190,6 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
         + geom_point(aes(y="median"), position=dodge, size=2.8)
         + scale_colour_depictr(name="Source")
         + coord_flip()
-        + labs(x=None, y="Estimate", title=title)
+        + labs(x="", y="Estimate", title=title)
         + theme_depictr()
     )

@@ -128,7 +128,7 @@ def random_effects_plot(model, title=None):
         p
         + geom_point(color=depictr_brand(), size=2.4)
         + coord_flip()
-        + labs(x=None, y="Predicted random effect", title=title)
+        + labs(x="", y="Predicted random effect", title=title)
         + theme_depictr()
     )
 
