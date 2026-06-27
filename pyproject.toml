@@ -76,6 +76,7 @@ packages = ["src/depictr"]
 exclude = [
     "docs/_build", "docs/auto_examples", "docs/generated",
     "docs/sg_execution_times.rst",
+    "images",  # README plots, served from GitHub raw -- not needed in the package
 ]
 
 [tool.pytest.ini_options]

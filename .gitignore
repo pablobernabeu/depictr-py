@@ -30,6 +30,8 @@ htmlcov/
 *.pdf
 *.svg
 !docs/**/*.png
+# Committed README plots
+!images/*.png
 
 # Sphinx build output and generated pages
 docs/_build/
