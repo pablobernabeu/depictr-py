@@ -91,3 +91,43 @@ def scale_fill_depictr(n: int | None = None, **kwargs):
 
 # American-spelling alias, matching the convention plotnine and matplotlib use.
 scale_color_depictr = scale_colour_depictr
+
+
+# Anchor positions for an inside legend, by corner.
+_LEGEND_CORNERS = {
+    "top right": ((0.98, 0.98), (1, 1)),
+    "top left": ((0.02, 0.98), (0, 1)),
+    "bottom right": ((0.98, 0.03), (1, 0)),
+    "bottom left": ((0.02, 0.03), (0, 0)),
+}
+
+
+def legend_inside(corner="top right"):
+    """Theme fragment that moves the legend into the plotting area.
+
+    Places the legend in a corner the plot's geometry usually leaves empty, over
+    a semi-transparent background, so the figure needs no separate legend column.
+    The functions that expose a ``legend_inside`` argument add this for you.
+
+    Parameters
+    ----------
+    corner : {"top right", "top left", "bottom right", "bottom left"} or tuple
+        Which corner to use, or an explicit ``((x, y), (jx, jy))`` pair of
+        position and justification in axis fractions.
+
+    Returns
+    -------
+    plotnine.theme
+    """
+    if isinstance(corner, str):
+        if corner not in _LEGEND_CORNERS:
+            raise ValueError(f"`corner` must be one of {list(_LEGEND_CORNERS)}.")
+        position, justification = _LEGEND_CORNERS[corner]
+    else:
+        position, justification = corner
+    return theme(
+        legend_position=position,
+        legend_justification=justification,
+        legend_background=element_rect(fill="#ffffffcc", color="#cccccc", size=0.4),
+        legend_key=element_rect(fill="none", color="none"),
+    )

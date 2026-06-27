@@ -37,6 +37,27 @@ def test_correlation_heatmap_and_missingness():
     assert _builds(dp.missingness_map(WB))
 
 
+def test_legend_inside_variants_build():
+    # The opt-in inside-legend path builds for every function that offers it.
+    assert _builds(dp.explore_distribution(LD, "RT", group="condition",
+                                           legend_inside=True))
+    assert _builds(dp.ecdf_plot(LD, "RT", group="condition", legend_inside=True))
+    assert _builds(dp.missingness_map(WB, legend_inside=True))
+    wb = WB.assign(grp=(WB["age"] < WB["age"].median()).map(
+        {True: "younger", False: "older"}))
+    assert _builds(dp.dumbbell_plot(wb, "region", "life_satisfaction", "grp",
+                                    legend_inside=True))
+
+
+def test_legend_inside_helper_validates_corner():
+    from plotnine import theme
+
+    from depictr.theme import legend_inside
+    assert isinstance(legend_inside("bottom left"), theme)
+    with pytest.raises(ValueError):
+        legend_inside("middle")
+
+
 def test_classification_family():
     pytest.importorskip("sklearn")
     y, s = CT["adverse_event"], CT["biomarker"]

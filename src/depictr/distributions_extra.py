@@ -28,11 +28,16 @@ from plotnine import (
     theme,
 )
 
-from .palette import ACCENT, BRAND, depictr_palette
-from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
+from .palette import ACCENT, BRAND
+from .theme import (
+    legend_inside as _legend_inside,
+    scale_colour_depictr,
+    scale_fill_depictr,
+    theme_depictr,
+)
 
 
-def ecdf_plot(data, x, group=None, title=None):
+def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
     """Empirical cumulative distribution function, one step curve per group.
 
     The ECDF reads off the proportion of observations at or below each value, so
@@ -47,6 +52,9 @@ def ecdf_plot(data, x, group=None, title=None):
         Name of the numeric column.
     group : str, optional
         A grouping column mapped to colour, drawn as one curve per level.
+    legend_inside : bool
+        When ``True`` and a ``group`` is given, place the legend in the
+        bottom-right, which an ECDF leaves empty once it saturates.
     title : str, optional
         Plot title.
 
@@ -62,7 +70,10 @@ def ecdf_plot(data, x, group=None, title=None):
              + scale_colour_depictr())
     else:
         p = ggplot(data, aes(x=x)) + stat_ecdf(size=0.9, color=BRAND)
-    return p + labs(x=x, y="Cumulative proportion", title=title) + theme_depictr()
+    p = p + labs(x=x, y="Cumulative proportion", title=title) + theme_depictr()
+    if legend_inside and group:
+        p = p + _legend_inside("bottom right")
+    return p
 
 
 def ridgeline_plot(data, x, group, title=None):
@@ -124,7 +135,7 @@ def ridgeline_plot(data, x, group, title=None):
     )
 
 
-def dumbbell_plot(data, category, value, group, title=None):
+def dumbbell_plot(data, category, value, group, legend_inside=False, title=None):
     """Dumbbell plot pairing two group values per category.
 
     For a group with exactly two levels, each category becomes one row with a
@@ -142,6 +153,9 @@ def dumbbell_plot(data, category, value, group, title=None):
         The numeric column plotted along the x-axis.
     group : str
         A two-level grouping column; its levels are the two points.
+    legend_inside : bool
+        When ``True``, place the two-group legend in the top-right of the panel
+        rather than in a right-hand margin.
     title : str, optional
         Plot title.
 
@@ -173,9 +187,8 @@ def dumbbell_plot(data, category, value, group, title=None):
 
     long = wide.melt(id_vars=category, value_vars=levels,
                      var_name=group, value_name=value)
-    colours = depictr_palette(2)
 
-    return (
+    p = (
         ggplot(wide, aes(y=category))
         + geom_segment(aes(x=levels[0], xend=levels[1],
                            yend=category), color="#9e9e9e", size=1.2)
@@ -184,6 +197,9 @@ def dumbbell_plot(data, category, value, group, title=None):
         + labs(x=value, y=category, title=title)
         + theme_depictr(grid="x")
     )
+    if legend_inside:
+        p = p + _legend_inside("top right")
+    return p
 
 
 def outlier_plot(data, x, title=None):

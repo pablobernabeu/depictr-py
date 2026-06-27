@@ -1,0 +1,27 @@
+/* depictr documentation: spacing tweaks. */
+
+/* Give rendered example figures room and centre them. */
+.sphx-glr-single-img,
+.sphx-glr-multi-img,
+.bd-content img {
+    margin: 1.4rem auto;
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* The script-output ("Out:") blocks sit closer to their figure. */
+.sphx-glr-script-out {
+    margin-top: 0.6rem;
+    margin-bottom: 1.2rem;
+}
+
+/* Even spacing between gallery thumbnails. */
+.sphx-glr-thumbcontainer {
+    margin: 0.7rem;
+}
+
+/* A little air around code blocks (the copy button needs the corner). */
+div.highlight pre {
+    padding: 0.8rem 1rem;
+}

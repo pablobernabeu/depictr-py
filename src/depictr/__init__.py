@@ -55,6 +55,7 @@ from .palette import depictr_accent, depictr_brand, depictr_palette
 from .survival import survival_plot
 from .tables import summary_table
 from .theme import (
+    legend_inside,
     scale_color_depictr,
     scale_colour_depictr,
     scale_fill_depictr,
@@ -75,7 +76,8 @@ __all__ = [
     "__version__",
     # Theme and palette
     "theme_depictr", "scale_colour_depictr", "scale_color_depictr",
-    "scale_fill_depictr", "depictr_palette", "depictr_brand", "depictr_accent",
+    "scale_fill_depictr", "legend_inside", "depictr_palette",
+    "depictr_brand", "depictr_accent",
     # Accessibility
     "palette_safety", "simulate_cvd",
     # Exploratory analysis

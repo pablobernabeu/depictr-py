@@ -26,11 +26,16 @@ from plotnine import (
 )
 
 from .palette import ACCENT, BRAND, depictr_palette
-from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
+from .theme import (
+    legend_inside as _legend_inside,
+    scale_colour_depictr,
+    scale_fill_depictr,
+    theme_depictr,
+)
 
 
 def explore_distribution(data, x, group=None, kind="density", bins=30,
-                         alpha=0.6, title=None):
+                         alpha=0.6, legend_inside=False, title=None):
     """Plot the distribution of a numeric variable, optionally split by a group.
 
     Parameters
@@ -47,6 +52,10 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
         Number of histogram bins.
     alpha : float
         Fill transparency, useful when groups overlap.
+    legend_inside : bool
+        When ``True`` and a ``group`` is given, place the legend inside the
+        top-right of the panel (a unimodal distribution leaves it empty) rather
+        than in a right-hand margin.
     title : str, optional
         Plot title.
 
@@ -70,7 +79,10 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     if group:
         p = p + scale_fill_depictr() + scale_colour_depictr()
     y_lab = "Count" if kind == "histogram" else "Density"
-    return p + labs(x=x, y=y_lab, title=title) + theme_depictr()
+    p = p + labs(x=x, y=y_lab, title=title) + theme_depictr()
+    if legend_inside and group:
+        p = p + _legend_inside("top right")
+    return p
 
 
 def explore_categorical(data, x, group=None, proportion=True, title=None):
@@ -144,7 +156,7 @@ def correlation_heatmap(data, cols=None, title=None):
     )
 
 
-def missingness_map(data, sort=True, title=None):
+def missingness_map(data, sort=True, legend_inside=False, title=None):
     """Tile map of missing values, one column per variable and one row per record.
 
     Variables are ordered most- to least-missing, so the worst offenders sit on
@@ -155,6 +167,11 @@ def missingness_map(data, sort=True, title=None):
     data : pandas.DataFrame
     sort : bool
         Order columns by their proportion of missing values.
+    legend_inside : bool
+        When ``True`` (and ``sort`` is on), place the legend in the top-right.
+        Because the columns are sorted, the right-hand ones are the most complete,
+        so a legend there sits over a solid "Present" block and hides no missing
+        marks.
     title : str, optional
 
     Returns
@@ -172,7 +189,7 @@ def missingness_map(data, sort=True, title=None):
                                       categories=[labels[c] for c in order],
                                       ordered=True)
     overall = miss.to_numpy().mean()
-    return (
+    p = (
         ggplot(long, aes(x="variable", y="row", fill="status"))
         + geom_tile()
         + scale_fill_manual(values={"Present": "#d9d9d9", "Missing": ACCENT},
@@ -182,3 +199,6 @@ def missingness_map(data, sort=True, title=None):
         + theme_depictr(grid="none")
         + theme(axis_text_x=element_text(rotation=45, ha="right"))
     )
+    if legend_inside and sort:
+        p = p + _legend_inside("top right")
+    return p

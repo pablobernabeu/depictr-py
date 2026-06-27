@@ -29,8 +29,14 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "myst_parser",
+    "sphinx_copybutton",
     "sphinx_gallery.gen_gallery",
 ]
+
+# Copy buttons on code blocks; do not copy prompts or example output.
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
+copybutton_only_copy_prompt_lines = False
 
 autosummary_generate = True
 autodoc_typehints = "none"
@@ -44,6 +50,8 @@ html_theme_options = {
     "github_url": "https://github.com/pablobernabeu/depictr-py",
     "navigation_with_keys": True,
 }
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),

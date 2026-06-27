@@ -97,7 +97,12 @@ def raincloud_plot(data, x, group=None, title=None):
     if group is not None:
         p = p + scale_fill_depictr() + scale_colour_depictr()
     x_lab = None if group is None else group
-    return p + labs(x=x_lab, y=x, title=title) + theme_depictr(grid="y")
+    p = p + labs(x=x_lab, y=x, title=title) + theme_depictr(grid="y")
+    if group is not None:
+        # The group is already named on the x-axis, so the colour legend only
+        # repeats it; drop it.
+        p = p + theme(legend_position="none")
+    return p
 
 
 def explore_pairs(data, cols=None, title=None):

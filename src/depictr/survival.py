@@ -25,6 +25,7 @@ from plotnine import (
     scale_y_continuous,
 )
 
+from .theme import legend_inside as _legend_inside
 from .theme import scale_colour_depictr, theme_depictr
 
 
@@ -54,7 +55,8 @@ def _require_lifelines():
 
 
 def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
-                  title=None, x_lab="Time", y_lab="Survival probability"):
+                  legend_inside=False, title=None, x_lab="Time",
+                  y_lab="Survival probability"):
     """Kaplan-Meier survival curves, optionally by group, with a log-rank test.
 
     Parameters
@@ -69,6 +71,11 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     conf_level : float
         Confidence level (reserved for the confidence band; the step curve is
         drawn now, the band is planned).
+    risk_table : bool
+        Add a number-at-risk table as a thin strip beneath the curves.
+    legend_inside : bool
+        When ``True`` (and there are groups, without a risk table), place the
+        group legend in the bottom-left, which a survival curve leaves empty.
     title : str, optional
     x_lab, y_lab : str
         Axis labels.
@@ -129,6 +136,10 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
              + scale_x_continuous(limits=(0, tmax))
              + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
              + theme_depictr())
+        # A monotone-decreasing curve leaves the bottom-left empty (early times
+        # are still near survival 1), so the legend can sit there.
+        if legend_inside and multi:
+            p = p + _legend_inside("bottom left")
         p.at_risk = at_risk_df
         p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
         return p

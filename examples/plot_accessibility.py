@@ -16,7 +16,9 @@ report = dp.palette_safety()
 print(report)
 
 # %%
-# A grouped density in the default palette.
+# A grouped density in the default palette. ``legend_inside`` tucks the legend
+# into the empty top-right corner instead of a separate margin.
 ld = dp.lexical_decision()
-p = dp.explore_distribution(ld, "RT", group="condition", kind="both")
+p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
+                            legend_inside=True)
 p

@@ -13,6 +13,7 @@ Theme and palette
    theme_depictr
    scale_colour_depictr
    scale_fill_depictr
+   legend_inside
    depictr_palette
    depictr_brand
    depictr_accent

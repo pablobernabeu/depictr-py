@@ -12,8 +12,9 @@ wb = dp.wellbeing_survey()
 ld = dp.lexical_decision()
 
 # %%
-# Empirical cumulative distribution by group.
-p = dp.ecdf_plot(ld, "RT", group="condition")
+# Empirical cumulative distribution by group, with the legend tucked into the
+# bottom-right the curves leave empty once they saturate.
+p = dp.ecdf_plot(ld, "RT", group="condition", legend_inside=True)
 p
 
 # %%
@@ -32,6 +33,7 @@ p = dp.raincloud_plot(ld, "RT", group="condition")
 p
 
 # %%
-# A missing-data map; columns are ordered most- to least-missing.
-p = dp.missingness_map(wb)
+# A missing-data map; columns are ordered most- to least-missing, so the legend
+# sits inside the top-right over the most-complete columns.
+p = dp.missingness_map(wb, legend_inside=True)
 p
