@@ -54,6 +54,14 @@ def _require_lifelines():
     return lifelines
 
 
+def _apa_p(p):
+    """Format a p-value in APA style: no leading zero, floored at ``.001``."""
+    if p < 0.001:
+        return "< .001"
+    s = f"{p:.3f}"
+    return "= " + (s[1:] if s.startswith("0") else s)
+
+
 def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
                   legend_inside=False, title=None, x_lab="Time",
                   y_lab="Survival probability"):
@@ -95,7 +103,14 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     event = np.asarray(event, dtype=int)
     groups = (np.asarray(group) if group is not None
               else np.repeat("all", len(time)))
-    levels = list(pd.unique(groups))
+    # One factor order for the whole figure -- a user-set categorical order if
+    # there is one, otherwise first appearance -- so the colour legend and the
+    # risk-table rows list the groups identically.
+    if isinstance(getattr(group, "dtype", None), pd.CategoricalDtype):
+        seen = set(groups.tolist())
+        levels = [c for c in group.cat.categories if c in seen]
+    else:
+        levels = list(pd.unique(groups))
 
     curves, at_risk_rows = [], []
     breaks = _nice_breaks(float(np.max(time)))
@@ -111,6 +126,9 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
             at_risk_rows.append({"group": str(lvl), "time": round(float(b), 1),
                                  "n_at_risk": int(np.sum(time[mask] >= b))})
     curve = pd.concat(curves, ignore_index=True)
+    curve["group"] = pd.Categorical(curve["group"],
+                                    categories=[str(lvl) for lvl in levels],
+                                    ordered=True)
 
     multi = len(levels) > 1
     if multi:
@@ -126,8 +144,8 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         from lifelines.statistics import multivariate_logrank_test
         res = multivariate_logrank_test(time, groups, event)
         logrank_p, logrank_stat = res.p_value, res.test_statistic
-        p_txt = "< 0.0001" if logrank_p < 1e-4 else f"= {logrank_p:.4f}"
-        subtitle = f"Log-rank χ²({len(levels) - 1}) = {logrank_stat:.1f}, p {p_txt}"
+        subtitle = (f"Log-rank χ²({len(levels) - 1}) = {logrank_stat:.1f}, "
+                    f"$p$ {_apa_p(logrank_p)}")
 
     at_risk_df = pd.DataFrame(at_risk_rows)
     tmax = float(np.max(time))
