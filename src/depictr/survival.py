@@ -147,34 +147,32 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         return p
 
     # Number-at-risk table as a thin strip below the y = 0 axis, in the same
-    # panel as the curves so it shares the time axis and stays aligned. The curve
-    # keeps the full 0-1 height; the strip occupies a little negative space.
+    # panel as the curves so it shares the time axis. The group names label the
+    # rows on the y-axis -- so the curves keep the full width with no left-hand
+    # gutter -- and the counts are coloured to match the curves.
     order = [str(lvl) for lvl in levels]
     row_h, header = 0.05, 0.05
     y_of = {g: -(header + row_h * (i + 0.5)) for i, g in enumerate(order)}
     tbl = at_risk_df.copy()
     tbl["group"] = tbl["group"].astype(str)
     tbl["y"] = tbl["group"].map(y_of)
-    label_x = -0.05 * tmax  # right edge of the row labels, with a gap before t = 0
-    xlim_lo = -0.38 * tmax  # gutter wide enough for the labels and the header
-    labels_df = pd.DataFrame({"group": order, "y": [y_of[g] for g in order],
-                              "x": label_x})
-    ymin = -(header + row_h * len(order) + 0.015)
+    ymin = -(header + row_h * len(order) + 0.02)
     breaks = [b for b in np.unique(at_risk_df["time"]) if b >= 0]
+    # Survival-axis ticks plus one tick per table row, labelled with the group.
+    surv_breaks = [0.0, 0.25, 0.5, 0.75, 1.0]
+    y_breaks = surv_breaks + [y_of[g] for g in order]
+    y_labels = [f"{b:.2f}" for b in surv_breaks] + list(order)
 
     p = (
         p
         + geom_hline(yintercept=0, color="#cccccc", size=0.4)
         + geom_text(aes(x="time", y="y", label="n_at_risk", color="group"),
                     data=tbl, size=8, show_legend=False, inherit_aes=False)
-        + geom_text(aes(x="x", y="y", label="group", color="group"),
-                    data=labels_df, size=8, ha="right", show_legend=False,
-                    inherit_aes=False)
-        + annotate("text", x=xlim_lo, y=-header * 0.5, label="Number at risk",
+        + annotate("text", x=0, y=-header * 0.5, label="Number at risk",
                    ha="left", fontweight="bold", color="#1a1a1a", size=9)
         + scale_colour_depictr()
-        + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0], limits=(ymin, 1.0))
-        + scale_x_continuous(limits=(xlim_lo, tmax), breaks=breaks)
+        + scale_y_continuous(breaks=y_breaks, labels=y_labels, limits=(ymin, 1.0))
+        + scale_x_continuous(limits=(0, tmax), breaks=breaks)
         + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
         + theme_depictr(grid="y")
     )

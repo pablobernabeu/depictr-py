@@ -2,10 +2,11 @@
 
 ## 0.1.1
 
-- **Survival risk table.** Tightened the number-at-risk table beneath
-  `survival_plot(risk_table=True)`: the rows now sit as a compact strip directly
-  under the curves, with the time axis just below, rather than floating in
-  loosely spaced negative space.
+- **Survival risk table.** Rebuilt the number-at-risk table beneath
+  `survival_plot(risk_table=True)`: the curves now use the full panel width (no
+  left-hand gutter), the group names label the rows on the y-axis, and the
+  counts are coloured to match the curves -- a tidy strip under the curves
+  rather than text floating in loosely spaced negative space.
 - Added a "Getting started" guide that walks through a short analysis end to end.
 - The README and the PyPI project page now open with a gallery (a grouped
   density and Kaplan-Meier curves), and the documentation landing page gains the
