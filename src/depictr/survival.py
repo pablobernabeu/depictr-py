@@ -74,8 +74,10 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     risk_table : bool
         Add a number-at-risk table as a thin strip beneath the curves.
     legend_inside : bool
-        When ``True`` (and there are groups, without a risk table), place the
-        group legend in the bottom-left, which a survival curve leaves empty.
+        When ``True`` (and there are groups), place the group legend inside the
+        panel rather than in a right-hand margin: the bottom-left for a plain
+        curve, or the top-right when a risk table occupies the bottom strip.
+        Either corner is one a descending survival curve leaves empty.
     title : str, optional
     x_lab, y_lab : str
         Axis labels.
@@ -176,6 +178,11 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
         + theme_depictr(grid="y")
     )
+    # Descending KM curves leave the panel's top-right empty and the risk table
+    # owns the bottom strip, so an inside legend there uses the full width
+    # rather than stranding it in a right-hand margin.
+    if legend_inside and multi:
+        p = p + _legend_inside("top right")
     p.at_risk = at_risk_df
     p.logrank_p, p.logrank_stat = logrank_p, logrank_stat
     return p

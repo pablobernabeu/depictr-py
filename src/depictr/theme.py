@@ -50,9 +50,14 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
                                    margin={"b": base_size * 0.4}),
         panel_grid_minor=element_blank(),
         panel_grid_major=element_line(color="#e6e6e6", size=0.4),
-        # Bold, centred legend titles, matching the depictr R defaults.
-        legend_title=element_text(weight="bold", ha="center"),
-        legend_key=element_rect(fill="none", color="none"),
+        # Bold, centred legend titles, matching the depictr R defaults. The
+        # bottom margin lifts the title clear of the first key so it reads as a
+        # heading rather than crowding the labels.
+        legend_title=element_text(weight="bold", ha="center", margin={"b": 6}),
+        # A white key with a thin border so a light-coloured swatch (e.g. a pale
+        # grey "Present" tile) stays delineated wherever a legend appears.
+        legend_key=element_rect(fill="#ffffff", color="#cccccc", size=0.3),
+        legend_key_spacing_y=4,
         strip_background=element_rect(fill="#f5f5f5", color="none"),
         strip_text=element_text(size=base_size),
     )
@@ -128,6 +133,8 @@ def legend_inside(corner="top right"):
     return theme(
         legend_position=position,
         legend_justification=justification,
-        legend_background=element_rect(fill="#ffffffcc", color="#cccccc", size=0.4),
-        legend_key=element_rect(fill="none", color="none"),
+        # A solid white panel (not translucent) so the legend stays legible even
+        # over a filled plot area, with a light border and delineated keys.
+        legend_background=element_rect(fill="#ffffff", color="#cccccc", size=0.5),
+        legend_key=element_rect(fill="#ffffff", color="#cccccc", size=0.3),
     )

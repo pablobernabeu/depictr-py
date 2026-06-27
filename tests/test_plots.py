@@ -41,6 +41,9 @@ def test_legend_inside_variants_build():
     # The opt-in inside-legend path builds for every function that offers it.
     assert _builds(dp.explore_distribution(LD, "RT", group="condition",
                                            legend_inside=True))
+    # "both" exercises the line-keyed density geom and the guides() override.
+    assert _builds(dp.explore_distribution(LD, "RT", group="condition",
+                                           kind="both", legend_inside=True))
     assert _builds(dp.ecdf_plot(LD, "RT", group="condition", legend_inside=True))
     assert _builds(dp.missingness_map(WB, legend_inside=True))
     wb = WB.assign(grp=(WB["age"] < WB["age"].median()).map(
@@ -84,3 +87,7 @@ def test_survival_risk_table_composes():
                          risk_table=True)
     p.draw(show=False)  # composition (curve + at-risk table) draws
     assert len(p.at_risk) > 0
+    # The risk-table path also honours an inside (top-right) legend.
+    q = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                         risk_table=True, legend_inside=True)
+    q.draw(show=False)

@@ -31,7 +31,8 @@ p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.12).astype(int),
 p
 
 # %%
-# Kaplan-Meier curves with a log-rank test and a number-at-risk table.
+# Kaplan-Meier curves with a log-rank test and a number-at-risk table. The
+# legend sits in the empty top-right the descending curves leave behind.
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
-                     risk_table=True, title="Survival by arm")
+                     risk_table=True, legend_inside=True, title="Survival by arm")
 p

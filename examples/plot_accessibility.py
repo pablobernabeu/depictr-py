@@ -16,8 +16,9 @@ report = dp.palette_safety()
 print(report)
 
 # %%
-# A grouped density in the default palette. ``legend_inside`` tucks the legend
-# into the empty top-right corner instead of a separate margin.
+# A grouped distribution in the default palette -- histogram with its density
+# curve. ``legend_inside`` tucks the legend into the empty top-right corner
+# instead of a separate margin.
 ld = dp.lexical_decision()
 p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
                             legend_inside=True)

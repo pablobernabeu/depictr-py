@@ -15,12 +15,16 @@ from plotnine import (
     geom_bar,
     geom_density,
     geom_histogram,
+    geom_path,
     geom_text,
     geom_tile,
     ggplot,
+    guide_legend,
+    guides,
     labs,
     scale_fill_gradientn,
     scale_fill_manual,
+    scale_y_continuous,
     theme,
 )
 
@@ -31,6 +35,17 @@ from .theme import (
     scale_fill_depictr,
     theme_depictr,
 )
+
+
+class _geom_density_linekey(geom_density):
+    """A density geom whose legend key is a coloured line, not a filled box.
+
+    ``geom_density`` inherits ``geom_polygon``'s legend drawer, which always
+    draws a filled rectangle. Borrowing ``geom_path``'s drawer makes the key a
+    short coloured line segment that matches the curve it labels.
+    """
+
+    draw_legend = staticmethod(geom_path.draw_legend)
 
 
 def explore_distribution(data, x, group=None, kind="density", bins=30,
@@ -68,15 +83,37 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     p = ggplot(data, mapping)
     if kind in {"histogram", "both"}:
         y = aes(y=after_stat("density")) if kind == "both" else None
-        p = p + geom_histogram(y, bins=bins, alpha=alpha,
-                               position="identity",
-                               color=None if group else "white",
-                               fill=None if group else BRAND)
+        if group:
+            # Bars are filled by the group aesthetic; "none" hides the edge so
+            # overlapping (identity-positioned) bars stay readable. A bare
+            # fill=None would instead make the bars transparent, not group-filled.
+            p = p + geom_histogram(y, bins=bins, alpha=alpha,
+                                   position="identity", color="none")
+        else:
+            p = p + geom_histogram(y, bins=bins, alpha=alpha,
+                                   position="identity", color="white", fill=BRAND)
     if kind in {"density", "both"}:
-        p = p + (geom_density(alpha=0 if kind == "both" else alpha)
-                 if group else geom_density(alpha=alpha, color=BRAND, fill=BRAND))
+        if group:
+            # A light fill (0.2) keeps overlapping curves distinguishable
+            # without the muddy overlap a heavier fill makes; the coloured
+            # outline carries the comparison. For "both" the density fill is
+            # dropped so it does not muddy the histogram beneath it.
+            p = p + _geom_density_linekey(alpha=0 if kind == "both" else 0.2)
+        else:
+            p = p + geom_density(alpha=alpha, color=BRAND, fill=BRAND)
+        # The density baseline sits at 0; drop the default lower pad so the
+        # curves are flush with the x-axis, keeping a little headroom on top.
+        p = p + scale_y_continuous(expand=(0, 0, 0.05, 0))
     if group:
         p = p + scale_fill_depictr() + scale_colour_depictr()
+        if kind in {"density", "both"}:
+            # The density line is the keyed geom, so show a single legend keyed
+            # by its colour: drop the redundant fill legend and make the key
+            # fully opaque so it matches the curve.
+            p = p + guides(
+                color=guide_legend(override_aes={"alpha": 1, "size": 1.2}),
+                fill=False,
+            )
     y_lab = "Count" if kind == "histogram" else "Density"
     p = p + labs(x=x, y=y_lab, title=title) + theme_depictr()
     if legend_inside and group:
