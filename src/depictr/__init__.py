@@ -70,7 +70,7 @@ from .posterior import frequentist_bayesian_plot, posterior_plot
 from .power import power_curve_plot
 from .predictions import compare_models, effects_plot, interaction_plot
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "__version__",

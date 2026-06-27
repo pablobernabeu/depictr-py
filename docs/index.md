@@ -4,6 +4,8 @@ A unified, colourblind-safe toolkit for publication-ready statistical
 visualisation, built on [plotnine](https://plotnine.org). It is the Python
 sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
 
+![A grouped density of response times by condition, in the colourblind-safe Okabe-Ito palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
+
 ```{toctree}
 :maxdepth: 1
 :hidden:
@@ -27,6 +29,8 @@ a CIE-Lab distance test that confirms the colours stay distinguishable under eac
 deficiency.
 
 ## Installation
+
+depictr is on [PyPI](https://pypi.org/project/depictr/):
 
 ```bash
 pip install depictr            # core (plotnine, pandas, numpy)

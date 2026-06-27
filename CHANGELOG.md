@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.1
+
+Documentation and packaging.
+
+- The README and the PyPI project page now open with a gallery: a grouped
+  density (showing the colourblind-safe palette) and Kaplan-Meier survival
+  curves with a log-rank test.
+- The documentation landing page gains the same hero plot and a PyPI install
+  link.
+- README image assets are kept out of the source distribution.
+
+The plotting code is unchanged from 0.1.0.
+
 ## 0.1.0
 
 First release. depictr (Python) is a unified, colourblind-safe toolkit for
