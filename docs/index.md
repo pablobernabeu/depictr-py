@@ -13,6 +13,7 @@ sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
 Getting started <getting-started>
 Gallery <auto_examples/index>
 API reference <api>
+About <about>
 ```
 
 ## What it gives you

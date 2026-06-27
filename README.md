@@ -16,12 +16,12 @@ sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
 ## Gallery
 
 A grouped density (the default palette is the colourblind-safe Okabe-Ito set) and
-Kaplan-Meier survival curves with a log-rank test, both from a single function
-call:
+Kaplan-Meier survival curves with a log-rank test and a number-at-risk table,
+both from a single function call:
 
 ![Grouped density of response times by priming condition, in the Okabe-Ito palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
 
-![Kaplan-Meier survival curves by treatment arm, with a log-rank test](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
+![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
 More in the [example gallery](https://pablobernabeu.github.io/depictr-py/).
 
