@@ -10,6 +10,7 @@ sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
 :maxdepth: 1
 :hidden:
 
+Getting started <getting-started>
 Gallery <auto_examples/index>
 API reference <api>
 ```

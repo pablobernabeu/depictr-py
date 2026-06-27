@@ -2,16 +2,15 @@
 
 ## 0.1.1
 
-Documentation and packaging.
-
-- The README and the PyPI project page now open with a gallery: a grouped
-  density (showing the colourblind-safe palette) and Kaplan-Meier survival
-  curves with a log-rank test.
-- The documentation landing page gains the same hero plot and a PyPI install
-  link.
+- **Survival risk table.** Tightened the number-at-risk table beneath
+  `survival_plot(risk_table=True)`: the rows now sit as a compact strip directly
+  under the curves, with the time axis just below, rather than floating in
+  loosely spaced negative space.
+- Added a "Getting started" guide that walks through a short analysis end to end.
+- The README and the PyPI project page now open with a gallery (a grouped
+  density and Kaplan-Meier curves), and the documentation landing page gains the
+  same hero plot and a PyPI install link.
 - README image assets are kept out of the source distribution.
-
-The plotting code is unchanged from 0.1.0.
 
 ## 0.1.0
 

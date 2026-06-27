@@ -150,7 +150,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     # panel as the curves so it shares the time axis and stays aligned. The curve
     # keeps the full 0-1 height; the strip occupies a little negative space.
     order = [str(lvl) for lvl in levels]
-    row_h, header = 0.08, 0.06
+    row_h, header = 0.05, 0.05
     y_of = {g: -(header + row_h * (i + 0.5)) for i, g in enumerate(order)}
     tbl = at_risk_df.copy()
     tbl["group"] = tbl["group"].astype(str)
@@ -159,7 +159,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     xlim_lo = -0.38 * tmax  # gutter wide enough for the labels and the header
     labels_df = pd.DataFrame({"group": order, "y": [y_of[g] for g in order],
                               "x": label_x})
-    ymin = -(header + row_h * len(order) + 0.04)
+    ymin = -(header + row_h * len(order) + 0.015)
     breaks = [b for b in np.unique(at_risk_df["time"]) if b >= 0]
 
     p = (
