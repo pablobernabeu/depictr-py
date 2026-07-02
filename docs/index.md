@@ -1,8 +1,10 @@
 # depictr
 
 A unified, colourblind-safe toolkit for publication-ready statistical
-visualisation, built on [plotnine](https://plotnine.org). It is the Python
-sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
+visualisation, built on [plotnine](https://plotnine.org).
+
+An R sibling, [depictr](https://github.com/pablobernabeu/depictr), has the
+same design.
 
 ![A grouped density of response times by condition, in the colourblind-safe Okabe-Ito palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
 
