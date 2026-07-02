@@ -69,6 +69,14 @@ deficiency = st.sidebar.selectbox(
     help="Re-renders the figure as each colour-vision deficiency would see it.",
 )
 
+legend_in = st.sidebar.checkbox(
+    "Legend inside plot", value=False,
+    help="For the plots that support it, tucks the legend into the panel "
+         "instead of a right-hand margin.",
+)
+LEGEND_INSIDE_STAGES = {"Distribution", "ECDF", "Dumbbell", "Missingness map",
+                        "Kaplan-Meier"}
+
 report = dp.palette_safety()
 st.sidebar.metric("Palette min ΔE (worst case)", report["min_delta_e"],
                   help=f"Safe: {report['safe']} (worst under {report['worst_condition']})")
@@ -88,6 +96,11 @@ st.dataframe(data.head(), use_container_width=True)
 num_cols = list(data.select_dtypes("number").columns)
 cat_cols = [c for c in data.columns if c not in num_cols]
 binary_cols = [c for c in data.columns if data[c].nunique() == 2]
+# The ROC/PR/gain/lift/calibration/threshold family does arithmetic on y_true
+# (e.g. a cumulative sum), so it needs a genuine 0/1 column, not just any
+# two-level one -- confusion_matrix_plot has no such constraint.
+binary01_cols = [c for c in binary_cols
+                 if set(pd.unique(data[c].dropna())) <= {0, 1}] or binary_cols
 
 
 def _opt(label, options):
@@ -125,8 +138,10 @@ try:
     if stage == "Distribution":
         x = st.selectbox("Numeric variable", num_cols)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.explore_distribution(data, x, group=g, kind="both"),
-             f"dp.explore_distribution({data_call}, {x!r}, group={g!r}, kind='both')",
+        show(dp.explore_distribution(data, x, group=g, kind="both",
+                                     legend_inside=legend_in),
+             f"dp.explore_distribution({data_call}, {x!r}, group={g!r}, "
+             f"kind='both', legend_inside={legend_in})",
              deficiency)
     elif stage == "Categorical":
         x = st.selectbox("Category", cat_cols)
@@ -136,8 +151,9 @@ try:
     elif stage == "ECDF":
         x = st.selectbox("Numeric variable", num_cols)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.ecdf_plot(data, x, group=g),
-             f"dp.ecdf_plot({data_call}, {x!r}, group={g!r})", deficiency)
+        show(dp.ecdf_plot(data, x, group=g, legend_inside=legend_in),
+             f"dp.ecdf_plot({data_call}, {x!r}, group={g!r}, "
+             f"legend_inside={legend_in})", deficiency)
     elif stage == "Ridgeline":
         x = st.selectbox("Numeric variable", num_cols)
         g = st.selectbox("Group", cat_cols)
@@ -151,9 +167,16 @@ try:
     elif stage == "Dumbbell":
         cat = st.selectbox("Category", cat_cols)
         val = st.selectbox("Value", num_cols)
-        g = st.selectbox("Two-level group", [c for c in binary_cols if c in cat_cols] or cat_cols)
-        show(dp.dumbbell_plot(data, cat, val, g),
-             f"dp.dumbbell_plot({data_call}, {cat!r}, {val!r}, {g!r})", deficiency)
+        # The group must differ from the category, or dumbbell_plot's pivot
+        # collides on one column. Prefer another two-level column (categorical
+        # or numeric -- dumbbell_plot only needs exactly two levels); fall back
+        # to any other category, widening to cat_cols only as a last resort.
+        g_options = ([c for c in binary_cols if c != cat]
+                     or [c for c in cat_cols if c != cat] or cat_cols)
+        g = st.selectbox("Two-level group", g_options)
+        show(dp.dumbbell_plot(data, cat, val, g, legend_inside=legend_in),
+             f"dp.dumbbell_plot({data_call}, {cat!r}, {val!r}, {g!r}, "
+             f"legend_inside={legend_in})", deficiency)
     elif stage == "Outliers":
         x = st.selectbox("Numeric variable", num_cols)
         show(dp.outlier_plot(data, x),
@@ -177,8 +200,9 @@ try:
         show(dp.explore_pairs(data, cols=cols or None),
              f"dp.explore_pairs({data_call}, cols={cols!r})", deficiency)
     elif stage == "Missingness map":
-        show(dp.missingness_map(data),
-             f"dp.missingness_map({data_call})", deficiency)
+        show(dp.missingness_map(data, legend_inside=legend_in),
+             f"dp.missingness_map({data_call}, legend_inside={legend_in})",
+             deficiency)
     elif stage == "Estimation plot":
         y = st.selectbox("Outcome", num_cols)
         g = st.selectbox("Group", cat_cols)
@@ -196,7 +220,7 @@ try:
         show(plot, f"dp.{fn}({data_call})", deficiency)
     elif stage in {"ROC curve", "PR curve", "Gains", "Lift", "Calibration",
                    "Threshold"}:
-        target = st.selectbox("Binary outcome", binary_cols)
+        target = st.selectbox("Binary outcome (0/1)", binary01_cols)
         score = st.selectbox("Score / probability", num_cols)
         fn = {"ROC curve": "roc_curve_plot", "PR curve": "pr_curve_plot",
               "Gains": "gain_plot", "Lift": "lift_plot",
@@ -215,8 +239,10 @@ try:
         g = _opt("Group (optional)", cat_cols)
         rt = st.checkbox("Number-at-risk table", value=True)
         gv = None if g is None else data[g]
-        show(dp.survival_plot(data[time], data[event], group=gv, risk_table=rt),
-             f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], group=..., risk_table={rt})",
+        show(dp.survival_plot(data[time], data[event], group=gv, risk_table=rt,
+                              legend_inside=legend_in),
+             f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], "
+             f"group=..., risk_table={rt}, legend_inside={legend_in})",
              deficiency)
     elif family.startswith("Models"):
         outcome = st.selectbox("Outcome (numeric)", num_cols)
