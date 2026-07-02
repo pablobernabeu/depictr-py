@@ -1,20 +1,5 @@
 # About
 
-## The developer
-
-depictr is developed by **Pablo Bernabeu**, a researcher in the Department of
-Education at the University of Oxford. His work spans psychology and cognitive
-science, psycholinguistics, and quantitative methods, with a particular interest
-in research reproducibility, open science, and building R and Python tools for
-data analysis. He holds a PhD in Psychology from Lancaster University.
-
-More about his work is at [pablobernabeu.github.io](https://pablobernabeu.github.io),
-on [GitHub](https://github.com/pablobernabeu), and via
-[ORCID 0000-0003-1083-2460](https://orcid.org/0000-0003-1083-2460).
-
-depictr has a sibling [R package](https://github.com/pablobernabeu/depictr) that
-shares the same design.
-
 ## Citing depictr
 
 If depictr helps your work, a citation is appreciated:
@@ -36,3 +21,20 @@ If depictr helps your work, a citation is appreciated:
 The repository's
 [`CITATION.cff`](https://github.com/pablobernabeu/depictr-py/blob/main/CITATION.cff)
 carries the same metadata in machine-readable form.
+
+## The developer
+
+depictr is developed by **Pablo Bernabeu**, a researcher in the Department of
+Education at the University of Oxford. His work spans cognitive psychology and
+neuroscience, linguistics, education and digital technologies, drawing on a
+range of methods that include behavioural and EEG experiments, corpus analysis
+and computational modelling. He is a Fellow of the Software Sustainability
+Institute (2020), recognised for his work on R-based tools for data
+presentation, and holds a PhD in Psychology from Lancaster University.
+
+More about his work is at [pablobernabeu.github.io](https://pablobernabeu.github.io),
+on [GitHub](https://github.com/pablobernabeu), and via
+[ORCID 0000-0003-1083-2460](https://orcid.org/0000-0003-1083-2460).
+
+depictr has a sibling [R package](https://github.com/pablobernabeu/depictr) that
+shares the same design.
