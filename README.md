@@ -23,7 +23,10 @@ both from a single function call:
 
 ![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
-More in the [example gallery](https://pablobernabeu.github.io/depictr-py/).
+More in the [example gallery](https://pablobernabeu.github.io/depictr-py/) --
+these two use a couple of extra options (a title, `legend_inside`) shown in the
+[Getting started](https://pablobernabeu.github.io/depictr-py/getting-started.html)
+guide; the short tour below keeps its calls minimal.
 
 ## What it is for
 
@@ -137,7 +140,7 @@ streamlit run app/streamlit_app.py
 
 ## Status
 
-This is an early release (0.1.0), but coverage is now broad: the colourblind-safe
+This is an early release, but coverage is now broad: the colourblind-safe
 theme, the accessibility check, and the R package's plotting functions across
 every family (EDA, estimation, model estimates, diagnostics, classification,
 multivariate, survival and time series) are in place and tested. Multi-panel

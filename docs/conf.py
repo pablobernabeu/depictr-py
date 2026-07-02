@@ -18,10 +18,11 @@ from plotnine.exceptions import PlotnineWarning  # noqa: E402
 
 warnings.filterwarnings("ignore", category=PlotnineWarning)
 
+from depictr import __version__ as release  # noqa: E402  (single source of truth)
+
 project = "depictr"
 author = "Pablo Bernabeu"
 copyright = "2026, Pablo Bernabeu"
-release = "0.1.0"
 
 extensions = [
     "sphinx.ext.autodoc",
