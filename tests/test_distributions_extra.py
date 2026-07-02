@@ -51,6 +51,11 @@ def test_dumbbell_plot_needs_two_levels():
         dumbbell_plot(WB, "education", "income", "region")
 
 
+def test_dumbbell_plot_rejects_same_category_and_group():
+    with pytest.raises(ValueError, match="different columns"):
+        dumbbell_plot(LD, "condition", "RT", "condition")
+
+
 def test_outlier_plot():
     assert _builds(outlier_plot(WB, "income"))
     assert _builds(outlier_plot(LD, "RT"))

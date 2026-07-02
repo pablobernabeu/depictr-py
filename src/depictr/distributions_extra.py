@@ -166,6 +166,8 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     for col in (category, value, group):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
+    if category == group:
+        raise ValueError("`category` and `group` must be different columns.")
 
     levels = list(pd.unique(data[group].dropna()))
     if len(levels) != 2:

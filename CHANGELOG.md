@@ -2,6 +2,26 @@
 
 ## 0.1.1
 
+- **Inside legends.** Added an opt-in `legend_inside=False` parameter to
+  `explore_distribution`, `ecdf_plot`, `dumbbell_plot`, `missingness_map` and
+  `survival_plot`, plus the public `legend_inside()` theme helper, which places
+  the legend inside the panel (over a light background) rather than in a
+  right-hand margin.
+- **Fix: grouped histograms were invisible.** `explore_distribution(kind="both"`
+  or `"histogram")` with a `group` drew no bars at all: `geom_histogram(fill=None)`
+  made them fully transparent instead of deferring to the group colour mapping.
+- **Fix: axis and legend titles leaked raw column names.** Several plots that
+  meant to leave a title blank (`labs(x=None, ...)`) instead showed the mapped
+  column's literal name (`x`, `value`, `variable`, `term`, `metric`, ...) because
+  this plotnine version treats `None` as unset rather than blank. Corrected 14
+  call sites across `diagnostics`, `eda`, `estimation`, `mixed`, `models`,
+  `multivariate`, `posterior`, `predictions`, `distributions_extra`,
+  `timeseries` and `classification`.
+- **Fix: a duplicate colour scale on `survival_plot(risk_table=True)`.** The
+  grouped risk-table path added the colour scale twice, which plotnine warned
+  about and silently replaced with an identical one; it is now added once.
+- Corrected the Cook (1977) reference title and added DOIs to Cook (1977),
+  Hedges (1981) and Allen et al. (2021).
 - **Survival risk table.** Rebuilt the number-at-risk table beneath
   `survival_plot(risk_table=True)`: the curves now use the full panel width (no
   left-hand gutter), the group names label the rows on the y-axis, and the

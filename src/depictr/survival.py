@@ -188,7 +188,14 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
                     data=tbl, size=8, show_legend=False, inherit_aes=False)
         + annotate("text", x=0, y=-header * 0.5, label="Number at risk",
                    ha="left", fontweight="bold", color="#1a1a1a", size=9)
-        + scale_colour_depictr()
+    )
+    if not multi:
+        # The single curve above has no colour aesthetic (a plain BRAND line),
+        # but the risk-table text always maps color="group", so it still needs
+        # a scale. When multi, the curve already added one at the top.
+        p = p + scale_colour_depictr()
+    p = (
+        p
         + scale_y_continuous(breaks=y_breaks, labels=y_labels, limits=(ymin, 1.0))
         + scale_x_continuous(limits=(0, tmax), breaks=breaks)
         + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
