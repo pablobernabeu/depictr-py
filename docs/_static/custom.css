@@ -25,3 +25,28 @@
 div.highlight pre {
     padding: 0.8rem 1rem;
 }
+
+/* Match the R sibling site's brand blue instead of the theme's default teal. */
+html {
+    --pst-color-primary: #005b96;
+    --pst-color-primary-bg: #d6e6f2;
+}
+html[data-theme="dark"] {
+    --pst-color-primary: #4d9fd6;
+    --pst-color-primary-bg: #0a2540;
+}
+
+/* The R site's navbar is a subtle tint of the brand colour into the page
+   background, rather than a flat white/near-black bar; match that here. */
+html:not([data-theme="dark"]) .bd-header {
+    background-color: #f2f6fa;
+    background-color: color-mix(in oklab, #fff 95%, #005b96);
+}
+html[data-theme="dark"] .bd-header {
+    background-color: color-mix(in oklab, #14181e 95%, #4d9fd6);
+}
+
+/* The R site's headings are a touch lighter (Bootstrap 5's default weight). */
+h1, h2, h3, h4, h5, h6 {
+    --pst-font-weight-heading: 500;
+}

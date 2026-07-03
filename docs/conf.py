@@ -50,9 +50,19 @@ html_title = "depictr"
 html_theme_options = {
     "github_url": "https://github.com/pablobernabeu/depictr-py",
     "navigation_with_keys": True,
+    "logo": {
+        "image_light": "_static/logo.png",
+        "image_dark": "_static/logo.png",
+    },
 }
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
+html_favicon = "_static/favicon.ico"
+
+# No "Show Source" link or /_sources directory of raw .md/.rst files -- not
+# useful for a docs site with no external contributors editing pages directly.
+html_copy_source = False
+html_show_sourcelink = False
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),

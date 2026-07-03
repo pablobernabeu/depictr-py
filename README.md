@@ -56,7 +56,7 @@ import depictr as dp
 
 dp.palette_safety()
 # {'min_delta_e': ..., 'by_condition': {'normal': ..., 'protan': ...,
-#  'deutan': ..., 'tritan': ...}, 'safe': True, 'threshold': 10.0}
+#  'deutan': ..., 'tritan': ...}, 'safe': True, 'threshold': 5.0}
 ```
 
 ## Installation
