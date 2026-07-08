@@ -7,7 +7,7 @@ palettes are perceptually ordered single-hue and red-blue ramps. These are the
 defaults behind :func:`depictr.theme.scale_colour_depictr` and the whole package,
 so every figure shares one accessible colour language.
 
-Okabe, M., & Ito, K. (2008). Color universal design (CUD): how to make figures
+Okabe, M., & Ito, K. (2008). Color universal design (CUD): How to make figures
 and presentations that are friendly to colorblind people.
 https://jfly.uni-koeln.de/color/
 """

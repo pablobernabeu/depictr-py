@@ -41,3 +41,30 @@ on [GitHub](https://github.com/pablobernabeu), and via
 
 depictr has a sibling [R package](https://pablobernabeu.github.io/depictr/) that
 shares the same design.
+
+## Licence
+
+depictr is released under the MIT licence, whose full text is on this site's
+[licence page](licence.md) and in the repository's
+[`LICENSE`](https://github.com/pablobernabeu/depictr-py/blob/main/LICENSE) file.
+The licence permits use, modification and redistribution, commercially or not,
+provided the copyright and permission notice travel with the code.
+
+## Versioning and archival
+
+Releases are tagged on
+[GitHub](https://github.com/pablobernabeu/depictr-py/releases) and archived on
+Zenodo. The concept DOI,
+[10.5281/zenodo.21266311](https://doi.org/10.5281/zenodo.21266311), always
+resolves to the latest archived version, so a citation that uses it does not go
+stale. The [changelog](changelog.md) records what changed in each release.
+
+## Contributing and support
+
+Bug reports and feature requests are welcome on the
+[issues page](https://github.com/pablobernabeu/depictr-py/issues), where a
+small, self-contained example (and, for a plotting bug, a screenshot) makes a
+problem much easier to act on. The
+[contributing guide](https://github.com/pablobernabeu/depictr-py/blob/main/.github/CONTRIBUTING.md)
+explains how to set up a development install and what conventions a pull
+request should follow.

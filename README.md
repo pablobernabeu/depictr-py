@@ -24,10 +24,10 @@ both from a single function call:
 
 ![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
-More in the [example gallery](https://pablobernabeu.github.io/depictr-py/) --
-these two use a couple of extra options (a title, `legend_inside`) shown in the
-[Getting started](https://pablobernabeu.github.io/depictr-py/getting-started.html)
-guide; the short tour below keeps its calls minimal.
+There is more in the [example gallery](https://pablobernabeu.github.io/depictr-py/).
+These two use a couple of extra options (a title, `legend_inside`) shown in the
+[Getting started](https://pablobernabeu.github.io/depictr-py/getting-started/)
+guide, while the short tour below keeps its calls minimal.
 
 ## What it is for
 

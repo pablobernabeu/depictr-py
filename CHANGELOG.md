@@ -27,11 +27,11 @@
 - **Survival risk table.** Rebuilt the number-at-risk table beneath
   `survival_plot(risk_table=True)`: the curves now use the full panel width (no
   left-hand gutter), the group names label the rows on the y-axis, and the
-  counts are coloured to match the curves -- a tidy strip under the curves
-  rather than text floating in loosely spaced negative space.
-- **Survival statistics.** The log-rank *p*-value follows APA style -- no
-  leading zero, reported as *p* < .001 below that threshold -- with an
-  italicised *p*. The colour legend and the risk-table rows now list the groups
+  counts are coloured to match the curves, forming a tidy strip under the
+  curves rather than text floating in loosely spaced negative space.
+- **Survival statistics.** The log-rank *p*-value follows APA style (an
+  italicised *p*, no leading zero, and *p* < .001 reported below that
+  threshold). The colour legend and the risk-table rows now list the groups
   in the same order (a user-set categorical order, otherwise first appearance).
 - Added a "Getting started" guide that walks through a short analysis end to end.
 - The README and the PyPI project page now open with a gallery (a grouped

@@ -73,8 +73,8 @@ dp.residual_diagnostics_plot(model)
 ```
 
 `coefficient_plot` also accepts a plain data frame of estimates (with columns
-`term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source -- a
-Bayesian fit, a bootstrap, a table copied from a paper -- plot the same way.
+`term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source (a
+Bayesian fit, a bootstrap, a table copied from a paper) plot the same way.
 
 ## Survival and classification
 
