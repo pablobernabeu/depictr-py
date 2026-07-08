@@ -1,5 +1,7 @@
 # Changelog
 
+## [Unreleased]
+
 ## 0.1.1
 
 - **Inside legends.** Added an opt-in `legend_inside=False` parameter to
