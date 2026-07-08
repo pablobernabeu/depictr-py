@@ -17,6 +17,7 @@ authors:
     given-names: Pablo
 version: 0.1.1
 license: MIT
+doi: "10.5281/zenodo.21266311"
 repository-code: "https://github.com/pablobernabeu/depictr-py"
 url: "https://pablobernabeu.github.io/depictr-py/"
 keywords:
