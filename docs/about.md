@@ -36,5 +36,5 @@ More about his work is at [pablobernabeu.github.io](https://pablobernabeu.github
 on [GitHub](https://github.com/pablobernabeu), and via
 [ORCID 0000-0003-1083-2460](https://orcid.org/0000-0003-1083-2460).
 
-depictr has a sibling [R package](https://github.com/pablobernabeu/depictr) that
+depictr has a sibling [R package](https://pablobernabeu.github.io/depictr/) that
 shares the same design.

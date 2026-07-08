@@ -1,0 +1,96 @@
+site_name: depictr (Python)
+site_description: A unified, colourblind-safe toolkit for publication-ready statistical visualisation, built on plotnine.
+site_url: https://pablobernabeu.github.io/depictr-py/
+repo_url: https://github.com/pablobernabeu/depictr-py
+repo_name: pablobernabeu/depictr-py
+copyright: >
+  Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
+  MIT <a href="https://github.com/pablobernabeu/depictr-py/blob/main/LICENSE">licence</a>
+
+theme:
+  name: material
+  custom_dir: overrides
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  font:
+    text: Inter
+    code: JetBrains Mono
+  # Header and footer sit at depictr's deep navy-blue; the accent is coral.
+  # primary: black is the closest preset, retuned to the exact colour in
+  # stylesheets/brand.css.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: red
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: red
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+extra_css:
+  - stylesheets/brand.css
+
+plugins:
+  - search
+  # Runs the gallery example blocks at build time and embeds the rendered
+  # plotnine figures inline, like a knitted vignette.
+  - markdown-exec
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: true
+            separate_signature: true
+            heading_level: 2
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: [".", "docs"]
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - Get started: getting-started.md
+  - Reference:
+      - Theme, palette and accessibility: reference/theme-and-accessibility.md
+      - Exploratory analysis: reference/exploratory.md
+      - Estimation and model estimates: reference/estimation-and-models.md
+      - Diagnostics: reference/diagnostics.md
+      - Classification: reference/classification.md
+      - Multivariate, survival and time series: reference/multivariate-survival-timeseries.md
+      - Composition and data: reference/composition-and-data.md
+  - Gallery:
+      - Exploring data: gallery/exploring-data.md
+      - Model estimates and diagnostics: gallery/model-estimates.md
+      - Classification and survival: gallery/classification-and-survival.md
+      - Multivariate and time series: gallery/multivariate-and-time-series.md
+      - Accessibility: gallery/accessibility.md
+  - Changelog: changelog.md
+  - About: about.md

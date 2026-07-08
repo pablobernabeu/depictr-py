@@ -52,15 +52,14 @@ all = [
 ]
 test = ["pytest>=7.0"]
 docs = [
-    "sphinx>=7", "sphinx-gallery>=0.15", "pydata-sphinx-theme>=0.15",
-    "myst-parser>=2", "sphinx-copybutton>=0.5",
+    "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",
 ]
 
 [project.urls]
 Homepage = "https://github.com/pablobernabeu/depictr-py"
 Documentation = "https://pablobernabeu.github.io/depictr-py/"
 Issues = "https://github.com/pablobernabeu/depictr-py/issues"
-"R sibling" = "https://github.com/pablobernabeu/depictr"
+"R sibling" = "https://pablobernabeu.github.io/depictr/"
 
 [tool.hatch.version]
 # Single source of truth: __version__ in the package.
@@ -70,12 +69,10 @@ path = "src/depictr/__init__.py"
 packages = ["src/depictr"]
 
 [tool.hatch.build.targets.sdist]
-# Keep generated Sphinx/gallery output out of the source distribution; it is
-# gitignored but can linger on disk from a local docs build and would otherwise
-# be swept in.
+# Keep the generated docs site and the retired Sphinx setup out of the source
+# distribution; the site is gitignored but can linger on disk from a local build.
 exclude = [
-    "docs/_build", "docs/auto_examples", "docs/generated",
-    "docs/sg_execution_times.rst",
+    "site", "sphinx-legacy",
     "/images/**",  # README plots, served from GitHub raw -- not needed in the package
 ]
 

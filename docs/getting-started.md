@@ -118,5 +118,5 @@ dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)
 
 ## Where next
 
-- The [gallery](auto_examples/index) renders a worked example from every family.
-- The [API reference](api) documents each function and its options.
+- The [gallery](gallery/exploring-data.md) renders a worked example from every family.
+- The [reference](reference/theme-and-accessibility.md) documents each function and its options.
