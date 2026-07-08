@@ -2,10 +2,13 @@ site_name: depictr (Python)
 site_description: A unified, colourblind-safe toolkit for publication-ready statistical visualisation, built on plotnine.
 site_url: https://pablobernabeu.github.io/depictr-py/
 repo_url: https://github.com/pablobernabeu/depictr-py
-repo_name: pablobernabeu/depictr-py
+# repo_name is left unset so the header shows a compact "GitHub" chip.
+# The licence link is absolute: the copyright line renders on every page, and a
+# relative link would resolve against nested pages and break.
 copyright: >
   Developed by <a href="https://pablobernabeu.github.io">Pablo Bernabeu</a> ·
-  MIT <a href="https://github.com/pablobernabeu/depictr-py/blob/main/LICENSE">licence</a>
+  Released under the
+  <a href="https://pablobernabeu.github.io/depictr-py/licence/">MIT licence</a>
 
 theme:
   name: material
