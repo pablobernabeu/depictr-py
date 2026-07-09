@@ -1,7 +1,5 @@
 # depictr <span class="mrd-lang">(Python)</span>
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)
-
 <p class="mrd-tagline">A unified, colourblind-safe toolkit of publication-ready plots that span the whole analysis workflow, built on <a href="https://plotnine.org">plotnine</a>.</p>
 
 This is the Python sibling of [the R package](https://pablobernabeu.github.io/depictr/) of the same name, which mirrors the same design. Both give the whole workflow one theme, one colourblind-safe palette and one calling convention.
@@ -44,3 +42,5 @@ dp.explore_distribution(ld, "RT", group="condition", kind="both")
 ```
 
 The [gallery](gallery/exploring-data.md) works through every family with the plots rendered, and the [reference](reference/theme-and-accessibility.md) documents each function.
+
+Archived on Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)
