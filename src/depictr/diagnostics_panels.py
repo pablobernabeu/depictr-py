@@ -11,7 +11,7 @@ The panels reuse the single-plot diagnostics in :mod:`depictr.diagnostics` and
 the forest plot in :mod:`depictr.models`, and join them with
 :func:`depictr.compose.arrange_plots`.
 
-Install the optional dependency with ``pip install depictr[diagnostics]``.
+Install the optional dependency with ``pip install depictr[models]``.
 
 References
 ----------
@@ -128,7 +128,9 @@ def residual_diagnostics_plot(model, title=None):
     model : statsmodels results object
         A fitted OLS/GLM result, the kind returned by ``smf.ols(...).fit()``.
     title : str, optional
-        An overall title for the composed figure.
+        Accepted for API symmetry, but dropped with a warning: plotnine
+        compositions cannot carry a figure-level title, so the grid keeps its
+        per-panel titles instead.
 
     Returns
     -------
@@ -166,7 +168,9 @@ def model_report(model, title=None):
         A fitted OLS/GLM result exposing ``params`` and ``conf_int`` (for the
         coefficient plot) as well as fitted values and residuals.
     title : str, optional
-        An overall title for the composed figure.
+        Accepted for API symmetry, but dropped with a warning: plotnine
+        compositions cannot carry a figure-level title, so the dashboard keeps
+        its per-panel titles instead.
 
     Returns
     -------

@@ -25,12 +25,17 @@ def ols():
 
 def test_residual_diagnostics_plot(ols):
     assert _builds(residual_diagnostics_plot(ols))
-    assert _builds(residual_diagnostics_plot(ols, title="Residual diagnostics"))
+    # A title on a multi-panel grid is dropped with a warning: plotnine
+    # compositions cannot carry a figure-level title.
+    with pytest.warns(UserWarning, match="figure-level title"):
+        assert _builds(residual_diagnostics_plot(ols,
+                                                 title="Residual diagnostics"))
 
 
 def test_model_report(ols):
     assert _builds(model_report(ols))
-    assert _builds(model_report(ols, title="Model report"))
+    with pytest.warns(UserWarning, match="figure-level title"):
+        assert _builds(model_report(ols, title="Model report"))
 
 
 def test_residual_diagnostics_plot_saves(ols, tmp_path):

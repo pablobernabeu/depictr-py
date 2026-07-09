@@ -38,8 +38,9 @@ _DIVERGING_ANCHORS = ["#b2182b", "#ef8a62", "#f7f7f7", "#67a9cf", "#005b96"]
 BRAND = "#005b96"
 #: The accent colour, used for a single highlighted series or annotation.
 ACCENT = "#e69f00"
-#: Default colour for missing (``NA``) levels.
-NA_VALUE = "grey80"
+#: Default colour for missing (``NA``) levels: the hex equivalent of R's
+#: grey80, since matplotlib does not know R colour names.
+NA_VALUE = "#cccccc"
 
 
 def depictr_brand() -> str:

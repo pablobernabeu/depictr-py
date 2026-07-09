@@ -110,8 +110,9 @@ _LEGEND_CORNERS = {
 def legend_inside(corner="top right"):
     """Theme fragment that moves the legend into the plotting area.
 
-    Places the legend in a corner the plot's geometry usually leaves empty, over
-    a semi-transparent background, so the figure needs no separate legend column.
+    Places the legend in a corner the plot's geometry usually leaves empty, on
+    a solid white panel with a light border, so the figure needs no separate
+    legend column.
     The functions that expose a ``legend_inside`` argument add this for you.
 
     Parameters

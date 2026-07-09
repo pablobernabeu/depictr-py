@@ -26,7 +26,7 @@ dp.palette_safety()
 depictr is on [PyPI](https://pypi.org/project/depictr/):
 
 ```bash
-pip install depictr            # core (plotnine, pandas, numpy)
+pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scipy)
 pip install depictr[all]       # plus the optional computation back-ends
 ```
 

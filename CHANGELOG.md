@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- **Fix: a missing value in a grouped column crashed at draw time.** The
+  default colour for missing (`NA`) levels was `grey80`, an R colour name that
+  matplotlib rejects; replaced with the equivalent hex `#cccccc`.
+- **Fix: error messages named nonexistent extras.** The ImportError messages
+  and module docstrings in the diagnostics, mixed-effects and multivariate
+  modules pointed at `depictr[diagnostics]`, `depictr[mixed]` and
+  `depictr[multivariate]`, none of which is defined; corrected to
+  `depictr[models]` and `depictr[classification]` (scipy is a core dependency).
+- Raised the plotnine dependency floor to 0.15, the first release with the
+  plot composition operators (`|`, `/`) that `arrange_plots` uses.
+- `arrange_plots`, and the multi-panel reports built on it, warn when a
+  `title` is dropped because plotnine compositions cannot carry a figure-level
+  title; previously the argument was discarded silently.
+
 ## 0.1.1
 
 - **Inside legends.** Added an opt-in `legend_inside=False` parameter to
@@ -91,5 +105,7 @@ object you can extend with `+`.
 
 - plotnine compositions have no figure-level title; multi-panel grids carry
   their titles on each panel.
-- `optimizer_fixef_plot` from the R package is not ported, as there is no clean
-  statsmodels equivalent of `lme4::allFit`.
+- A handful of functions from the R package are not ported:
+  `optimizer_fixef_plot` (there is no clean statsmodels equivalent of
+  `lme4::allFit`), `k_diagnostic`, `palette_preview`, `model_fit_table` and
+  `ts_forecast`.

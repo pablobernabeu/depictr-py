@@ -5,7 +5,7 @@ result and re-draws it under the depictr theme. The one plot here is the
 caterpillar plot of the predicted random effects (the BLUPs), the standard way to
 look at how group levels deviate from the population fit.
 
-Install the optional dependency with ``pip install depictr[mixed]``.
+Install the optional dependency with ``pip install depictr[models]``.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _require_statsmodels():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The mixed-effects plots need statsmodels. Install it with "
-            "`pip install depictr[mixed]`."
+            "`pip install depictr[models]`."
         ) from exc
     return sm
 

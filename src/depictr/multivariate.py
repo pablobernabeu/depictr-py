@@ -7,7 +7,8 @@ scree plot sits in the same visual language as the rest of a report. Numeric
 columns are standardised (zero mean, unit variance) before any decomposition, so
 no single variable dominates through its scale alone.
 
-Install the optional dependencies with ``pip install depictr[multivariate]``.
+Install the optional dependency with ``pip install depictr[classification]``
+(scipy is a core dependency, so the dendrogram needs no extra).
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ def _require_sklearn():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The multivariate plots need scikit-learn. Install it with "
-            "`pip install depictr[multivariate]`."
+            "`pip install depictr[classification]`."
         ) from exc
 
 
@@ -48,8 +49,8 @@ def _require_scipy():
         import scipy.cluster.hierarchy  # noqa: F401
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "dendrogram_plot needs scipy. Install it with "
-            "`pip install depictr[multivariate]`."
+            "dendrogram_plot needs scipy, a core dependency of depictr. "
+            "Install it with `pip install scipy`."
         ) from exc
 
 

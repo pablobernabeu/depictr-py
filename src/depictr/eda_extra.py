@@ -122,7 +122,9 @@ def explore_pairs(data, cols=None, title=None):
         Numeric columns to include, in order. Defaults to the first few numeric
         columns of ``data``. More than five are trimmed to the first five.
     title : str, optional
-        An overall title for the matrix.
+        Accepted for API symmetry, but dropped with a warning: plotnine
+        compositions cannot carry a figure-level title, so the matrix draws
+        without one.
 
     Returns
     -------

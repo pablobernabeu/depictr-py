@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from functools import reduce
 
 
@@ -25,8 +26,8 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
         two up to four plots, three beyond).
     title : str, optional
         A title. Applied only when a single plot is passed: plotnine
-        compositions have no figure-level title, so a grid should carry a title
-        on each panel instead.
+        compositions cannot carry a figure-level title, so for a grid the
+        title is dropped with a warning, and each panel should carry its own.
 
     Returns
     -------
@@ -48,8 +49,17 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
     composed = reduce(lambda a, b: a / b, rows)
     # plotnine has no super-title for a composition; adding one would land on the
     # last panel. So only title a lone plot, and let grids self-title per panel.
-    if title is not None and isinstance(composed, ggplot):
-        composed = composed + ggtitle(title)
+    if title is not None:
+        if isinstance(composed, ggplot):
+            composed = composed + ggtitle(title)
+        else:
+            warnings.warn(
+                "plotnine compositions cannot carry a figure-level title, so "
+                "`title` is dropped for a multi-panel grid. Title the panels "
+                "individually instead.",
+                UserWarning,
+                stacklevel=2,
+            )
     return composed
 
 

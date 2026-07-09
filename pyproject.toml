@@ -28,7 +28,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    "plotnine>=0.13",
+    # 0.15 introduced the plot composition operators (| and /) that
+    # arrange_plots and the multi-panel reports rely on.
+    "plotnine>=0.15",
     "pandas>=2.0",
     "numpy>=1.24",
     # Imported directly by the core modules (palette/cvd colour handling, the

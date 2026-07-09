@@ -2,9 +2,9 @@
 
 The estimate and the log-rank test come from ``lifelines``; the figure is drawn
 under the depictr theme as a single call -- the survminer/ggsurvfit pattern that
-Python otherwise leaves to manual assembly. The number-at-risk counts are
-computed and returned on the plot (``plot.at_risk``) for composing a table; a
-built-in table panel is planned.
+Python otherwise leaves to manual assembly. ``risk_table=True`` draws a
+number-at-risk table beneath the curves, and the counts are also returned on
+the plot (``plot.at_risk``) for composing a table of your own.
 
 Install the optional dependency with ``pip install depictr[survival]``.
 """
@@ -77,8 +77,8 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         Group label per observation; one curve per group, plus a log-rank test
         of the difference.
     conf_level : float
-        Confidence level (reserved for the confidence band; the step curve is
-        drawn now, the band is planned).
+        Accepted for future use; the Python twin does not yet draw the
+        confidence band or censor marks the R package draws.
     risk_table : bool
         Add a number-at-risk table as a thin strip beneath the curves.
     legend_inside : bool

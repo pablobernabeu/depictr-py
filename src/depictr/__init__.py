@@ -10,7 +10,7 @@ with ``+``, and the colourblind-safe Okabe-Ito palette is the default, validated
 by a built-in colour-vision-deficiency safety check.
 
 It is the Python sibling of the depictr R package
-(https://github.com/pablobernabeu/depictr).
+(https://pablobernabeu.github.io/depictr/).
 """
 
 from __future__ import annotations

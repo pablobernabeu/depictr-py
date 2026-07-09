@@ -12,7 +12,7 @@ Documentation and example gallery:
 
 A unified, colourblind-safe toolkit for publication-ready statistical
 visualisation, built on [plotnine](https://plotnine.org). It is the Python
-sibling of the [depictr R package](https://github.com/pablobernabeu/depictr).
+sibling of the [depictr R package](https://pablobernabeu.github.io/depictr/).
 
 ## Gallery
 
@@ -24,7 +24,7 @@ both from a single function call:
 
 ![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
-There is more in the [example gallery](https://pablobernabeu.github.io/depictr-py/).
+There is more in the [example gallery](https://pablobernabeu.github.io/depictr-py/gallery/exploring-data/).
 These two use a couple of extra options (a title, `legend_inside`) shown in the
 [Getting started](https://pablobernabeu.github.io/depictr-py/getting-started/)
 guide, while the short tour below keeps its calls minimal.
@@ -65,7 +65,7 @@ dp.palette_safety()
 depictr is on [PyPI](https://pypi.org/project/depictr/):
 
 ```bash
-pip install depictr            # core (plotnine, pandas, numpy)
+pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scipy)
 pip install depictr[all]       # plus the optional computation back-ends
 ```
 
@@ -116,10 +116,13 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"]) + labs(title="Adverse ev
 A Streamlit app provides a gallery and a low-friction way to try the package: it
 loads one of the bundled datasets (or a CSV you upload), draws the chosen plot,
 shows the exact Python call that produced it, and offers a colourblind-vision
-toggle that re-renders the figure as each deficiency would be seen. Run it with:
+toggle that re-renders the figure as each deficiency would be seen. The app
+lives in the repository rather than the wheel, so run it from a clone:
 
 ```bash
-pip install depictr[app]
+git clone https://github.com/pablobernabeu/depictr-py
+cd depictr-py
+pip install -e ".[app]"
 streamlit run app/streamlit_app.py
 ```
 
@@ -141,20 +144,24 @@ streamlit run app/streamlit_app.py
 
 ## Status
 
-This is an early release, but coverage is now broad: the colourblind-safe
-theme, the accessibility check, and the R package's plotting functions across
-every family (EDA, estimation, model estimates, diagnostics, classification,
-multivariate, survival and time series) are in place and tested. Multi-panel
+This is an early release, but coverage is broad: the colourblind-safe
+theme, the accessibility check, and most of the R package's plotting functions
+across every family (EDA, estimation, model estimates, diagnostics,
+classification, multivariate, survival and time series) are in place and
+tested. Multi-panel
 composites are built on `arrange_plots`, which uses plotnine's native plot
 composition: the four-panel `residual_diagnostics_plot`, the `model_report`
 dashboard, the two-panel Gardner-Altman `estimation_plot`, the
 frequentist-over-Bayesian overlay, and the survival number-at-risk table.
 
-Two known limitations remain. plotnine compositions have no figure-level title,
-so a grid carries its titles on each panel (the survival and estimation
-composites place the title on their top panel). And `optimizer_fixef_plot` from
-the R package is not ported, as there is no clean statsmodels equivalent of
-`lme4::allFit`.
+A few known limitations remain. plotnine compositions have no figure-level
+title, so a grid carries its titles on each panel (the survival and estimation
+composites place the title on their top panel). `survival_plot` does not yet
+draw the confidence band or censor marks the R package draws; its `conf_level`
+argument is accepted for future use. And a handful of functions from the R
+package are not ported: `optimizer_fixef_plot` (there is no clean statsmodels
+equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
+`model_fit_table` and `ts_forecast`.
 
 ## Relationship to the R package
 

@@ -100,6 +100,7 @@ nav:
       - Classification and survival: gallery/classification-and-survival.md
       - Multivariate and time series: gallery/multivariate-and-time-series.md
       - Accessibility: gallery/accessibility.md
+  - The web app: app.md
   - Changelog: changelog.md
   - About: about.md
 

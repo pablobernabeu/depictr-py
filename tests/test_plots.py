@@ -27,6 +27,14 @@ def test_explore_distribution_bad_column():
         dp.explore_distribution(LD, "not_a_column")
 
 
+def test_na_group_level_draws():
+    # A missing value in a mapped column takes the NA colour, which must be
+    # one matplotlib accepts (a hex value, not an R colour name).
+    ld = LD.copy()
+    ld.loc[ld.index[:20], "condition"] = np.nan
+    assert _builds(dp.explore_distribution(ld, "RT", group="condition"))
+
+
 def test_explore_categorical():
     assert _builds(dp.explore_categorical(WB, "education", group="region"))
     assert _builds(dp.explore_categorical(WB, "region"))

@@ -8,8 +8,12 @@ see it.
 
 ## Run it
 
+The app lives in the repository rather than the wheel, so run it from a clone:
+
 ```bash
-pip install depictr[app]
+git clone https://github.com/pablobernabeu/depictr-py
+cd depictr-py
+pip install -e ".[app]"
 streamlit run app/streamlit_app.py
 ```
 

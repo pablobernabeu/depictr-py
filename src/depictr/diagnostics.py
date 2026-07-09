@@ -7,7 +7,7 @@ quantities come from statsmodels (its influence machinery and variance-inflation
 factor); each figure is re-drawn under the depictr theme so a diagnostic sits in
 the same visual language as the rest of a report.
 
-Install the optional dependency with ``pip install depictr[diagnostics]``.
+Install the optional dependency with ``pip install depictr[models]``.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def _require_statsmodels():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The diagnostic plots need statsmodels. Install it with "
-            "`pip install depictr[diagnostics]`."
+            "`pip install depictr[models]`."
         ) from exc
     return sm
 

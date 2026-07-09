@@ -74,9 +74,6 @@ legend_in = st.sidebar.checkbox(
     help="For the plots that support it, tucks the legend into the panel "
          "instead of a right-hand margin.",
 )
-LEGEND_INSIDE_STAGES = {"Distribution", "ECDF", "Dumbbell", "Missingness map",
-                        "Kaplan-Meier"}
-
 report = dp.palette_safety()
 st.sidebar.metric("Palette min ΔE (worst case)", report["min_delta_e"],
                   help=f"Safe: {report['safe']} (worst under {report['worst_condition']})")
