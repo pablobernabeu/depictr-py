@@ -69,11 +69,11 @@ path = "src/depictr/__init__.py"
 packages = ["src/depictr"]
 
 [tool.hatch.build.targets.sdist]
-# Keep the generated docs site and the retired Sphinx setup out of the source
-# distribution; the site is gitignored but can linger on disk from a local build.
+# Keep the generated docs site out of the source distribution; it is gitignored
+# but can linger on disk from a local build.
 exclude = [
-    "site", "sphinx-legacy",
-    "/images/**",  # README plots, served from GitHub raw -- not needed in the package
+    "site",
+    "/images/**",  # README plots, served from GitHub raw, not needed in the package
 ]
 
 [tool.pytest.ini_options]
