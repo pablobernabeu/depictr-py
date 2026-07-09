@@ -50,7 +50,7 @@ overview:
 ```python
 wb = dp.wellbeing_survey()
 dp.correlation_heatmap(wb)
-dp.missingness_map(wb)
+dp.missingness_map(wb, legend_inside=True)
 ```
 
 ## Fitting and reading a model
