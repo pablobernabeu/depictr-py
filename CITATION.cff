@@ -15,7 +15,8 @@ type: software
 authors:
   - family-names: Bernabeu
     given-names: Pablo
-version: 0.1.1
+version: 0.2.0
+date-released: "2026-07-10"
 license: MIT
 doi: "10.5281/zenodo.21266311"
 repository-code: "https://github.com/pablobernabeu/depictr-py"

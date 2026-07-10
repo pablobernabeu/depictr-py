@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-07-10
 
 - **Fix: a missing value in a grouped column crashed at draw time.** The
   default colour for missing (`NA`) levels was `grey80`, an R colour name that
@@ -16,7 +16,7 @@
   `title` is dropped because plotnine compositions cannot carry a figure-level
   title; previously the argument was discarded silently.
 
-## 0.1.1
+## [0.1.1] - 2026-07-08
 
 - **Inside legends.** Added an opt-in `legend_inside=False` parameter to
   `explore_distribution`, `ecdf_plot`, `dumbbell_plot`, `missingness_map` and
@@ -53,7 +53,7 @@
   same hero plot and a PyPI install link.
 - README image assets are kept out of the source distribution.
 
-## 0.1.0
+## [0.1.0] - 2026-06-27
 
 First release. depictr (Python) is a unified, colourblind-safe toolkit for
 publication-ready statistical visualisation, built on plotnine and the Python
@@ -109,3 +109,7 @@ object you can extend with `+`.
   `optimizer_fixef_plot` (there is no clean statsmodels equivalent of
   `lme4::allFit`), `k_diagnostic`, `palette_preview`, `model_fit_table` and
   `ts_forecast`.
+
+[0.2.0]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/pablobernabeu/depictr-py/releases/tag/v0.1.0
