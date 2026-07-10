@@ -19,11 +19,10 @@ statsmodels, scikit-learn and lifelines respectively, each an optional extra
 
 ## The idea
 
-depictr gives the whole workflow one theme, one colourblind-safe palette (the
-Okabe-Ito set) and one calling convention. Where a specialist package already
-computes a quantity well, depictr hands the work to it and redraws the result
-under the shared theme, so a ROC curve, a coefficient plot and a survival curve
-all share the same visual language.
+The whole workflow gets one theme, one colourblind-safe palette (the Okabe-Ito
+set) and one calling convention. Specialist computations stay with the packages
+that do them well, and each result is redrawn under the shared theme, so a ROC
+curve, a coefficient plot and a survival curve read as parts of one figure set.
 
 ```python
 import depictr as dp
@@ -91,13 +90,17 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 ## Accessibility, checked rather than asserted
 
 The default palette is the Okabe-Ito set, and that choice is verified rather than
-assumed. A Machado-2009 simulator and a CIE-Lab distance test report how far
-apart the palette's colours stay under each form of colour-vision deficiency.
+assumed. A simulator of colour-vision deficiency, based on the model of Machado,
+Oliveira and Fernandes (2009), and a CIE-Lab distance test measure how far apart
+the palette's colours stay under each form of deficiency.
 
 ```python
 dp.palette_safety()
 # {'min_delta_e': ..., 'safe': True, 'by_condition': {...}, ...}
 ```
+
+The gallery's [accessibility page](gallery/accessibility.md) renders this
+report in full.
 
 ## Extending and composing
 

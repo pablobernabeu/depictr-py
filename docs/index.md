@@ -11,15 +11,7 @@ A single figure set for a paper might otherwise draw on seaborn, scikit-learn, s
 
 ## Accessibility by default
 
-The default palette is the Okabe-Ito set, and that choice is checked rather than asserted. The package ships a simulator of colour-vision deficiency based on the model of Machado, Oliveira and Fernandes (2009) and a CIE-Lab distance test that measures how far apart the palette's colours stay under each deficiency:
-
-```python
-import depictr as dp
-
-dp.palette_safety()
-# {'min_delta_e': ..., 'by_condition': {'normal': ..., 'protan': ...,
-#  'deutan': ..., 'tritan': ...}, 'safe': True, 'threshold': 5.0}
-```
+The default palette is the Okabe-Ito set, and that choice is checked rather than asserted. A built-in simulator and a colour-distance test confirm that the palette stays legible under each form of colour-vision deficiency. The [accessibility page](gallery/accessibility.md) of the gallery renders the full safety report.
 
 ## Install
 
@@ -30,7 +22,7 @@ pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scip
 pip install depictr[all]       # plus the optional computation back-ends
 ```
 
-The classification, model and survival plots delegate to scikit-learn, statsmodels and lifelines; each is an optional dependency, so the core stays light.
+The model, classification and survival plots delegate to optional back-ends, so the core install stays light. The [Get started](getting-started.md) guide lists the extras.
 
 ## A first plot
 
