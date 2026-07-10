@@ -37,16 +37,23 @@ def crop_yield(seed: int = 1) -> pd.DataFrame:
 
 
 def wellbeing_survey(seed: int = 2) -> pd.DataFrame:
-    """A cross-sectional survey with informative missingness in income."""
+    """A cross-sectional survey with regional contrasts and informative missingness."""
     rng = np.random.default_rng(seed)
     n = 300
     region = rng.choice(["North", "South", "East", "West"], n)
     age = rng.integers(18, 80, n)
     education = rng.choice(["secondary", "undergraduate", "postgraduate"], n,
                            p=[0.45, 0.4, 0.15])
-    stress = rng.normal(5, 2, n).clip(0, 10)
+    # The regions differ genuinely (more stress and lower incomes in the South
+    # and West), so region-grouped plots compare real contrasts, not noise.
+    stress_shift = pd.Series(region).map(
+        {"North": -1.2, "South": 1.2, "East": -0.4, "West": 0.6}).to_numpy()
+    income_shift = pd.Series(region).map(
+        {"North": 7000.0, "South": -6000.0, "East": 2500.0, "West": -2500.0}).to_numpy()
+    stress = (rng.normal(5, 2, n) + stress_shift).clip(0, 10)
     sleep_hours = (8 - 0.2 * stress + rng.normal(0, 0.8, n)).clip(3, 11)
-    income = (30000 + 800 * age - 1500 * stress + rng.normal(0, 6000, n)).clip(0, None)
+    income = (30000 + 800 * age - 1500 * stress + income_shift
+              + rng.normal(0, 6000, n)).clip(0, None)
     life_satisfaction = (5 - 0.3 * stress + 0.2 * sleep_hours
                          + rng.normal(0, 0.5, n)).clip(1, 7)
     df = pd.DataFrame({
@@ -96,7 +103,10 @@ def clinical_trial(seed: int = 4) -> pd.DataFrame:
     censor = rng.uniform(0, 36, n)
     time = np.minimum(true_time, censor)
     event = (true_time <= censor).astype(int)
-    p_adverse = 1 / (1 + np.exp(-(-2.5 + 0.8 * biomarker + 0.02 * (age - 60))))
+    # The adverse event stays rare (~14%) but is genuinely predictable from the
+    # biomarker, age and arm, so the classification demos have real signal.
+    p_adverse = 1 / (1 + np.exp(-(-3.2 + 1.2 * biomarker + 0.05 * (age - 60)
+                                  + 0.7 * (arm == "treatment"))))
     adverse_event = (rng.random(n) < p_adverse).astype(int)
     return pd.DataFrame({
         "time": time, "event": event, "arm": arm, "biomarker": biomarker,

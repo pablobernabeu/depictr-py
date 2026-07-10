@@ -55,7 +55,7 @@ show(p)
 A confusion-matrix heatmap, normalised by the true class.
 
 ```python exec="1" source="material-block" session="clf"
-p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.12).astype(int),
+p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.6).astype(int),
                              normalise="true")
 show(p, width=6)
 ```
