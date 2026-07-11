@@ -2,7 +2,7 @@
 
 <p class="mrd-tagline">A unified, colourblind-safe toolkit of publication-ready plots that span the whole analysis workflow, built on <a href="https://plotnine.org">plotnine</a>.</p>
 
-This is the Python sibling of [the R package](https://pablobernabeu.github.io/depictr/) of the same name, which mirrors the same design. Both give the whole workflow one theme, one colourblind-safe palette and one calling convention.
+This is the Python sibling of [the R package](https://pablobernabeu.github.io/depictr/) of the same name. Both give the whole workflow one theme, one colourblind-safe palette and one calling convention.
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
 [Open the gallery](gallery/exploring-data.md){ .md-button }
