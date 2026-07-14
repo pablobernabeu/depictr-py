@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1] - 2026-07-15
+
+- Corrected the `palette_safety()` result shape shown in the README, which left
+  out `worst_condition` and `worst_pair`; the function returns those as well as
+  the elements already listed.
+- The gallery now covers every plot family, matching the R package's vignettes.
+
 ## [0.2.0] - 2026-07-10
 
 - **Fix: a missing value in a grouped column crashed at draw time.** The
@@ -110,6 +117,7 @@ object you can extend with `+`.
   `lme4::allFit`), `k_diagnostic`, `palette_preview`, `model_fit_table` and
   `ts_forecast`.
 
+[0.2.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/pablobernabeu/depictr-py/releases/tag/v0.1.0
