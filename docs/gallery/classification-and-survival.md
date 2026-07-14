@@ -41,6 +41,39 @@ p = dp.roc_curve_plot(ct["adverse_event"], score)
 show(p)
 ```
 
+## Precision-recall on a rare outcome
+
+When the positive class is rare the precision-recall curve is more informative
+than the ROC curve, because it ignores the many true negatives.
+
+```python exec="1" source="material-block" session="clf"
+p = dp.pr_curve_plot(ct["adverse_event"], score)
+show(p)
+```
+
+## Gains, lift and choosing a threshold
+
+The cumulative gains and lift charts read off how many positives a ranked
+campaign captures at each depth.
+
+```python exec="1" source="material-block" session="clf"
+p = dp.gain_plot(ct["adverse_event"], score)
+show(p)
+```
+
+```python exec="1" source="material-block" session="clf"
+p = dp.lift_plot(ct["adverse_event"], score)
+show(p)
+```
+
+The threshold plot sweeps the decision cut-off, so the trade-off between the
+metrics as the operating point moves is visible at a glance.
+
+```python exec="1" source="material-block" session="clf"
+p = dp.threshold_plot(ct["adverse_event"], score)
+show(p)
+```
+
 ## Calibration
 
 A calibration (reliability) curve.

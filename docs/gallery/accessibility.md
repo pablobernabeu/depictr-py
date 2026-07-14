@@ -47,3 +47,17 @@ p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
                             legend_inside=True)
 show(p)
 ```
+
+## The palette as a deficiency sees it
+
+The same simulator drives the safety report above and the web app's
+colour-vision toggle. Here it maps each palette colour to the colour a
+deuteranope perceives.
+
+```python exec="1" source="material-block" session="a11y"
+palette = dp.depictr_palette()
+simulated = dp.simulate_cvd(palette, "deutan")
+lines = [f"{original}  ->  {seen}"
+         for original, seen in zip(palette, simulated)]
+print("<pre>" + "\n".join(lines) + "</pre>")
+```

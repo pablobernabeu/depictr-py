@@ -74,6 +74,13 @@ dp.residual_diagnostics_plot(model)
 `coefficient_plot` also accepts a plain data frame of estimates (with columns
 `term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source (a
 Bayesian fit, a bootstrap, a table copied from a paper) plot the same way.
+`tidy_estimates` is the shared converter that produces that standard table from
+any fitted model, and every model-family plot accepts either the model or that
+table.
+
+```python
+dp.tidy_estimates(model)
+```
 
 ## Survival and classification
 
@@ -117,6 +124,18 @@ To place several plots in one figure, use `arrange_plots`:
 
 ```python
 dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)
+```
+
+`theme_depictr`, `scale_colour_depictr` and `depictr_palette` style your own
+plots too, so a figure depictr did not draw still matches the set:
+
+```python
+from plotnine import ggplot, aes, geom_point
+
+(ggplot(cy, aes("fertiliser", "yield", colour="treatment"))
+ + geom_point(alpha=0.7)
+ + dp.scale_colour_depictr()
+ + dp.theme_depictr())
 ```
 
 ## Where next
