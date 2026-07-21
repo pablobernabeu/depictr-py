@@ -61,6 +61,12 @@ def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.ecdf_plot(ld, "RT", group="condition", legend_inside=True)
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
@@ -102,6 +108,12 @@ def ridgeline_plot(data, x, group, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.ridgeline_plot(wb, "life_satisfaction", "region")
     """
     for col in (x, group):
         if col not in data.columns:
@@ -162,6 +174,14 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> wb = dp.wellbeing_survey()
+    >>> wb = wb.assign(age_group=np.where(wb["age"] < 50, "under 50", "50 or over"))
+    >>> p = dp.dumbbell_plot(wb, "region", "life_satisfaction", "age_group")
     """
     for col in (category, value, group):
         if col not in data.columns:
@@ -224,6 +244,12 @@ def outlier_plot(data, x, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> cy = dp.crop_yield()
+    >>> p = dp.outlier_plot(cy, "yield")
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
@@ -283,6 +309,12 @@ def group_comparison_plot(data, x, group, title=None):
     The interval is a normal-approximation 95% confidence interval for the mean
     (mean plus or minus 1.96 standard errors). It describes the precision of the
     mean, not the spread of the data.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.group_comparison_plot(ld, "RT", "condition")
     """
     for col in (x, group):
         if col not in data.columns:

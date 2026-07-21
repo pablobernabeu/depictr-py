@@ -76,6 +76,12 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.explore_distribution(ld, "RT", group="condition", kind="both")
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
@@ -138,6 +144,12 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.explore_categorical(wb, "education", group="region")
     """
     if group:
         counts = (data.groupby([group, x], observed=True).size()
@@ -169,6 +181,12 @@ def correlation_heatmap(data, cols=None, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.correlation_heatmap(wb)
     """
     num = data[cols] if cols else data.select_dtypes("number")
     corr = num.corr()
@@ -213,6 +231,12 @@ def missingness_map(data, sort=True, legend_inside=False, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.missingness_map(wb, legend_inside=True)
     """
     miss = data.isna()
     frac = miss.mean()

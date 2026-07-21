@@ -3,6 +3,9 @@
 The shared theme and the colourblind-safe palette, and the tools that verify the
 palette stays distinguishable under colour-vision deficiency.
 
+The palette and the colour-vision checks are shown in use on the
+[accessibility](../gallery/accessibility.md) page of the gallery.
+
 ::: depictr.theme_depictr
 ::: depictr.scale_colour_depictr
 ::: depictr.scale_color_depictr

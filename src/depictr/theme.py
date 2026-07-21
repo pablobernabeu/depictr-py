@@ -37,6 +37,12 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
     -------
     plotnine.theme
         A theme object to add to any plot with ``+``.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.ecdf_plot(ld, "RT") + dp.theme_depictr(base_size=13, grid="y")
     """
     if grid not in {"xy", "x", "y", "none"}:
         raise ValueError("`grid` must be 'xy', 'x', 'y' or 'none'.")
@@ -80,6 +86,14 @@ def scale_colour_depictr(n: int | None = None, **kwargs):
         palette is interpolated to fit.
     **kwargs
         Passed to :func:`plotnine.scale_color_manual` (for example ``name``).
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> from plotnine import aes, geom_point, ggplot
+    >>> cy = dp.crop_yield()
+    >>> p = (ggplot(cy, aes("rainfall", "yield", colour="treatment"))
+    ...      + geom_point() + dp.scale_colour_depictr())
     """
     kwargs.setdefault("na_value", NA_VALUE)
     return scale_color_manual(values=depictr_palette(n), **kwargs)
@@ -89,6 +103,14 @@ def scale_fill_depictr(n: int | None = None, **kwargs):
     """A discrete fill scale drawn from :func:`depictr.palette.depictr_palette`.
 
     See :func:`scale_colour_depictr` for the parameters.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> from plotnine import aes, geom_bar, ggplot
+    >>> wb = dp.wellbeing_survey()
+    >>> p = (ggplot(wb, aes("education", fill="region"))
+    ...      + geom_bar() + dp.scale_fill_depictr())
     """
     kwargs.setdefault("na_value", NA_VALUE)
     return scale_fill_manual(values=depictr_palette(n), **kwargs)
@@ -124,6 +146,12 @@ def legend_inside(corner="top right"):
     Returns
     -------
     plotnine.theme
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.ecdf_plot(ld, "RT", group="condition") + dp.legend_inside("bottom right")
     """
     if isinstance(corner, str):
         if corner not in _LEGEND_CORNERS:

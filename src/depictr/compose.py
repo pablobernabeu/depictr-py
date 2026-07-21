@@ -33,6 +33,14 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
     -------
     plotnine.ggplot or plotnine.composition.Compose
         A single plot when one is passed, otherwise a composition.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> left = dp.ecdf_plot(ld, "RT")
+    >>> right = dp.explore_distribution(ld, "RT")
+    >>> panel = dp.arrange_plots(left, right, ncol=2)
     """
     from plotnine import ggplot, ggtitle
 
@@ -86,6 +94,17 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     -------
     str
         The filename written.
+
+    Examples
+    --------
+    >>> import os, tempfile
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.ecdf_plot(ld, "RT")
+    >>> path = dp.save_plot(p, os.path.join(tempfile.mkdtemp(), "rt.png"),
+    ...                     width=4, height=3, dpi=72)
+    >>> os.path.exists(path)
+    True
     """
     plot.save(filename, width=width, height=height, dpi=dpi, units=units,
               verbose=False, **kwargs)

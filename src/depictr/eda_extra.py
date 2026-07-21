@@ -63,6 +63,12 @@ def raincloud_plot(data, x, group=None, title=None):
     Kievit, R. A. (2021). Raincloud plots: A multi-platform tool for robust data
     visualization. Wellcome Open Research, 4, 63.
     https://doi.org/10.12688/wellcomeopenres.15191.2
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.raincloud_plot(ld, "RT", group="condition")
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
@@ -130,6 +136,12 @@ def explore_pairs(data, cols=None, title=None):
     -------
     plotnine.ggplot or plotnine.composition.Compose
         The composed grid from :func:`depictr.compose.arrange_plots`.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> cy = dp.crop_yield()
+    >>> p = dp.explore_pairs(cy, cols=["rainfall", "fertiliser", "yield"])
     """
     if cols is None:
         cols = list(data.select_dtypes("number").columns)

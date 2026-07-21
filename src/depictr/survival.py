@@ -95,6 +95,12 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     plotnine.ggplot
         The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts) and,
         when grouped, ``.logrank_p`` and ``.logrank_stat``.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ct = dp.clinical_trial()
+    >>> p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"])
     """
     _require_lifelines()
     from lifelines import KaplanMeierFitter

@@ -130,6 +130,14 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.effects_plot(model, "fertiliser")
     """
     _require_statsmodels()
     if not _is_fitted_model(model):
@@ -191,6 +199,14 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser * treatment', cy).fit()
+    >>> p = dp.interaction_plot(model, "fertiliser", "treatment")
     """
     _require_statsmodels()
     if not _is_fitted_model(model):
@@ -263,6 +279,15 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> reduced = smf.ols('Q("yield") ~ fertiliser', cy).fit()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.compare_models({"Reduced": reduced, "Full": model})
     """
     from .models import tidy_estimates
 

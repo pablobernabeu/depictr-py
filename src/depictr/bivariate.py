@@ -47,6 +47,12 @@ def scatter_trend(data, x, y, group=None, method="lm", title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> cy = dp.crop_yield()
+    >>> p = dp.scatter_trend(cy, "fertiliser", "yield", group="treatment")
     """
     for col in (x, y):
         if col not in data.columns:
@@ -96,6 +102,12 @@ def explore_bivariate(data, x, y, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> ld = dp.lexical_decision()
+    >>> p = dp.explore_bivariate(ld, "condition", "RT")
     """
     for col in (x, y):
         if col not in data.columns:

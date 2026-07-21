@@ -44,12 +44,26 @@ NA_VALUE = "#cccccc"
 
 
 def depictr_brand() -> str:
-    """Return the depictr brand colour as a hex string."""
+    """Return the depictr brand colour as a hex string.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.depictr_brand()
+    '#005b96'
+    """
     return BRAND
 
 
 def depictr_accent() -> str:
-    """Return the depictr accent colour as a hex string."""
+    """Return the depictr accent colour as a hex string.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.depictr_accent()
+    '#e69f00'
+    """
     return ACCENT
 
 
@@ -77,6 +91,12 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
     -------
     list of str
         Hex colour codes.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.depictr_palette(3)
+    ['#005b96', '#e69f00', '#009e73']
     """
     if kind == "sequential":
         return _ramp(_SEQUENTIAL_ANCHORS, n or 7)

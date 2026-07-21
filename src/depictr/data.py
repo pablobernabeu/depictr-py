@@ -15,7 +15,14 @@ import pandas as pd
 
 
 def crop_yield(seed: int = 1) -> pd.DataFrame:
-    """A field trial with a genuine fertiliser-by-treatment interaction."""
+    """A field trial with a genuine fertiliser-by-treatment interaction.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.crop_yield().shape
+    (200, 5)
+    """
     rng = np.random.default_rng(seed)
     n = 200
     treatment = rng.choice(["standard", "enhanced"], n)
@@ -37,7 +44,14 @@ def crop_yield(seed: int = 1) -> pd.DataFrame:
 
 
 def wellbeing_survey(seed: int = 2) -> pd.DataFrame:
-    """A cross-sectional survey with regional contrasts and informative missingness."""
+    """A cross-sectional survey with regional contrasts and informative missingness.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.wellbeing_survey().shape
+    (300, 7)
+    """
     rng = np.random.default_rng(seed)
     n = 300
     region = rng.choice(["North", "South", "East", "West"], n)
@@ -70,7 +84,14 @@ def wellbeing_survey(seed: int = 2) -> pd.DataFrame:
 
 
 def lexical_decision(seed: int = 3) -> pd.DataFrame:
-    """A priming reaction-time/accuracy experiment."""
+    """A priming reaction-time/accuracy experiment.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.lexical_decision().shape
+    (600, 5)
+    """
     rng = np.random.default_rng(seed)
     n = 600
     condition = rng.choice(["related", "unrelated"], n)
@@ -92,7 +113,14 @@ def lexical_decision(seed: int = 3) -> pd.DataFrame:
 
 
 def clinical_trial(seed: int = 4) -> pd.DataFrame:
-    """A two-arm trial with separating survival curves and a rare adverse event."""
+    """A two-arm trial with separating survival curves and a rare adverse event.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.clinical_trial().shape
+    (300, 6)
+    """
     rng = np.random.default_rng(seed)
     n = 300
     arm = rng.choice(["control", "treatment"], n)

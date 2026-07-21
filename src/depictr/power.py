@@ -58,6 +58,17 @@ def power_curve_plot(data, n="n", power="power", group=None, title=None):
     ----------
     Cohen, J. (1988). Statistical power analysis for the behavioral sciences
     (2nd ed.). Lawrence Erlbaum Associates.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import pandas as pd
+    >>> from statsmodels.stats.power import TTestIndPower
+    >>> analysis = TTestIndPower()
+    >>> power = pd.DataFrame({"n": range(25, 425, 25)})
+    >>> power["power"] = [analysis.power(effect_size=0.5, nobs1=n, alpha=0.05)
+    ...                   for n in power["n"]]
+    >>> p = dp.power_curve_plot(power)
     """
     for col in (n, power, *( (group,) if group else () )):
         if col not in data.columns:

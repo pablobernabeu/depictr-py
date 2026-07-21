@@ -4,26 +4,18 @@ The classification metrics come from scikit-learn and the survival estimate from
 lifelines; depictr redraws both under the shared theme. The survival figure adds
 a number-at-risk table beneath the curves in one call.
 
-```python exec="1" session="clf"
-import io, base64, warnings
+```python exec="1" html="1" session="clf"
+import sys; sys.path.insert(0, "docs")
 
-import matplotlib
+from functools import partial
 
-matplotlib.use("Agg")  # render headlessly; no GUI backend during the build
+from _exec import show as _show
 
-from plotnine.exceptions import PlotnineWarning
-
-warnings.filterwarnings("ignore", category=PlotnineWarning)
-
-
-def show(p, width=7, height=5):
-    buf = io.BytesIO()
-    p.save(buf, format="png", width=width, height=height, dpi=110, verbose=False)
-    print('<img alt="depictr plot" src="data:image/png;base64,'
-          + base64.b64encode(buf.getvalue()).decode() + '">')
+# This page's figures suit a slightly narrower canvas than the gallery default.
+show = partial(_show, width=7)
 ```
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 import numpy as np
 
 import depictr as dp
@@ -36,9 +28,9 @@ score = 1 / (1 + np.exp(-ct["biomarker"]))  # a probability-like score
 
 An ROC curve with the area under the curve.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.roc_curve_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
 ## Precision-recall on a rare outcome
@@ -46,9 +38,9 @@ show(p)
 When the positive class is rare the precision-recall curve is more informative
 than the ROC curve, because it ignores the many true negatives.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.pr_curve_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
 ## Gains, lift and choosing a threshold
@@ -56,41 +48,41 @@ show(p)
 The cumulative gains and lift charts read off how many positives a ranked
 campaign captures at each depth.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.gain_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.lift_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
 The threshold plot sweeps the decision cut-off, so the trade-off between the
 metrics as the operating point moves is visible at a glance.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.threshold_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
 ## Calibration
 
 A calibration (reliability) curve.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.calibration_plot(ct["adverse_event"], score)
-show(p)
+print(show(p))
 ```
 
 ## Confusion matrix
 
 A confusion-matrix heatmap, normalised by the true class.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.6).astype(int),
                              normalise="true")
-show(p, width=6)
+print(show(p, width=6))
 ```
 
 ## Survival
@@ -98,8 +90,8 @@ show(p, width=6)
 Kaplan-Meier curves with a log-rank test and a number-at-risk table. The legend
 sits in the empty top-right the descending curves leave behind.
 
-```python exec="1" source="material-block" session="clf"
+```python exec="1" html="1" source="material-block" session="clf"
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
                      risk_table=True, legend_inside=True, title="Survival by arm")
-show(p, width=8, height=6)
+print(show(p, width=8, height=6))
 ```

@@ -3,6 +3,10 @@
 Estimation plots and summary tables, and the model-estimate family: forests,
 predicted effects, interactions, random effects, posteriors and power.
 
+These plots are shown, with the code that produced them, on the
+[model estimates and diagnostics](../gallery/model-estimates.md) page of the
+gallery.
+
 ::: depictr.estimation_plot
 ::: depictr.summary_table
 ::: depictr.coefficient_plot

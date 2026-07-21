@@ -255,7 +255,7 @@ try:
                      deficiency)
             elif stage == "Residual diagnostics":
                 show(dp.residual_diagnostics_plot(model),
-                     f"dp.residual_diagnostics_plot(model)", deficiency)
+                     "dp.residual_diagnostics_plot(model)", deficiency)
             elif stage == "Effect of a predictor":
                 var = st.selectbox("Predictor to vary", [p for p in predictors if p in num_cols])
                 show(dp.effects_plot(model, var),

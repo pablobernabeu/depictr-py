@@ -5,10 +5,12 @@ repository's [`LICENSE`](https://github.com/pablobernabeu/depictr-py/blob/main/L
 file.
 
 ```python exec="1" html="1"
-import html
+import sys; sys.path.insert(0, "docs")
+
+from _exec import pre
 
 with open("LICENSE", encoding="utf-8") as f:
     text = f.read()
 
-print("<pre>" + html.escape(text) + "</pre>")
+print(pre(text))
 ```

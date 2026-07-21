@@ -26,11 +26,44 @@ The model, classification and survival plots delegate to optional back-ends, so 
 
 ## A first plot
 
-```python
+```python exec="1" html="1" session="home"
+import sys; sys.path.insert(0, "docs")
+
+from _exec import show
+```
+
+```python exec="1" html="1" source="material-block" session="home"
 import depictr as dp
 
 ld = dp.lexical_decision()
-dp.explore_distribution(ld, "RT", group="condition", kind="both")
+p = dp.explore_distribution(ld, "RT", group="condition", kind="both")
+print(show(p))
+```
+
+That figure was drawn when this page was built, as every figure on the site is,
+so the code above it is the code that produced it.
+
+## Where to look next
+
+```python exec="1" html="1" session="home"
+wb = dp.wellbeing_survey()
+ct = dp.clinical_trial()
+
+thumbnails = [
+    ("gallery/exploring-data/", "Exploring data",
+     dp.correlation_heatmap(wb)),
+    ("gallery/multivariate-and-time-series/", "Multivariate and time series",
+     dp.pca_plot(wb, group="region")),
+    ("gallery/classification-and-survival/", "Classification and survival",
+     dp.survival_plot(ct["time"], ct["event"], group=ct["arm"])),
+]
+
+cards = "".join(
+    f'<a class="dp-thumb" href="{href}">{show(p, width=4.6, height=3.4, alt=label)}'
+    f"<span>{label}</span></a>"
+    for href, label, p in thumbnails
+)
+print(f'<div class="dp-thumbs">{cards}</div>')
 ```
 
 The [gallery](gallery/exploring-data.md) works through every family with the plots rendered, and the [reference](reference/theme-and-accessibility.md) documents each function.

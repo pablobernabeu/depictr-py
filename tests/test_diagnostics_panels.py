@@ -1,8 +1,5 @@
 """Smoke tests: the multi-panel regression reports build and save."""
 
-import os
-import tempfile
-
 import pytest
 
 from depictr.data import crop_yield

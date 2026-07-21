@@ -105,6 +105,15 @@ def posterior_plot(draws, labels=None, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> rng = np.random.default_rng(0)
+    >>> draws = {"stress": rng.normal(-0.4, 0.1, 500),
+    ...           "sleep_hours": rng.normal(0.3, 0.1, 500)}
+    >>> p = dp.posterior_plot(draws)
     """
     est = _summarise_draws(draws, labels=labels)
     # Reverse so the first parameter sits at the top once the axes are flipped.
@@ -154,6 +163,18 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> rng = np.random.default_rng(0)
+    >>> draws = {t: rng.normal(model.params[t], model.bse[t], 500)
+    ...          for t in model.params.index if t != "Intercept"}
+    >>> p = dp.frequentist_bayesian_plot(model, draws)
     """
     from .models import tidy_estimates
 

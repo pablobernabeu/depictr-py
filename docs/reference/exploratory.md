@@ -3,6 +3,9 @@
 A first look at a dataset: distributions, categories, relationships, correlation,
 cumulative distributions, outliers and a missing-data map.
 
+These plots are shown, with the code that produced them, on the
+[exploring data](../gallery/exploring-data.md) page of the gallery.
+
 ::: depictr.explore_distribution
 ::: depictr.explore_categorical
 ::: depictr.explore_bivariate

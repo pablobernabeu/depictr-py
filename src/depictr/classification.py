@@ -54,6 +54,14 @@ def roc_curve_plot(y_true, y_score, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.roc_curve_plot(ct["adverse_event"], score)
     """
     m = _require_sklearn()
     fpr, tpr, _ = m.roc_curve(y_true, y_score)
@@ -71,7 +79,16 @@ def roc_curve_plot(y_true, y_score, title=None):
 
 
 def pr_curve_plot(y_true, y_score, title=None):
-    """Precision-recall curve with the average precision (AP) annotated."""
+    """Precision-recall curve with the average precision (AP) annotated.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.pr_curve_plot(ct["adverse_event"], score)
+    """
     m = _require_sklearn()
     precision, recall, _ = m.precision_recall_curve(y_true, y_score)
     ap = m.average_precision_score(y_true, y_score)
@@ -102,6 +119,14 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.6).astype(int))
     """
     m = _require_sklearn()
     labels = sorted(pd.unique(pd.concat([pd.Series(y_true), pd.Series(y_pred)])))
@@ -125,7 +150,16 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
 
 
 def calibration_plot(y_true, y_score, n_bins=10, title=None):
-    """Reliability (calibration) curve of predicted vs observed frequencies."""
+    """Reliability (calibration) curve of predicted vs observed frequencies.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.calibration_plot(ct["adverse_event"], score)
+    """
     _require_sklearn()
     from sklearn.calibration import calibration_curve
 
@@ -141,7 +175,16 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None):
 
 
 def gain_plot(y_true, y_score, title=None):
-    """Cumulative gains chart: positives captured as more of the ranked population is targeted."""
+    """Cumulative gains chart: positives captured as more of the ranked population is targeted.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.gain_plot(ct["adverse_event"], score)
+    """
     y_true = np.asarray(y_true)
     order = np.argsort(-np.asarray(y_score))
     captured = np.cumsum(y_true[order]) / max(y_true.sum(), 1)
@@ -166,6 +209,14 @@ def lift_plot(y_true, y_score, title=None):
     score-ordered population, divided by that depth. A lift of 3 in the top 10%
     means that decile holds three times the baseline positive rate. The dashed
     line at 1 is random targeting.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.lift_plot(ct["adverse_event"], score)
     """
     y_true = np.asarray(y_true)
     order = np.argsort(-np.asarray(y_score))
@@ -198,6 +249,14 @@ def threshold_plot(y_true, y_score, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import numpy as np
+    >>> ct = dp.clinical_trial()
+    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
+    >>> p = dp.threshold_plot(ct["adverse_event"], score)
     """
     _require_sklearn()
     y_true = np.asarray(y_true)

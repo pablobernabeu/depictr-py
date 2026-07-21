@@ -141,6 +141,14 @@ def residual_diagnostics_plot(model, title=None):
     ----------
     Fox, J., & Weisberg, S. (2019). An R companion to applied regression
     (3rd ed.). Sage.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.residual_diagnostics_plot(model)
     """
     _check_model(model, "residual_diagnostics_plot")
     return arrange_plots(
@@ -176,6 +184,14 @@ def model_report(model, title=None):
     -------
     plotnine.composition.Compose
         A composition with ``.draw`` and ``.save``.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.model_report(model)
     """
     _check_model(model, "model_report")
     return arrange_plots(

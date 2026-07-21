@@ -101,6 +101,12 @@ def pca_plot(data, cols=None, group=None, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.pca_plot(wb, group="region")
     """
     _require_sklearn()
     from sklearn.decomposition import PCA
@@ -173,6 +179,12 @@ def scree_plot(data, cols=None, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.scree_plot(wb)
     """
     _require_sklearn()
     from sklearn.decomposition import PCA
@@ -220,6 +232,12 @@ def cluster_plot(data, cols=None, k=3, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.cluster_plot(wb, k=3)
     """
     _require_sklearn()
     from sklearn.cluster import KMeans
@@ -269,6 +287,12 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.dendrogram_plot(wb.groupby("region").mean(numeric_only=True))
     """
     _require_scipy()
     from scipy.cluster.hierarchy import dendrogram, linkage
@@ -317,6 +341,12 @@ def silhouette_plot(data, cols=None, k=3, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> p = dp.silhouette_plot(wb, k=3)
     """
     _require_sklearn()
     from sklearn.cluster import KMeans

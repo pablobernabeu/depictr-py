@@ -84,6 +84,14 @@ def qq_plot(model, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.qq_plot(model)
     """
     from scipy import stats
 
@@ -137,6 +145,14 @@ def influence_plot(model, title=None):
     Cook, R. D. (1977). Detection of influential observation in linear
     regression. Technometrics, 19(1), 15-18.
     https://doi.org/10.1080/00401706.1977.10489493
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.influence_plot(model)
     """
     _require_statsmodels()
     if not _is_fitted_model(model):
@@ -177,6 +193,14 @@ def vif_plot(model, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.vif_plot(model)
     """
     _require_statsmodels()
     from statsmodels.stats.outliers_influence import variance_inflation_factor
@@ -235,6 +259,16 @@ def binned_residual_plot(model, n_bins=None, title=None):
     ----------
     Gelman, A., & Hill, J. (2007). Data analysis using regression and
     multilevel/hierarchical models. Cambridge University Press.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.api as sm
+    >>> import statsmodels.formula.api as smf
+    >>> ct = dp.clinical_trial()
+    >>> glm = smf.glm("adverse_event ~ biomarker + age", ct,
+    ...               family=sm.families.Binomial()).fit()
+    >>> p = dp.binned_residual_plot(glm)
     """
     sm = _require_statsmodels()
     if not _is_fitted_model(model):

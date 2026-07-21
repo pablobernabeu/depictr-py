@@ -41,6 +41,15 @@ def tidy_estimates(model, conf_level: float = 0.95) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Columns ``term``, ``estimate``, ``conf_low``, ``conf_high``.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> dp.tidy_estimates(model).columns.tolist()
+    ['term', 'estimate', 'conf_low', 'conf_high']
     """
     if isinstance(model, pd.DataFrame):
         return _tidy_from_frame(model)
@@ -95,6 +104,14 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     Returns
     -------
     plotnine.ggplot
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> cy = dp.crop_yield()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> p = dp.coefficient_plot(model, title="Drivers of crop yield")
     """
     est = tidy_estimates(model, conf_level=conf_level)
     if not intercept:

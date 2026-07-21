@@ -124,6 +124,12 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         A single panel by default, or a two-panel composition when
         ``two_panel=True``. Either carries ``.differences``, a DataFrame of the
         computed mean differences, their bootstrap intervals, and effect sizes.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> cy = dp.crop_yield()
+    >>> p = dp.estimation_plot(cy, "yield", "treatment", n_boot=200, seed=1)
     """
     if y not in data.columns:
         raise KeyError(f"{y!r} is not a column of `data`.")

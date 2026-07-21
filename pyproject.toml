@@ -79,4 +79,8 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# The Examples section of every public docstring is a real doctest and is
+# collected with the suite, so a documented call cannot drift out of step with
+# the API without a test going red.
+addopts = "--doctest-modules"
+testpaths = ["tests", "src/depictr"]

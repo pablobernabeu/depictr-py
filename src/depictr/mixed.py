@@ -72,6 +72,15 @@ def random_effects_plot(model, title=None):
     The interval is the conditional one around each predicted effect, not a
     confidence interval for a fixed parameter. It reflects how precisely that
     group's effect is pinned down given the fitted variance components.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> import statsmodels.formula.api as smf
+    >>> wb = dp.wellbeing_survey().dropna(subset=["life_satisfaction", "sleep_hours"])
+    >>> mm = smf.mixedlm("life_satisfaction ~ stress + sleep_hours", wb,
+    ...                  groups=wb["region"]).fit()
+    >>> p = dp.random_effects_plot(mm)
     """
     _require_statsmodels()
     if not hasattr(model, "random_effects"):

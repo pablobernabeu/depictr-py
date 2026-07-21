@@ -48,6 +48,14 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
         Columns ``variable``, ``statistic``, ``Overall`` and one column per group
         level. The first row reports ``N``. The variable name is blanked on its
         repeated rows for readability.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> wb = dp.wellbeing_survey()
+    >>> tab = dp.summary_table(wb, vars=["life_satisfaction", "stress"], group="region")
+    >>> tab.columns.tolist()[0]
+    'variable'
     """
     if not isinstance(data, pd.DataFrame):
         raise TypeError("`data` must be a pandas DataFrame.")

@@ -78,6 +78,12 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
     -------
     list of str
         The simulated colours as hex strings.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.simulate_cvd(['#005b96', '#e69f00'], 'deutan')
+    ['#275295', '#cab411']
     """
     if deficiency not in _MACHADO_1:
         raise ValueError(f"`deficiency` must be one of {DEFICIENCIES}.")
@@ -149,6 +155,12 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
         (the minimum Delta-E for normal vision and each deficiency),
         ``worst_condition`` and ``worst_pair`` (the closest colours and where),
         ``safe`` (whether ``min_delta_e`` meets ``threshold``) and ``threshold``.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> dp.palette_safety()['safe']
+    True
     """
     from .palette import depictr_palette
 
