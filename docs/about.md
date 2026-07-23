@@ -5,7 +5,7 @@
 If depictr helps your work, a citation is appreciated:
 
 > Bernabeu, P. (2026). *depictr: A unified, colourblind-safe toolkit for
-> publication-ready statistical visualisation* (Python). Version 0.2.1.
+> publication-ready statistical visualisation* (Python). Version 0.2.2.
 > <https://doi.org/10.5281/zenodo.21266311>
 
 ```bibtex
@@ -13,13 +13,13 @@ If depictr helps your work, a citation is appreciated:
   title   = {depictr: A unified, colourblind-safe toolkit for publication-ready statistical visualisation (Python)},
   author  = {Pablo Bernabeu},
   year    = {2026},
-  version = {0.2.1},
+  version = {0.2.2},
   doi     = {10.5281/zenodo.21266311},
   url     = {https://doi.org/10.5281/zenodo.21266311}
 }
 ```
 
-<p><a download="depictr-py.bib" href="data:application/x-bibtex;charset=utf-8,%40software%7Bdepictr-py%2C%0A%20%20title%20%20%20%3D%20%7Bdepictr%3A%20A%20unified%2C%20colourblind-safe%20toolkit%20for%20publication-ready%20statistical%20visualisation%20%28Python%29%7D%2C%0A%20%20author%20%20%3D%20%7BPablo%20Bernabeu%7D%2C%0A%20%20year%20%20%20%20%3D%20%7B2026%7D%2C%0A%20%20version%20%3D%20%7B0.2.1%7D%2C%0A%20%20doi%20%20%20%20%20%3D%20%7B10.5281%2Fzenodo.21266311%7D%2C%0A%20%20url%20%20%20%20%20%3D%20%7Bhttps%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.21266311%7D%0A%7D">Download .bib</a></p>
+<p><a download="depictr-py.bib" href="data:application/x-bibtex;charset=utf-8,%40software%7Bdepictr-py%2C%0A%20%20title%20%20%20%3D%20%7Bdepictr%3A%20A%20unified%2C%20colourblind-safe%20toolkit%20for%20publication-ready%20statistical%20visualisation%20%28Python%29%7D%2C%0A%20%20author%20%20%3D%20%7BPablo%20Bernabeu%7D%2C%0A%20%20year%20%20%20%20%3D%20%7B2026%7D%2C%0A%20%20version%20%3D%20%7B0.2.2%7D%2C%0A%20%20doi%20%20%20%20%20%3D%20%7B10.5281%2Fzenodo.21266311%7D%2C%0A%20%20url%20%20%20%20%20%3D%20%7Bhttps%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.21266311%7D%0A%7D">Download .bib</a></p>
 
 The repository's
 [`CITATION.cff`](https://github.com/pablobernabeu/depictr-py/blob/main/CITATION.cff)

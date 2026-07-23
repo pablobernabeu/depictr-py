@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2] - 2026-07-23
+
+- The `calibration_plot` example fits a logistic regression and passes its
+  predicted probabilities. A reliability curve compares predicted probability
+  with observed frequency, so the previous hand-written score misstated the
+  calibration it was meant to demonstrate.
+- The `seasonal_plot` example carries trend and noise. Its series was a
+  noiseless sine, so all ten cycles coincided exactly and the figure showed one
+  curve behind a ten-entry legend.
+- `calibration_plot` gained the Parameters and Returns sections it lacked,
+  including a note that `y_score` must hold fitted probabilities.
+
 ## [0.2.1] - 2026-07-15
 
 - Corrected the `palette_safety()` result shape shown in the README, which left
