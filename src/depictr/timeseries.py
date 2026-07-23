@@ -244,9 +244,10 @@ def seasonal_plot(x, period=None, title=None):
     >>> import depictr as dp
     >>> import numpy as np
     >>> import pandas as pd
+    >>> rng = np.random.default_rng(0)
     >>> t = np.arange(120)
     >>> series = pd.Series(
-    ...     50 + 10 * np.sin(2 * np.pi * t / 12),
+    ...     50 + 0.3 * t + 10 * np.sin(2 * np.pi * t / 12) + rng.normal(0, 3, 120),
     ...     index=pd.period_range("2016-01", periods=120, freq="M"),
     ... )
     >>> p = dp.seasonal_plot(series, period=12)

@@ -152,13 +152,34 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
 def calibration_plot(y_true, y_score, n_bins=10, title=None):
     """Reliability (calibration) curve of predicted vs observed frequencies.
 
+    Parameters
+    ----------
+    y_true : array-like
+        Binary outcomes (0/1).
+    y_score : array-like
+        Predicted probabilities from a fitted model, on the probability scale.
+        Unlike the ROC and gains charts, which only rank cases, a reliability
+        curve compares the predicted probability with the observed frequency,
+        so an arbitrary monotone score would misstate the calibration.
+    n_bins : int
+        Number of equal-width bins spanning 0 to 1. Empty bins are dropped, so
+        a rare outcome whose scores never approach 1 leaves fewer points than
+        bins requested.
+    title : str, optional
+
+    Returns
+    -------
+    plotnine.ggplot
+
     Examples
     --------
     >>> import depictr as dp
-    >>> import numpy as np
+    >>> from sklearn.linear_model import LogisticRegression
     >>> ct = dp.clinical_trial()
-    >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
-    >>> p = dp.calibration_plot(ct["adverse_event"], score)
+    >>> X = ct[["biomarker", "age"]]
+    >>> fit = LogisticRegression().fit(X, ct["adverse_event"])
+    >>> p = dp.calibration_plot(ct["adverse_event"],
+    ...                         fit.predict_proba(X)[:, 1], n_bins=5)
     """
     _require_sklearn()
     from sklearn.calibration import calibration_curve

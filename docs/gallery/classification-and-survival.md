@@ -68,12 +68,24 @@ print(show(p))
 
 ## Calibration
 
-A calibration (reliability) curve.
+A calibration curve asks whether a predicted probability of, say, 0.3 is borne
+out by an event in about 30% of such cases, so it needs probabilities from a
+fitted model rather than the ranking score the charts above are happy with. We
+fit a logistic regression and pass its predicted probabilities.
 
 ```python exec="1" html="1" source="material-block" session="clf"
-p = dp.calibration_plot(ct["adverse_event"], score)
+from sklearn.linear_model import LogisticRegression
+
+X = ct[["biomarker", "age"]]
+fit = LogisticRegression().fit(X, ct["adverse_event"])
+p = dp.calibration_plot(ct["adverse_event"], fit.predict_proba(X)[:, 1],
+                        n_bins=5)
 print(show(p))
 ```
+
+The three populated bins predict 0.10, 0.27 and 0.45 against observed rates of
+0.09, 0.29 and 0.50, so the curve tracks the diagonal. Only the highest bin is
+thin, holding four patients out of 300.
 
 ## Confusion matrix
 
