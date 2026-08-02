@@ -55,7 +55,9 @@ rows = []
 for condition in conditions:
     # simulate_cvd takes the three deficiencies only; normal vision is the
     # palette itself, which is the same split palette_safety makes internally.
-    seen = palette if condition == "normal" else dp.simulate_cvd(palette, condition)
+    seen = palette if condition == "normal" else dp.simulate_cvd(
+        palette, condition
+    )
     rows += [{"condition": condition, "position": i, "colour": colour}
              for i, colour in enumerate(seen)]
 

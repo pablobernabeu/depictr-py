@@ -1,18 +1,25 @@
 # depictr (Python)
 
+<!-- badges: start -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)
 [![CI](https://github.com/pablobernabeu/depictr-py/actions/workflows/ci.yml/badge.svg)](https://github.com/pablobernabeu/depictr-py/actions/workflows/ci.yml)
 [![docs](https://github.com/pablobernabeu/depictr-py/actions/workflows/docs.yml/badge.svg)](https://pablobernabeu.github.io/depictr-py/)
 [![PyPI](https://img.shields.io/pypi/v/depictr)](https://pypi.org/project/depictr/)
 [![Python versions](https://img.shields.io/pypi/pyversions/depictr)](https://pypi.org/project/depictr/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/MIT)
+<!-- badges: end -->
 
 Documentation and example gallery:
 <https://pablobernabeu.github.io/depictr-py/>
 
 A unified, colourblind-safe toolkit for publication-ready statistical
-visualisation, built on [plotnine](https://plotnine.org). It is the Python
-sibling of the [depictr R package](https://pablobernabeu.github.io/depictr/).
+visualisation, built on [plotnine](https://plotnine.org).
+
+This is the Python twin of [the R
+package](https://pablobernabeu.github.io/depictr/) of the same name, which
+offers the same workflow on top of [ggplot2](https://ggplot2.tidyverse.org).
+The two share a design and nearly all of an API, and the Status section below
+records where this one has yet to catch up.
 
 ## Gallery
 
@@ -31,11 +38,11 @@ guide, while the short tour below keeps its calls minimal.
 
 ## What it is for
 
-Python already has an excellent plot for almost any statistical task, but they
-live in different packages with different defaults. A single figure set for a
-paper might draw on seaborn, scikit-learn, statsmodels, lifelines and ArviZ,
-each with its own look, its own API and its own colour scheme, and only one of
-those defaults to colourblind-safe colours. Making the set consistent and
+Python already has an excellent plot for almost any statistical task, but those
+plots live in different packages with different defaults. A single figure set
+for a paper might draw on seaborn, scikit-learn, statsmodels, lifelines and
+ArviZ, each with its own look, its own API and its own colour scheme, and only
+one of those defaults to colourblind-safe colours. Making the set consistent and
 accessible then means repeating the same theming by hand on every plot.
 
 depictr does that work once. It gives the whole workflow one theme, one
@@ -67,13 +74,19 @@ depictr is on [PyPI](https://pypi.org/project/depictr/):
 
 ```bash
 pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scipy)
-pip install depictr[all]       # plus the optional computation back-ends
+pip install depictr[all]       # plus the optional back-ends and the app
 ```
 
 The classification, model and survival plots delegate to scikit-learn,
 statsmodels and lifelines respectively. Each is an optional dependency, so the
 core stays light and you install only what your plots need
 (`depictr[classification]`, `depictr[models]`, `depictr[survival]`).
+
+The development version comes from GitHub:
+
+```bash
+pip install git+https://github.com/pablobernabeu/depictr-py
+```
 
 ## A short tour
 
@@ -114,7 +127,7 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"]) + labs(title="Adverse ev
 
 ## The web app
 
-A Streamlit app provides a gallery and a low-friction way to try the package: it
+A Streamlit app provides a gallery and a low-friction way to try the package. It
 loads one of the bundled datasets (or a CSV you upload), draws the chosen plot,
 shows the exact Python call that produced it, and offers a colourblind-vision
 toggle that re-renders the figure as each deficiency would be seen. The app
@@ -128,6 +141,8 @@ streamlit run app/streamlit_app.py
 ```
 
 ## Function families
+
+The exported functions fall into families that follow the stages of an analysis.
 
 | Family | Functions |
 | --- | --- |
@@ -145,32 +160,47 @@ streamlit run app/streamlit_app.py
 
 ## Status
 
-This is an early release, but coverage is broad: the colourblind-safe
-theme, the accessibility check, and most of the R package's plotting functions
-across every family (EDA, estimation, model estimates, diagnostics,
-classification, multivariate, survival and time series) are in place and
-tested. Multi-panel
+This is an early release, but coverage is broad. The colourblind-safe theme, the
+accessibility check and most of the R package's plotting functions across every
+family (EDA, estimation, model estimates, diagnostics, classification,
+multivariate, survival and time series) are in place and tested. Multi-panel
 composites are built on `arrange_plots`, which uses plotnine's native plot
-composition: the four-panel `residual_diagnostics_plot`, the `model_report`
-dashboard, the two-panel Gardner-Altman `estimation_plot`, the
-frequentist-over-Bayesian overlay, and the survival number-at-risk table.
+composition, and they include the four-panel `residual_diagnostics_plot`, the
+`model_report` dashboard, the two-panel Gardner-Altman `estimation_plot`, the
+frequentist-over-Bayesian overlay and the survival number-at-risk table.
 
-A few known limitations remain. plotnine compositions have no figure-level
+A few known limitations remain. Compositions in plotnine have no figure-level
 title, so a grid carries its titles on each panel (the survival and estimation
 composites place the title on their top panel). `survival_plot` does not yet
-draw the confidence band or censor marks the R package draws; its `conf_level`
-argument is accepted for future use. And a handful of functions from the R
-package are not ported: `optimizer_fixef_plot` (there is no clean statsmodels
-equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
+draw the confidence band or censor marks the R package draws, though its
+`conf_level` argument is accepted for future use. A handful of functions from
+the R package are not ported: `optimizer_fixef_plot` (there is no clean
+statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
 `model_fit_table` and `ts_forecast`.
 
 ## Relationship to the R package
 
-The two are siblings, not a shared codebase. The R package targets ggplot2 and
-CRAN; this one targets plotnine and PyPI. They share the design: one accessible
-theme across the whole workflow, model-or-data-frame input, and extensible plot
-objects.
+The two are siblings rather than a shared codebase. The R package is built on
+ggplot2 and this one on plotnine, but the design is shared. Each gives the whole
+workflow one accessible theme, takes its input either as a fitted model or as a
+data frame, and returns plot objects that stay extensible.
+
+## Citation
+
+The [About page](https://pablobernabeu.github.io/depictr-py/about/) carries the
+preferred citation with a BibTeX entry and a short note on the developer, and
+the repository ships
+[`CITATION.cff`](https://github.com/pablobernabeu/depictr-py/blob/main/CITATION.cff)
+for the *Cite this repository* button on GitHub.
 
 ## Licence
 
 MIT. See [LICENSE](https://github.com/pablobernabeu/depictr-py/blob/main/LICENSE).
+
+## Contributing
+
+Issues and pull requests are welcome. The [contributing
+guide](https://github.com/pablobernabeu/depictr-py/blob/main/.github/CONTRIBUTING.md)
+describes the development setup and the conventions the package follows, and
+everyone taking part is asked to honour the [Code of
+Conduct](https://github.com/pablobernabeu/depictr-py/blob/main/.github/CODE_OF_CONDUCT.md).

@@ -17,7 +17,9 @@ import depictr as dp
 
 cy = dp.crop_yield()
 # Q() quotes "yield" because it is a Python keyword.
-model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph + treatment', cy).fit()
+model = smf.ols(
+    'Q("yield") ~ fertiliser + rainfall + soil_ph + treatment', cy
+).fit()
 ```
 
 ## Coefficient forest

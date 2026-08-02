@@ -104,6 +104,7 @@ sits in the empty top-right the descending curves leave behind.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
-                     risk_table=True, legend_inside=True, title="Survival by arm")
+                     risk_table=True, legend_inside=True,
+                     title="Survival by arm")
 print(show(p, width=8, height=6))
 ```

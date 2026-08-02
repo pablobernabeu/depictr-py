@@ -117,7 +117,9 @@ extensions apply:
 ```python
 from plotnine import labs
 
-dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"]) + labs(title="Adverse event")
+dp.roc_curve_plot(
+    ct["adverse_event"], ct["biomarker"]
+) + labs(title="Adverse event")
 ```
 
 To place several plots in one figure, use `arrange_plots`:
