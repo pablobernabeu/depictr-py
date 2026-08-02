@@ -2,6 +2,17 @@
 
 ## Citing depictr
 
+<!-- The version is hard-coded here, as it is on the other mkdocs About pages in
+     this family, because a Markdown page cannot read the installed version the
+     way the R twin's vignette does. On release, bump it in each of the three
+     places it appears on this page: once in the rendered reference below, once
+     in the `version` field of the BibTeX entry, and once inside the Download
+     .bib URI, where it is percent-encoded (`%7B0.2.2%7D`). That URI is the entry
+     itself, so the download needs no .bib file shipped beside the site. The
+     header version in mkdocs.yml (`extra.version`), the `version` field of
+     CITATION.cff and `__version__` in src/depictr/__init__.py carry the same
+     string and are bumped with it. -->
+
 If depictr helps your work, a citation is appreciated:
 
 > Bernabeu, P. (2026). *depictr: A unified, colourblind-safe toolkit for

@@ -20,7 +20,7 @@ at by clicking, you can paste into a script and get the same figure back.
 
 ## The colour-vision selector
 
-Changing "Simulate vision" in the sidebar re-renders the figure as a reader with
+Changing 'Simulate vision' in the sidebar re-renders the figure as a reader with
 that deficiency would see it, through the same Machado-2009 simulation the
 [accessibility page](gallery/accessibility.md) reports on. Below is the identical
 plot with the selector set to deuteranopia. The blue is barely touched and the

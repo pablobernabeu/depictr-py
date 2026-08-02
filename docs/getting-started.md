@@ -1,4 +1,4 @@
-# Getting started
+# Get started
 
 This guide works through a short analysis with depictr, from a first look at the
 data to a fitted model and its diagnostics. Every function returns a
@@ -29,7 +29,7 @@ import depictr as dp
 ```
 
 Each call returns a plotnine object. In a Jupyter notebook it renders on
-display; in a script, call `.show()`, or save it with `dp.save_plot(p, "fig.png")`.
+display. In a script, call `.show()`, or save it with `dp.save_plot(p, "fig.png")`.
 
 ## A first look at the data
 
@@ -54,7 +54,7 @@ dp.missingness_map(wb, legend_inside=True)
 
 ## Fitting and reading a model
 
-depictr does not fit models; it reads a model you have fitted, or a tidy table
+depictr does not fit models. It reads a model you have fitted, or a tidy table
 of estimates. Fit an ordinary least-squares model with statsmodels, then read it
 from several angles.
 
@@ -142,5 +142,6 @@ from plotnine import ggplot, aes, geom_point
 
 ## Where next
 
-- The [gallery](gallery/exploring-data.md) renders a worked example from every family.
-- The [reference](reference/theme-and-accessibility.md) documents each function and its options.
+The [gallery](gallery/exploring-data.md) renders a worked example from every
+family, and the [reference](reference/theme-and-accessibility.md) documents each
+function and its options.

@@ -97,13 +97,17 @@ nav:
       - Classification: reference/classification.md
       - Multivariate, survival and time series: reference/multivariate-survival-timeseries.md
       - Composition and data: reference/composition-and-data.md
-  - Gallery:
+  # Labelled Articles to match the R twin's navbar and the rest of the family,
+  # while the pages keep their gallery/ paths so existing links still resolve.
+  # The app page is listed here rather than at top level, because the header
+  # override already links it as a pill and the family carries one app entry.
+  - Articles:
       - Exploring data: gallery/exploring-data.md
       - Model estimates and diagnostics: gallery/model-estimates.md
       - Classification and survival: gallery/classification-and-survival.md
       - Multivariate and time series: gallery/multivariate-and-time-series.md
       - Accessibility: gallery/accessibility.md
-  - The web app: app.md
+      - The web app: app.md
   - Changelog: changelog.md
   - About: about.md
 

@@ -6,6 +6,7 @@ This is the Python sibling of [the R package](https://pablobernabeu.github.io/de
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
 [Open the gallery](gallery/exploring-data.md){ .md-button }
+[Try the web app](app.md){ .md-button }
 
 A single figure set for a paper might otherwise draw on seaborn, scikit-learn, statsmodels, lifelines and ArviZ, each with its own defaults, its own API and its own colour scheme, and only one of those defaulting to colourblind-safe colours. depictr does that theming work once, and returns plotnine objects, so a plot can be refined further with the usual `+` syntax. Where a specialist package already computes a quantity well, depictr delegates to it and redraws the result under the shared theme, so you keep the trusted computation and gain a coherent, accessible figure.
 

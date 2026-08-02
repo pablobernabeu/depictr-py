@@ -133,7 +133,7 @@ print(show(p))
 
 ## A descriptive summary table
 
-A "Table 1" of means, counts and missingness by group, returned as a data frame
+A 'Table 1' of means, counts and missingness by group, returned as a data frame
 ready for any formatter. Variables with missing values gain their own row.
 
 ```python exec="1" html="1" source="material-block" session="eda"

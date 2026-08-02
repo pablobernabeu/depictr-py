@@ -1,6 +1,22 @@
 # Changelog
 
+All notable changes to this project are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+Nothing yet.
+
 ## [0.2.2] - 2026-07-23
+
+### Added
+
+- `calibration_plot` gained the Parameters and Returns sections it lacked,
+  including a note that `y_score` must hold fitted probabilities.
+
+### Fixed
 
 - The `calibration_plot` example fits a logistic regression and passes its
   predicted probabilities. A reliability curve compares predicted probability
@@ -9,54 +25,53 @@
 - The `seasonal_plot` example carries trend and noise. Its series was a
   noiseless sine, so all ten cycles coincided exactly and the figure showed one
   curve behind a ten-entry legend.
-- `calibration_plot` gained the Parameters and Returns sections it lacked,
-  including a note that `y_score` must hold fitted probabilities.
 
 ## [0.2.1] - 2026-07-15
+
+### Added
+
+- The gallery now covers every plot family, matching the R package's vignettes.
+
+### Fixed
 
 - Corrected the `palette_safety()` result shape shown in the README, which left
   out `worst_condition` and `worst_pair`; the function returns those as well as
   the elements already listed.
-- The gallery now covers every plot family, matching the R package's vignettes.
 
 ## [0.2.0] - 2026-07-10
 
-- **Fix: a missing value in a grouped column crashed at draw time.** The
-  default colour for missing (`NA`) levels was `grey80`, an R colour name that
-  matplotlib rejects; replaced with the equivalent hex `#cccccc`.
-- **Fix: error messages named nonexistent extras.** The ImportError messages
-  and module docstrings in the diagnostics, mixed-effects and multivariate
-  modules pointed at `depictr[diagnostics]`, `depictr[mixed]` and
-  `depictr[multivariate]`, none of which is defined; corrected to
-  `depictr[models]` and `depictr[classification]` (scipy is a core dependency).
+### Changed
+
 - Raised the plotnine dependency floor to 0.15, the first release with the
   plot composition operators (`|`, `/`) that `arrange_plots` uses.
 - `arrange_plots`, and the multi-panel reports built on it, warn when a
   `title` is dropped because plotnine compositions cannot carry a figure-level
   title; previously the argument was discarded silently.
 
+### Fixed
+
+- A missing value in a grouped column crashed at draw time. The default colour
+  for missing (`NA`) levels was `grey80`, an R colour name that matplotlib
+  rejects; replaced with the equivalent hex `#cccccc`.
+- Error messages named nonexistent extras. The ImportError messages and module
+  docstrings in the diagnostics, mixed-effects and multivariate modules pointed
+  at `depictr[diagnostics]`, `depictr[mixed]` and `depictr[multivariate]`, none
+  of which is defined; corrected to `depictr[models]` and
+  `depictr[classification]` (scipy is a core dependency).
+
 ## [0.1.1] - 2026-07-08
+
+### Added
 
 - **Inside legends.** Added an opt-in `legend_inside=False` parameter to
   `explore_distribution`, `ecdf_plot`, `dumbbell_plot`, `missingness_map` and
   `survival_plot`, plus the public `legend_inside()` theme helper, which places
   the legend inside the panel (over a light background) rather than in a
   right-hand margin.
-- **Fix: grouped histograms were invisible.** `explore_distribution(kind="both"`
-  or `"histogram")` with a `group` drew no bars at all: `geom_histogram(fill=None)`
-  made them fully transparent instead of deferring to the group colour mapping.
-- **Fix: axis and legend titles leaked raw column names.** Several plots that
-  meant to leave a title blank (`labs(x=None, ...)`) instead showed the mapped
-  column's literal name (`x`, `value`, `variable`, `term`, `metric`, ...) because
-  this plotnine version treats `None` as unset rather than blank. Corrected 14
-  call sites across `diagnostics`, `eda`, `estimation`, `mixed`, `models`,
-  `multivariate`, `posterior`, `predictions`, `distributions_extra`,
-  `timeseries` and `classification`.
-- **Fix: a duplicate colour scale on `survival_plot(risk_table=True)`.** The
-  grouped risk-table path added the colour scale twice, which plotnine warned
-  about and silently replaced with an identical one; it is now added once.
-- Corrected the Cook (1977) reference title and added DOIs to Cook (1977),
-  Hedges (1981) and Allen et al. (2021).
+- Added a 'Getting started' guide that walks through a short analysis end to end.
+
+### Changed
+
 - **Survival risk table.** Rebuilt the number-at-risk table beneath
   `survival_plot(risk_table=True)`: the curves now use the full panel width (no
   left-hand gutter), the group names label the rows on the y-axis, and the
@@ -66,11 +81,28 @@
   italicised *p*, no leading zero, and *p* < .001 reported below that
   threshold). The colour legend and the risk-table rows now list the groups
   in the same order (a user-set categorical order, otherwise first appearance).
-- Added a "Getting started" guide that walks through a short analysis end to end.
 - The README and the PyPI project page now open with a gallery (a grouped
   density and Kaplan-Meier curves), and the documentation landing page gains the
   same hero plot and a PyPI install link.
 - README image assets are kept out of the source distribution.
+
+### Fixed
+
+- Grouped histograms were invisible. `explore_distribution(kind="both"`
+  or `"histogram")` with a `group` drew no bars at all: `geom_histogram(fill=None)`
+  made them fully transparent instead of deferring to the group colour mapping.
+- Axis and legend titles leaked raw column names. Several plots that
+  meant to leave a title blank (`labs(x=None, ...)`) instead showed the mapped
+  column's literal name (`x`, `value`, `variable`, `term`, `metric`, ...) because
+  this plotnine version treats `None` as unset rather than blank. Corrected 14
+  call sites across `diagnostics`, `eda`, `estimation`, `mixed`, `models`,
+  `multivariate`, `posterior`, `predictions`, `distributions_extra`,
+  `timeseries` and `classification`.
+- The grouped risk-table path on `survival_plot(risk_table=True)` added the
+  colour scale twice, which plotnine warned about and silently replaced with an
+  identical one; it is now added once.
+- Corrected the Cook (1977) reference title and added DOIs to Cook (1977),
+  Hedges (1981) and Allen et al. (2021).
 
 ## [0.1.0] - 2026-06-27
 
@@ -129,6 +161,8 @@ object you can extend with `+`.
   `lme4::allFit`), `k_diagnostic`, `palette_preview`, `model_fit_table` and
   `ts_forecast`.
 
+[Unreleased]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.1.0...v0.1.1
