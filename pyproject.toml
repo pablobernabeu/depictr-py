@@ -55,6 +55,9 @@ all = [
 test = ["pytest>=7.0"]
 docs = [
     "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",
+    # Keeps the retired per-group reference paths resolving after the reference
+    # was gathered into the single api.md page.
+    "mkdocs-redirects>=1.2",
 ]
 
 [project.urls]

@@ -70,7 +70,26 @@ plugins:
             show_root_full_path: false
             show_source: true
             separate_signature: true
-            heading_level: 2
+            # api.md groups 63 objects under seven h2 sections, mirroring the R
+            # package's reference index. At mkdocstrings' default level the object
+            # headings would also be h2, flattening the table of contents into one
+            # list in which no object shows which group it belongs to.
+            heading_level: 3
+  # The reference used to be seven pages under docs/reference/, one per function
+  # group, and those paths are bookmarked, linked from outside the site and
+  # indexed by search engines. The plugin writes a stub at each old path, and the
+  # stub carries any anchor across, so a deep link to a single function still
+  # lands on that function. The anchors themselves are unchanged, because
+  # mkdocstrings derives them from the object's path rather than from the page.
+  - redirects:
+      redirect_maps:
+        reference/theme-and-accessibility.md: api.md
+        reference/exploratory.md: api.md
+        reference/estimation-and-models.md: api.md
+        reference/diagnostics.md: api.md
+        reference/classification.md: api.md
+        reference/multivariate-survival-timeseries.md: api.md
+        reference/composition-and-data.md: api.md
 
 markdown_extensions:
   - admonition
@@ -89,14 +108,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Get started: getting-started.md
-  - Reference:
-      - Theme, palette and accessibility: reference/theme-and-accessibility.md
-      - Exploratory analysis: reference/exploratory.md
-      - Estimation and model estimates: reference/estimation-and-models.md
-      - Diagnostics: reference/diagnostics.md
-      - Classification: reference/classification.md
-      - Multivariate, survival and time series: reference/multivariate-survival-timeseries.md
-      - Composition and data: reference/composition-and-data.md
+  - API reference: api.md
   # Labelled Articles to match the R twin's navbar and the rest of the family,
   # while the pages keep their gallery/ paths so existing links still resolve.
   # The app page is listed here rather than at top level, because the header

@@ -143,5 +143,5 @@ from plotnine import ggplot, aes, geom_point
 ## Where next
 
 The [gallery](gallery/exploring-data.md) renders a worked example from every
-family, and the [reference](reference/theme-and-accessibility.md) documents each
+family, and the [API reference](api.md) documents each
 function and its options.

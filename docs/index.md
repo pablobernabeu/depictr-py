@@ -67,6 +67,6 @@ cards = "".join(
 print(f'<div class="dp-thumbs">{cards}</div>')
 ```
 
-The [gallery](gallery/exploring-data.md) works through every family with the plots rendered, and the [reference](reference/theme-and-accessibility.md) documents each function.
+The [gallery](gallery/exploring-data.md) works through every family with the plots rendered, and the [API reference](api.md) documents each function.
 
 Archived on Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)

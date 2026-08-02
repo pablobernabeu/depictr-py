@@ -42,5 +42,5 @@ streamlit run app/streamlit_app.py
 
 The app runs on your own machine, so nothing you load leaves it. Every plot it
 draws is a plotnine object from the same functions documented in the
-[reference](reference/theme-and-accessibility.md), so anything you find there can
+[API reference](api.md), so anything you find there can
 be reproduced in a script with the call the app shows you.
