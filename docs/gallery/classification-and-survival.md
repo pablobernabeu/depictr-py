@@ -1,8 +1,8 @@
 # Classification and survival
 
 The classification metrics come from scikit-learn and the survival estimate from
-lifelines; depictr redraws both under the shared theme. The survival figure adds
-a number-at-risk table beneath the curves in one call.
+lifelines, and depictr redraws both under the shared theme. The survival figure
+adds a number-at-risk table beneath the curves in one call.
 
 ```python exec="1" html="1" session="clf"
 import sys; sys.path.insert(0, "docs")

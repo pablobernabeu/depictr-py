@@ -7,7 +7,7 @@ classifier, set the look, and compose and save the result. The groups follow the
 order, so a function can be looked up in the same place on either site.
 
 The two indexes are cut slightly differently in the few places where the Python package's own
-families do not line up with the R one. Time series has no group of its own here: those
+families do not line up with the R one. Time series has no group of its own here, and those
 functions close the 'Multivariate, survival and time series' group, which is where the Python
 package has always documented them. The R index's 'Diagnostics and classification' is split in
 two, because the classification curves are all computed by scikit-learn and reached through a

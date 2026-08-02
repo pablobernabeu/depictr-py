@@ -35,7 +35,7 @@ Nothing yet.
 ### Fixed
 
 - Corrected the `palette_safety()` result shape shown in the README, which left
-  out `worst_condition` and `worst_pair`; the function returns those as well as
+  out `worst_condition` and `worst_pair`. The function returns those as well as
   the elements already listed.
 
 ## [0.2.0] - 2026-07-10
@@ -46,41 +46,40 @@ Nothing yet.
   plot composition operators (`|`, `/`) that `arrange_plots` uses.
 - `arrange_plots`, and the multi-panel reports built on it, warn when a
   `title` is dropped because plotnine compositions cannot carry a figure-level
-  title; previously the argument was discarded silently.
+  title. Previously the argument was discarded silently.
 
 ### Fixed
 
 - A missing value in a grouped column crashed at draw time. The default colour
   for missing (`NA`) levels was `grey80`, an R colour name that matplotlib
-  rejects; replaced with the equivalent hex `#cccccc`.
+  rejects, and it is now the equivalent hex `#cccccc`.
 - Error messages named nonexistent extras. The ImportError messages and module
   docstrings in the diagnostics, mixed-effects and multivariate modules pointed
   at `depictr[diagnostics]`, `depictr[mixed]` and `depictr[multivariate]`, none
-  of which is defined; corrected to `depictr[models]` and
+  of which is defined. They now name `depictr[models]` and
   `depictr[classification]` (scipy is a core dependency).
 
 ## [0.1.1] - 2026-07-08
 
 ### Added
 
-- **Inside legends.** Added an opt-in `legend_inside=False` parameter to
-  `explore_distribution`, `ecdf_plot`, `dumbbell_plot`, `missingness_map` and
-  `survival_plot`, plus the public `legend_inside()` theme helper, which places
-  the legend inside the panel (over a light background) rather than in a
-  right-hand margin.
+- Added an opt-in `legend_inside=False` parameter to `explore_distribution`,
+  `ecdf_plot`, `dumbbell_plot`, `missingness_map` and `survival_plot`, plus the
+  public `legend_inside()` theme helper, which places the legend inside the
+  panel (over a light background) rather than in a right-hand margin.
 - Added a 'Getting started' guide that walks through a short analysis end to end.
 
 ### Changed
 
-- **Survival risk table.** Rebuilt the number-at-risk table beneath
-  `survival_plot(risk_table=True)`: the curves now use the full panel width (no
-  left-hand gutter), the group names label the rows on the y-axis, and the
-  counts are coloured to match the curves, forming a tidy strip under the
-  curves rather than text floating in loosely spaced negative space.
-- **Survival statistics.** The log-rank *p*-value follows APA style (an
-  italicised *p*, no leading zero, and *p* < .001 reported below that
-  threshold). The colour legend and the risk-table rows now list the groups
-  in the same order (a user-set categorical order, otherwise first appearance).
+- Rebuilt the number-at-risk table beneath `survival_plot(risk_table=True)`.
+  The curves now use the full panel width (no left-hand gutter), the group names
+  label the rows on the y-axis, and the counts are coloured to match the curves,
+  forming a tidy strip under the curves rather than text floating in loosely
+  spaced negative space.
+- The log-rank *p*-value follows APA style (an italicised *p*, no leading zero,
+  and *p* < .001 reported below that threshold). The colour legend and the
+  risk-table rows now list the groups in the same order (a user-set categorical
+  order, otherwise first appearance).
 - The README and the PyPI project page now open with a gallery (a grouped
   density and Kaplan-Meier curves), and the documentation landing page gains the
   same hero plot and a PyPI install link.
@@ -89,8 +88,9 @@ Nothing yet.
 ### Fixed
 
 - Grouped histograms were invisible. `explore_distribution(kind="both"`
-  or `"histogram")` with a `group` drew no bars at all: `geom_histogram(fill=None)`
-  made them fully transparent instead of deferring to the group colour mapping.
+  or `"histogram")` with a `group` drew no bars at all, because
+  `geom_histogram(fill=None)` made them fully transparent instead of deferring
+  to the group colour mapping.
 - Axis and legend titles leaked raw column names. Several plots that
   meant to leave a title blank (`labs(x=None, ...)`) instead showed the mapped
   column's literal name (`x`, `value`, `variable`, `term`, `metric`, ...) because
@@ -100,7 +100,7 @@ Nothing yet.
   `timeseries` and `classification`.
 - The grouped risk-table path on `survival_plot(risk_table=True)` added the
   colour scale twice, which plotnine warned about and silently replaced with an
-  identical one; it is now added once.
+  identical one. It is now added once.
 - Corrected the Cook (1977) reference title and added DOIs to Cook (1977),
   Hedges (1981) and Allen et al. (2021).
 
@@ -121,31 +121,35 @@ object you can extend with `+`.
 
 ### Plotting functions, by family
 
-- **Exploratory:** `explore_distribution`, `explore_categorical`,
-  `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`,
-  `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`,
-  `group_comparison_plot`, `explore_pairs`, `raincloud_plot`.
-- **Estimation and tables:** `estimation_plot` (single-panel Cumming or
-  two-panel Gardner-Altman), `summary_table`.
-- **Model estimates:** `coefficient_plot`, `tidy_estimates` (a fitted model or a
-  tidy frame), `effects_plot`, `interaction_plot`, `compare_models`,
-  `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`,
+The functions fall into nine families.
+
+- Exploratory analysis has `explore_distribution`, `explore_categorical`,
+  `explore_bivariate`, `scatter_trend`, `correlation_heatmap`,
+  `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`,
+  `outlier_plot`, `group_comparison_plot`, `explore_pairs` and
+  `raincloud_plot`.
+- Estimation and tables are served by `estimation_plot` (single-panel Cumming
+  or two-panel Gardner-Altman) and `summary_table`.
+- Model estimates are drawn by `coefficient_plot`, `tidy_estimates` (a fitted
+  model or a tidy frame), `effects_plot`, `interaction_plot`, `compare_models`,
+  `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot` and
   `power_curve_plot`.
-- **Diagnostics:** `qq_plot`, `influence_plot`, `vif_plot`,
-  `binned_residual_plot`, `residual_diagnostics_plot`, `model_report`.
-- **Classification:** `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`,
-  `calibration_plot`, `gain_plot`, `lift_plot`, `threshold_plot`.
-- **Multivariate:** `pca_plot`, `scree_plot`, `cluster_plot`, `dendrogram_plot`,
-  `silhouette_plot`.
-- **Survival:** `survival_plot`, with an optional number-at-risk table.
-- **Time series:** `acf_plot`, `decompose_plot`, `seasonal_plot`,
+- Diagnostics are covered by `qq_plot`, `influence_plot`, `vif_plot`,
+  `binned_residual_plot`, `residual_diagnostics_plot` and `model_report`.
+- Classification is covered by `roc_curve_plot`, `pr_curve_plot`,
+  `confusion_matrix_plot`, `calibration_plot`, `gain_plot`, `lift_plot` and
+  `threshold_plot`.
+- Multivariate analysis has `pca_plot`, `scree_plot`, `cluster_plot`,
+  `dendrogram_plot` and `silhouette_plot`.
+- Survival has `survival_plot`, with an optional number-at-risk table.
+- Time series have `acf_plot`, `decompose_plot`, `seasonal_plot` and
   `timeseries_plot`.
-- **Composition:** `arrange_plots`, `save_plot`.
+- Composition has `arrange_plots` and `save_plot`.
 
 ### Design
 
 - Computation is delegated to the specialist packages (scikit-learn, statsmodels,
-  lifelines, scipy) and re-skinned under the shared theme; each is an optional
+  lifelines, scipy) and re-skinned under the shared theme. Each is an optional
   dependency installed via an extra (`depictr[classification]`, `depictr[models]`,
   `depictr[survival]`).
 - Reproducibly simulated datasets (`crop_yield`, `wellbeing_survey`,
@@ -154,7 +158,7 @@ object you can extend with `+`.
 
 ### Known limitations
 
-- plotnine compositions have no figure-level title; multi-panel grids carry
+- plotnine compositions have no figure-level title, so multi-panel grids carry
   their titles on each panel.
 - A handful of functions from the R package are not ported:
   `optimizer_fixef_plot` (there is no clean statsmodels equivalent of

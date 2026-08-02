@@ -148,10 +148,10 @@ print(show(p))
 
 A power curve read from a table you have already computed, here three effect
 sizes from a two-sample t-test power calculation. depictr does no power
-calculation of its own; statsmodels supplies the table and depictr draws it. The
-dashed reference line at 0.8 marks the conventional target, and the sample size
-at which each curve crosses it is the number needed per group to detect that
-effect.
+calculation of its own, so statsmodels supplies the table and depictr draws it.
+The dashed reference line at 0.8 marks the conventional target, and the sample
+size at which each curve crosses it is the number needed per group to detect
+that effect.
 
 ```python exec="1" html="1" source="material-block" session="models"
 import pandas as pd

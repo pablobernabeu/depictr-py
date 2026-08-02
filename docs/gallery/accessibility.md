@@ -1,7 +1,7 @@
 # Accessibility: a validated colourblind-safe palette
 
 depictr defaults to the Okabe-Ito palette and checks that choice rather than
-asserting it: a Machado-2009 simulator and a CIE-Lab distance test confirm the
+asserting it. A Machado-2009 simulator and a CIE-Lab distance test confirm the
 colours stay distinguishable under each colour-vision deficiency.
 
 ```python exec="1" html="1" session="a11y"

@@ -29,6 +29,9 @@ print(show(p))
 
 ## A categorical comparison
 
+One categorical column as a proportion within the levels of another, here
+education across the regions.
+
 ```python exec="1" html="1" source="material-block" session="eda"
 p = dp.explore_categorical(wb, "education", group="region")
 print(show(p))
@@ -54,6 +57,9 @@ print(show(p))
 ```
 
 ## Correlation heatmap
+
+Every pairwise Pearson correlation among the numeric columns, on one diverging
+scale running from -1 to 1.
 
 ```python exec="1" html="1" source="material-block" session="eda"
 p = dp.correlation_heatmap(wb)

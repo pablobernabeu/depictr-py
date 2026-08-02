@@ -2,35 +2,50 @@
 
 ## Citing depictr
 
-<!-- The version is hard-coded here, as it is on the other mkdocs About pages in
-     this family, because a Markdown page cannot read the installed version the
-     way the R twin's vignette does. On release, bump it in each of the three
-     places it appears on this page: once in the rendered reference below, once
-     in the `version` field of the BibTeX entry, and once inside the Download
-     .bib URI, where it is percent-encoded (`%7B0.2.2%7D`). That URI is the entry
-     itself, so the download needs no .bib file shipped beside the site. The
-     header version in mkdocs.yml (`extra.version`), the `version` field of
-     CITATION.cff and `__version__` in src/depictr/__init__.py carry the same
-     string and are bumped with it. -->
+<!-- The citation is built when the site is built, from the version the package
+     itself reports, so it cannot drift behind the code the way a hard-coded
+     string does. The rendered reference, the BibTeX entry and the Download .bib
+     link all come from one string, and the link is that same string
+     percent-encoded into a data URI, so the download needs no .bib file shipped
+     beside the site and cannot disagree with the entry shown above it. Two
+     copies of the version stay out of reach here and still have to be bumped by
+     hand on release, since neither file can execute code. One is
+     `extra.version` in mkdocs.yml, which fills the version chip in the header,
+     and the other is the `version` field of CITATION.cff. -->
 
 If depictr helps your work, a citation is appreciated:
 
-> Bernabeu, P. (2026). *depictr: A unified, colourblind-safe toolkit for
-> publication-ready statistical visualisation* (Python). Version 0.2.2.
-> <https://doi.org/10.5281/zenodo.21266311>
+```` python exec="1"
+from urllib.parse import quote
 
-```bibtex
-@software{depictr-py,
-  title   = {depictr: A unified, colourblind-safe toolkit for publication-ready statistical visualisation (Python)},
-  author  = {Pablo Bernabeu},
-  year    = {2026},
-  version = {0.2.2},
-  doi     = {10.5281/zenodo.21266311},
-  url     = {https://doi.org/10.5281/zenodo.21266311}
-}
-```
+from depictr import __version__
 
-<p><a download="depictr-py.bib" href="data:application/x-bibtex;charset=utf-8,%40software%7Bdepictr-py%2C%0A%20%20title%20%20%20%3D%20%7Bdepictr%3A%20A%20unified%2C%20colourblind-safe%20toolkit%20for%20publication-ready%20statistical%20visualisation%20%28Python%29%7D%2C%0A%20%20author%20%20%3D%20%7BPablo%20Bernabeu%7D%2C%0A%20%20year%20%20%20%20%3D%20%7B2026%7D%2C%0A%20%20version%20%3D%20%7B0.2.2%7D%2C%0A%20%20doi%20%20%20%20%20%3D%20%7B10.5281%2Fzenodo.21266311%7D%2C%0A%20%20url%20%20%20%20%20%3D%20%7Bhttps%3A%2F%2Fdoi.org%2F10.5281%2Fzenodo.21266311%7D%0A%7D">Download .bib</a></p>
+entry = f"""@Manual{{depictr-py,
+  title  = {{depictr: A unified, colourblind-safe toolkit for publication-ready statistical visualisation (Python)}},
+  author = {{Pablo Bernabeu}},
+  year   = {{2026}},
+  note   = {{Python package version {__version__}}},
+  doi    = {{10.5281/zenodo.21266311}},
+  url    = {{https://doi.org/10.5281/zenodo.21266311}},
+}}"""
+
+print("> Bernabeu, P. (2026). *depictr: A unified, colourblind-safe toolkit for")
+print(f"> publication-ready statistical visualisation* (Python). Version {__version__}.")
+print("> <https://doi.org/10.5281/zenodo.21266311>")
+print()
+
+# This block opens on four backticks so that the three printed here close the
+# BibTeX listing and nothing else. The listing is printed as Markdown rather
+# than as ready-made HTML because that is what earns it syntax highlighting and
+# a copy button from the theme.
+print("```bibtex")
+print(entry)
+print("```")
+print()
+
+print('<p><a download="depictr-py.bib" href="data:application/x-bibtex;'
+      f'charset=utf-8,{quote(entry, safe="")}">Download .bib</a></p>')
+````
 
 The repository's
 [`CITATION.cff`](https://github.com/pablobernabeu/depictr-py/blob/main/CITATION.cff)
@@ -47,7 +62,7 @@ Institute (2020), recognised for his work on R-based tools for data
 presentation, and holds a PhD in Psychology from Lancaster University.
 
 More about his work is at [pablobernabeu.github.io](https://pablobernabeu.github.io),
-on [GitHub](https://github.com/pablobernabeu), and via
+on [GitHub](https://github.com/pablobernabeu) and via
 [ORCID 0000-0003-1083-2460](https://orcid.org/0000-0003-1083-2460).
 
 depictr has a sibling [R package](https://pablobernabeu.github.io/depictr/) that
