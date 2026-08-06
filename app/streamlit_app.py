@@ -125,6 +125,8 @@ FAMILIES = {
     "Classification": ["ROC curve", "PR curve", "Gains", "Lift", "Calibration",
                        "Confusion matrix", "Threshold"],
     "Survival": ["Kaplan-Meier"],
+    "Time series": ["Series", "ACF / PACF", "Seasonal subseries",
+                    "Decomposition"],
     "Models (fits an OLS)": ["Coefficients", "Residual diagnostics",
                              "Effect of a predictor"],
 }
@@ -241,6 +243,60 @@ try:
              f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], "
              f"group=..., risk_table={rt}, legend_inside={legend_in})",
              deficiency)
+    elif family == "Time series":
+        # None of the bundled datasets is temporal, so this family carries its
+        # own demo: the trend-plus-seasonality series from the docstring
+        # examples in depictr.timeseries, seeded so the gallery is stable. Any
+        # numeric column can stand in, read in row order.
+        DEMO = "Demo monthly series (trend + seasonality)"
+        pick = st.selectbox("Series", [DEMO] + num_cols,
+                            help="Data columns are read in row order.")
+        if pick == DEMO:
+            t = np.arange(120)
+            series = pd.Series(
+                50 + 0.3 * t + 10 * np.sin(2 * np.pi * t / 12)
+                + np.random.default_rng(0).normal(0, 3, 120),
+                index=pd.period_range("2016-01", periods=120, freq="M"),
+            )
+            series_call = "series"
+            # The mirror must show how the demo series was built, or the
+            # displayed call would not be reproducible.
+            code_prefix = (
+                "t = np.arange(120)\n"
+                "series = pd.Series(\n"
+                "    50 + 0.3 * t + 10 * np.sin(2 * np.pi * t / 12)\n"
+                "    + np.random.default_rng(0).normal(0, 3, 120),\n"
+                "    index=pd.period_range('2016-01', periods=120, freq='M'))\n"
+            )
+        else:
+            series = data[pick]
+            series_call = f"{data_call}[{pick!r}]"
+            code_prefix = ""
+        if stage == "Series":
+            roll = st.checkbox(
+                "Rolling-mean overlay (12-point window)", value=True,
+                help="A window of one seasonal period smooths the season "
+                     "away, leaving the trend.")
+            window = 12 if roll else None
+            show(dp.timeseries_plot(series, rolling=window),
+                 code_prefix + f"dp.timeseries_plot({series_call}, "
+                 f"rolling={window})", deficiency)
+        elif stage == "ACF / PACF":
+            kind = st.selectbox("Kind", ["acf", "pacf"])
+            show(dp.acf_plot(series, kind=kind),
+                 code_prefix + f"dp.acf_plot({series_call}, kind={kind!r})",
+                 deficiency)
+        else:
+            # seasonal_plot and decompose_plot need the cycle length. The demo
+            # series' monthly index would let it be inferred, but a plain data
+            # column has no such index, so the widget is always shown.
+            period = int(st.number_input("Seasonal period", min_value=2,
+                                         value=12))
+            fn = {"Seasonal subseries": "seasonal_plot",
+                  "Decomposition": "decompose_plot"}[stage]
+            show(getattr(dp, fn)(series, period=period),
+                 code_prefix + f"dp.{fn}({series_call}, period={period})",
+                 deficiency)
     elif family.startswith("Models"):
         outcome = st.selectbox("Outcome (numeric)", num_cols)
         predictors = st.multiselect(

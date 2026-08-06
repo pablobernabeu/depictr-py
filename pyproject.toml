@@ -52,7 +52,12 @@ all = [
     "statsmodels>=0.14", "scikit-learn>=1.3", "lifelines>=0.27",
     "streamlit>=1.30",
 ]
-test = ["pytest>=7.0"]
+test = [
+    "pytest>=7.0",
+    # CI reads the overall figure with "coverage report --format=total", which
+    # needs coverage 7; pytest-cov 6 is the first release to require it.
+    "pytest-cov>=6",
+]
 docs = [
     "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",
     # Keeps the retired per-group reference paths resolving after the reference

@@ -14,6 +14,12 @@ on:
     types: [published]
   workflow_dispatch:
 
+# The build job only needs to read the repository. The publish job declares its
+# own permissions block, which replaces this default entirely and grants just
+# the id-token needed for trusted publishing.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
