@@ -40,6 +40,24 @@ def _require_sklearn():
     return m
 
 
+def _positive_count(y_true) -> int:
+    """Number of positive cases, refusing a single-class outcome.
+
+    The gains and lift curves both divide by this. Substituting 1 for a zero
+    denominator, as they once did, draws a curve flat along the axis: a reader
+    sees a catastrophically bad model where the truth is that the quantity does
+    not exist. An all-positive outcome is as meaningless the other way, every
+    depth capturing everything. The sibling curves already fail loudly here,
+    since scikit-learn refuses a single-class input, and so does the R twin,
+    whose wording this shares.
+    """
+    y_true = np.asarray(y_true)
+    n_pos = int(np.sum(y_true == 1))
+    if n_pos == 0 or n_pos == len(y_true):
+        raise ValueError("Gains/lift need both positive and negative outcomes.")
+    return n_pos
+
+
 def roc_curve_plot(y_true, y_score, title=None):
     """ROC curve with the area under the curve (AUC) annotated.
 
@@ -80,6 +98,22 @@ def roc_curve_plot(y_true, y_score, title=None):
 
 def pr_curve_plot(y_true, y_score, title=None):
     """Precision-recall curve with the average precision (AP) annotated.
+
+    The dashed horizontal line is the positive rate, the precision a random
+    classifier achieves, which is the baseline a precision-recall curve is read
+    against (unlike a ROC curve, whose baseline is fixed at the diagonal).
+
+    Parameters
+    ----------
+    y_true : array-like
+        Binary outcomes (0/1).
+    y_score : array-like
+        Predicted scores or probabilities for the positive class.
+    title : str, optional
+
+    Returns
+    -------
+    plotnine.ggplot
 
     Examples
     --------
@@ -198,6 +232,25 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None):
 def gain_plot(y_true, y_score, title=None):
     """Cumulative gains chart: positives captured as more of the ranked population is targeted.
 
+    The population is sorted by ``y_score``, best first, and the curve traces
+    the share of all positive cases captured by each depth. The dashed diagonal
+    is random targeting.
+
+    Parameters
+    ----------
+    y_true : array-like
+        Binary outcomes (0/1). Both classes must be present: with no positives
+        the share captured has no denominator, and with no negatives every depth
+        captures everything.
+    y_score : array-like
+        Predicted scores or probabilities for the positive class. Only the
+        ranking matters, so any monotone score works.
+    title : str, optional
+
+    Returns
+    -------
+    plotnine.ggplot
+
     Examples
     --------
     >>> import depictr as dp
@@ -207,8 +260,9 @@ def gain_plot(y_true, y_score, title=None):
     >>> p = dp.gain_plot(ct["adverse_event"], score)
     """
     y_true = np.asarray(y_true)
+    n_pos = _positive_count(y_true)
     order = np.argsort(-np.asarray(y_score))
-    captured = np.cumsum(y_true[order]) / max(y_true.sum(), 1)
+    captured = np.cumsum(y_true[order]) / n_pos
     population = np.arange(1, len(y_true) + 1) / len(y_true)
     df = pd.DataFrame({
         "population": np.concatenate([[0], population]),
@@ -231,6 +285,21 @@ def lift_plot(y_true, y_score, title=None):
     means that decile holds three times the baseline positive rate. The dashed
     line at 1 is random targeting.
 
+    Parameters
+    ----------
+    y_true : array-like
+        Binary outcomes (0/1). Both classes must be present: lift is a ratio to
+        the baseline positive rate, which is zero with no positives and one at
+        every depth with no negatives.
+    y_score : array-like
+        Predicted scores or probabilities for the positive class. Only the
+        ranking matters, so any monotone score works.
+    title : str, optional
+
+    Returns
+    -------
+    plotnine.ggplot
+
     Examples
     --------
     >>> import depictr as dp
@@ -240,9 +309,10 @@ def lift_plot(y_true, y_score, title=None):
     >>> p = dp.lift_plot(ct["adverse_event"], score)
     """
     y_true = np.asarray(y_true)
+    n_pos = _positive_count(y_true)
     order = np.argsort(-np.asarray(y_score))
     population = np.arange(1, len(y_true) + 1) / len(y_true)
-    captured = np.cumsum(y_true[order]) / max(y_true.sum(), 1)
+    captured = np.cumsum(y_true[order]) / n_pos
     df = pd.DataFrame({"population": population, "lift": captured / population})
     return (
         ggplot(df, aes("population", "lift"))

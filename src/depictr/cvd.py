@@ -91,7 +91,7 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
         raise ValueError("`severity` must lie in [0, 1].")
     matrix = (1 - severity) * np.eye(3) + severity * _MACHADO_1[deficiency]
     linear = _srgb_to_linear(_to_rgb01(colours))
-    simulated = _linear_to_srgb((linear @ matrix.T))
+    simulated = _linear_to_srgb(linear @ matrix.T)
     return [mcolors.to_hex(np.clip(row, 0, 1)) for row in simulated]
 
 
@@ -144,7 +144,9 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
     Parameters
     ----------
     colours : list of str, optional
-        The palette to test. Defaults to the depictr qualitative palette.
+        The palette to test. Defaults to the depictr qualitative palette. Needs
+        at least two colours: a pairwise distance over fewer than two has no
+        value, not an infinitely safe one.
     threshold : float
         The smallest acceptable Delta-E.
 
@@ -164,7 +166,17 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
     """
     from .palette import depictr_palette
 
-    colours = colours or depictr_palette()
+    # `colours or ...` would have swapped in the default palette for an empty
+    # list, reporting on eight colours the caller never passed.
+    colours = depictr_palette() if colours is None else list(colours)
+    if len(colours) < 2:
+        # Otherwise the no-pair sentinel below survives to the result, which
+        # then claims safe=True at an infinite distance and names one colour as
+        # both halves of the worst pair. inf is also not JSON-serialisable, and
+        # this dict gets printed straight into the published docs.
+        raise ValueError(
+            "`colours` needs at least two colours to have a pairwise distance."
+        )
     by_condition, pairs = {}, {}
     by_condition["normal"], pairs["normal"] = _min_pairwise_delta_e(colours)
     for deficiency in DEFICIENCIES:

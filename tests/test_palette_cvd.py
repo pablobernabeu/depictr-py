@@ -1,6 +1,7 @@
 """Tests for the palette and the colour-vision-deficiency machinery."""
 
 import re
+import warnings
 
 import numpy as np
 import pytest
@@ -20,8 +21,32 @@ def test_qualitative_palette_defaults_to_full_set():
 
 def test_qualitative_slices_and_interpolates():
     assert depictr_palette(3) == OKABE_ITO[:3]
-    long = depictr_palette(12)
+    with pytest.warns(UserWarning, match="guarantee holds only up to 8"):
+        long = depictr_palette(12)
     assert len(long) == 12 and all(HEX.match(c) for c in long)
+
+
+def test_interpolating_past_the_base_set_warns():
+    # The base set itself must stay quiet: the warning is about interpolation,
+    # not about asking for a slice.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        depictr_palette()
+        depictr_palette(len(OKABE_ITO))
+        depictr_palette(20, kind="sequential")
+    with pytest.warns(UserWarning, match="colour-vision-deficiency guarantee"):
+        depictr_palette(len(OKABE_ITO) + 1)
+
+
+def test_interpolated_palette_is_not_colourblind_safe():
+    # Pins the limit rather than leaving it to be discovered: past the eight
+    # base colours the interpolated set fails the package's own check, which is
+    # exactly why depictr_palette warns there.
+    with pytest.warns(UserWarning):
+        interpolated = depictr_palette(12)
+    assert palette_safety(interpolated)["safe"] is False
+    # The size the guarantee is actually made for still clears the threshold.
+    assert palette_safety(depictr_palette(len(OKABE_ITO)))["safe"] is True
 
 
 def test_sequential_and_diverging_ramps():
@@ -62,6 +87,19 @@ def test_default_palette_is_safe():
     assert report["safe"] is True
     assert set(report["by_condition"]) == {"normal", "protan", "deutan", "tritan"}
     assert report["worst_condition"] in report["by_condition"]
+
+
+def test_palette_safety_needs_a_pair():
+    # One colour has no pairwise distance. The no-pair sentinel used to survive
+    # to the result as min_delta_e = inf with safe=True, and a worst_pair that
+    # named the same colour twice.
+    with pytest.raises(ValueError, match="at least two colours"):
+        palette_safety(["#005b96"])
+    # An empty list is a caller error too, not a request for the default set.
+    with pytest.raises(ValueError, match="at least two colours"):
+        palette_safety([])
+    # Passing nothing at all still means the default palette.
+    assert palette_safety()["worst_pair"] == palette_safety(OKABE_ITO)["worst_pair"]
 
 
 def test_near_identical_colours_flagged_unsafe():

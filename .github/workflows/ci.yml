@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Dependencies move when this repository does not, and depictr sits on a deep
+  # plotting stack. A weekly run turns an upstream break into a dated red badge
+  # rather than a surprise on the next push.
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 # The workflow only checks out and tests the code, so the default token needs
@@ -18,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v7
@@ -32,6 +37,9 @@ jobs:
       - name: Install the package with its optional back-ends and test tools
         run: python -m pip install -e ".[all,test]"
 
+      - name: Lint
+        run: ruff check src tests
+
       - name: Run the test suite with coverage
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
@@ -41,3 +49,78 @@ jobs:
           # a glance rather than dug out of the log. Coverage is reported, not
           # gated: there is deliberately no fail-under threshold.
           echo "Coverage: $(python -m coverage report --format=total)% of lines (Python ${{ matrix.python-version }})" >> "$GITHUB_STEP_SUMMARY"
+
+  # The matrix above installs the package editable from the checkout, where a
+  # missing packaged file is masked by the source tree sitting next to it. This
+  # job proves the built wheel stands on its own: install it into a bare
+  # environment, leave the repository, and draw a plot from there.
+  wheel:
+    name: Installed wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Build the distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Install the wheel outside the checkout and draw a plot
+        env:
+          MPLBACKEND: Agg   # headless: no display on the runner
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-venv"
+          "$RUNNER_TEMP/wheel-venv/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/wheel-venv/bin/pip" install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-venv/bin/python" - <<'PY'
+          import os
+
+          import depictr as dp
+
+          print("depictr", dp.__version__)
+          assert dp.__version__
+          # Rendering a real figure is what the import alone cannot prove: it
+          # pulls in a bundled dataset, the theme, the palette and plotnine's
+          # renderer, all from an installed wheel with no source tree in sight.
+          plot = dp.explore_distribution(
+              dp.lexical_decision(), "RT", group="condition", kind="both"
+          )
+          plot.save("smoke.png", width=4, height=3, dpi=72, verbose=False)
+          assert os.path.getsize("smoke.png") > 0
+          # The accessibility check is the package's central claim, so the wheel
+          # has to be able to run it, not merely to ship the module.
+          assert dp.palette_safety()["safe"] is True
+          PY
+
+  # The floors in pyproject are a promise to anyone resolving against an older
+  # stack, and nothing tested them: three of them were below what plotnine
+  # itself requires, describing a combination no install could produce. This
+  # job installs the declared minima so the promise stays honest. A failure
+  # here means the floors need raising to what actually works, not that the
+  # job is too strict.
+  minimum-versions:
+    name: Declared minimum dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Install the declared floors, then the package without resolution
+        run: |
+          python -m pip install --upgrade pip
+          pip install "plotnine==0.15.*" "pandas==2.2.*" "numpy==1.24.*" \
+                      "matplotlib==3.8.*" "scipy==1.8.*" pytest
+          pip install -e . --no-deps
+      # tests/ only, not the default testpaths: those also collect the doctests
+      # in src/, whose Examples call the optional model, classification and
+      # survival back-ends. Those are not installed here, and their floors are
+      # not what this job is checking, so collecting them would fail for a
+      # reason unrelated to the core floors. The suite itself skips a back-end
+      # it cannot import.
+      - name: Run the test suite against the core floors
+        env:
+          MPLBACKEND: Agg   # headless: no display on the runner
+        run: python -m pytest tests -q

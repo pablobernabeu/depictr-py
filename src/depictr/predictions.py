@@ -223,7 +223,12 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     others = [c for c in predictors if c not in (x, group)]
     held = _reference_row(frame, others)
     x_seq = np.linspace(frame[x].min(), frame[x].max(), n)
-    levels = list(pd.unique(frame[group]))
+    # dropna before the levels are taken: the loop below coerces each level with
+    # str(), which would turn a missing group value into a real "nan" line and
+    # legend entry. Every other grouped function in the package drops first.
+    levels = list(pd.unique(frame[group].dropna()))
+    if not levels:
+        raise ValueError(f"{group!r} has no non-missing values to group by.")
 
     parts = []
     for level in levels:
@@ -323,7 +328,10 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     else:
         offset = {m: (j / (n_models - 1) - 0.5) * spread
                   for j, m in enumerate(model_levels)}
-    est["y"] = [base_y[t] + offset[m] for t, m in zip(est["term"], est["model"])]
+    # strict=True: both are columns of the same frame, so unequal lengths cannot
+    # happen and a silent truncation would misplace every later estimate.
+    est["y"] = [base_y[t] + offset[m]
+                for t, m in zip(est["term"], est["model"], strict=True)]
 
     from plotnine import (
         element_blank,

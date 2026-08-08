@@ -68,13 +68,19 @@ dp.palette_safety()
 #  'safe': True, 'threshold': 5.0}
 ```
 
+The guarantee belongs to the eight Okabe-Ito colours. A plot with more than
+eight groups has to interpolate between them, and the interpolated colours no
+longer clear the distance threshold, so `depictr_palette` warns when it is asked
+for a ninth. Facet the groups, or map them to the sequential ramp, when a figure
+needs more.
+
 ## Installation
 
 depictr is on [PyPI](https://pypi.org/project/depictr/):
 
 ```bash
 pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scipy)
-pip install depictr[all]       # plus the optional back-ends and the app
+pip install depictr[all]       # plus the optional computation back-ends
 ```
 
 The classification, model and survival plots delegate to scikit-learn,

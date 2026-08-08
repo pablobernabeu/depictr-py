@@ -31,7 +31,10 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
         ``max_levels``).
     group : str, optional
         A grouping column; one summary column is produced per level, alongside an
-        overall column.
+        overall column. The levels are ordered as an ordered categorical declares
+        them and sorted otherwise, so the table does not depend on the row order.
+        Records whose group value is missing get a ``Missing`` column, so the
+        group sizes always sum to the overall ``N``.
     digits : int
         Decimal places for the numeric summaries.
     missing : bool
@@ -45,9 +48,10 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
     Returns
     -------
     pandas.DataFrame
-        Columns ``variable``, ``statistic``, ``Overall`` and one column per group
-        level. The first row reports ``N``. The variable name is blanked on its
-        repeated rows for readability.
+        Columns ``variable``, ``statistic``, ``Overall``, one column per group
+        level, and a trailing ``Missing`` column when the group column has any
+        missing values. The first row reports ``N``. The variable name is blanked
+        on its repeated rows for readability.
 
     Examples
     --------
@@ -84,8 +88,19 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
     # One sub-frame per output column: the whole data plus, if grouping, a split.
     columns = {"Overall": data}
     if group is not None:
-        for lvl in pd.unique(data[group].dropna()):
+        # _levels rather than first-appearance order, the same helper the level
+        # rows use: an ordered categorical keeps its declared order and anything
+        # else is sorted, so shuffling the rows cannot reorder the table.
+        for lvl in _levels(data[group]):
             columns[str(lvl)] = data[data[group] == lvl]
+        # Records with no group value need a column of their own. Without one
+        # they fall out of every group while Overall still counts them, so the
+        # group sizes stop summing to N with nothing to say why.
+        if data[group].isna().any():
+            na_name = "Missing"
+            while na_name in columns:  # a level may itself be called "Missing"
+                na_name += "_"
+            columns[na_name] = data[data[group].isna()]
     col_names = list(columns.keys())
 
     def num_cell(v):

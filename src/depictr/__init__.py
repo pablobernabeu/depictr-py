@@ -29,6 +29,9 @@ from .compose import arrange_plots, save_plot
 from .cvd import palette_safety, simulate_cvd
 from .data import DATASETS, clinical_trial, crop_yield, lexical_decision, wellbeing_survey
 from .diagnostics import binned_residual_plot, influence_plot, qq_plot, vif_plot
+
+# Multi-panel composites and model-specific plots
+from .diagnostics_panels import model_report, residual_diagnostics_plot
 from .distributions_extra import (
     dumbbell_plot,
     ecdf_plot,
@@ -42,7 +45,9 @@ from .eda import (
     explore_distribution,
     missingness_map,
 )
+from .eda_extra import explore_pairs, raincloud_plot
 from .estimation import estimation_plot
+from .mixed import random_effects_plot
 from .models import coefficient_plot, tidy_estimates
 from .multivariate import (
     cluster_plot,
@@ -52,6 +57,9 @@ from .multivariate import (
     silhouette_plot,
 )
 from .palette import depictr_accent, depictr_brand, depictr_palette
+from .posterior import frequentist_bayesian_plot, posterior_plot
+from .power import power_curve_plot
+from .predictions import compare_models, effects_plot, interaction_plot
 from .survival import survival_plot
 from .tables import summary_table
 from .theme import (
@@ -62,13 +70,6 @@ from .theme import (
     theme_depictr,
 )
 from .timeseries import acf_plot, decompose_plot, seasonal_plot, timeseries_plot
-# Multi-panel composites and model-specific plots
-from .diagnostics_panels import model_report, residual_diagnostics_plot
-from .eda_extra import explore_pairs, raincloud_plot
-from .mixed import random_effects_plot
-from .posterior import frequentist_bayesian_plot, posterior_plot
-from .power import power_curve_plot
-from .predictions import compare_models, effects_plot, interaction_plot
 
 __version__ = "0.2.2"
 

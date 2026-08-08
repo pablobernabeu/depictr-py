@@ -82,3 +82,28 @@ lines = [f"{original}  ->  {seen}"
          for original, seen in zip(palette, simulated)]
 print(pre("\n".join(lines)))
 ```
+
+## Where the guarantee stops
+
+Eight colours is the guarantee, not a starting point. Asked for more,
+`depictr_palette` interpolates between the Okabe-Ito colours, and the
+in-between colours land close enough together that the same check fails them.
+The package warns when that happens rather than handing back colours under a
+promise it cannot keep, so the honest reading of the report below is that nine
+groups is already the ceiling and ten is past it.
+
+```python exec="1" html="1" source="material-block" session="a11y"
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")  # the warning is the point; here we tabulate it
+    sizes = {n: dp.palette_safety(dp.depictr_palette(n)) for n in (8, 9, 10, 12)}
+
+lines = [f"n = {n:>2}   min Delta-E {r['min_delta_e']:>5}   safe: {r['safe']}"
+         for n, r in sizes.items()]
+print(pre("\n".join(lines)))
+```
+
+With more than eight groups, facet them, or map the variable to the sequential
+ramp (`dp.depictr_palette(n, kind="sequential")`), which stays ordered and
+legible at any length because lightness, not hue, does the work.

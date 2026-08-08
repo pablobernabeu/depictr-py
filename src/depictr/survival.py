@@ -11,6 +11,8 @@ Install the optional dependency with ``pip install depictr[survival]``.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -35,7 +37,10 @@ def _nice_breaks(tmax, n=5):
     Picks a 1/2/2.5/5/10 step so the time axis reads in round numbers rather
     than the arbitrary values an even split would give.
     """
-    if tmax <= 0:
+    # Not finite: the step search below compares `raw <= m * mag`, and every
+    # comparison against a NaN is False, so the generator would run dry and
+    # raise a bare StopIteration naming nothing.
+    if not np.isfinite(tmax) or tmax <= 0:
         return np.array([0.0])
     raw = tmax / n
     mag = 10 ** np.floor(np.log10(raw))
@@ -70,12 +75,14 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     Parameters
     ----------
     time : array-like
-        Follow-up times.
+        Follow-up times. Must be finite: a missing or infinite time raises,
+        since dropping or imputing it is the analyst's decision.
     event : array-like
         Event indicator (1 = event, 0 = censored).
     group : array-like, optional
         Group label per observation; one curve per group, plus a log-rank test
-        of the difference.
+        of the difference. Observations with a missing group are dropped with a
+        warning, since they belong to no arm.
     conf_level : float
         Accepted for future use; the Python twin does not yet draw the
         confidence band or censor marks the R package draws.
@@ -106,9 +113,34 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     from lifelines import KaplanMeierFitter
 
     time = np.asarray(time, dtype=float)
+    # A missing or infinite follow-up time has no place on a time axis, and it
+    # used to surface far downstream as an unattributed StopIteration from the
+    # axis-break search. Deciding whether to drop or impute is the analyst's
+    # call, not something to make silently on their behalf.
+    if not np.isfinite(time).all():
+        raise ValueError(
+            "`time` must be finite; drop or impute missing follow-up times "
+            "before plotting."
+        )
     event = np.asarray(event, dtype=int)
     groups = (np.asarray(group) if group is not None
               else np.repeat("all", len(time)))
+    # A missing group belongs to no arm, so drop those rows before the levels
+    # are taken: pd.unique() keeps the missing value as a level of its own,
+    # `groups == lvl` then matches nothing, and the arm is drawn as a phantom
+    # all-censored curve labelled "None".
+    missing = pd.isna(groups)
+    if missing.any():
+        warnings.warn(
+            f"{int(missing.sum())} observation(s) with a missing group were "
+            f"dropped.",
+            UserWarning,
+            stacklevel=2,
+        )
+        keep = ~missing
+        time, event, groups = time[keep], event[keep], groups[keep]
+        if not len(groups):
+            raise ValueError("`group` is missing for every observation.")
     # One factor order for the whole figure -- a user-set categorical order if
     # there is one, otherwise first appearance -- so the colour legend and the
     # risk-table rows list the groups identically.

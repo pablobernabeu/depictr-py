@@ -83,7 +83,10 @@ def scale_colour_depictr(n: int | None = None, **kwargs):
     n : int, optional
         Number of colours to draw. Defaults to the full qualitative palette;
         pass ``n`` when a plot has more groups than the eight base colours so the
-        palette is interpolated to fit.
+        palette is interpolated to fit. Interpolation loses the
+        colourblind-safety guarantee, which covers the eight base colours only,
+        so :func:`depictr.palette.depictr_palette` warns past eight; facet the
+        groups, or use the sequential ramp, when there are more.
     **kwargs
         Passed to :func:`plotnine.scale_color_manual` (for example ``name``).
 

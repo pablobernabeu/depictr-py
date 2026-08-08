@@ -31,6 +31,8 @@ from plotnine import (
 from .palette import ACCENT, BRAND
 from .theme import (
     legend_inside as _legend_inside,
+)
+from .theme import (
     scale_colour_depictr,
     scale_fill_depictr,
     theme_depictr,

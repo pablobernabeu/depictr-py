@@ -7,6 +7,8 @@ plotnine object you can extend with ``+``.
 
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 from plotnine import (
     aes,
@@ -31,6 +33,8 @@ from plotnine import (
 from .palette import ACCENT, BRAND, depictr_palette
 from .theme import (
     legend_inside as _legend_inside,
+)
+from .theme import (
     scale_colour_depictr,
     scale_fill_depictr,
     theme_depictr,
@@ -155,7 +159,8 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
         counts = (data.groupby([group, x], observed=True).size()
                   .rename("n").reset_index())
         if proportion:
-            counts["value"] = counts["n"] / counts.groupby(group, observed=True)["n"].transform("sum")
+            group_total = counts.groupby(group, observed=True)["n"].transform("sum")
+            counts["value"] = counts["n"] / group_total
         else:
             counts["value"] = counts["n"]
         p = (ggplot(counts, aes(x=x, y="value", fill=group))
@@ -181,6 +186,8 @@ def correlation_heatmap(data, cols=None, title=None):
     Returns
     -------
     plotnine.ggplot
+        Zero-variance columns are dropped with a warning, and any correlation
+        that remains undefined is labelled ``n/a`` rather than left blank.
 
     Examples
     --------
@@ -189,13 +196,27 @@ def correlation_heatmap(data, cols=None, title=None):
     >>> p = dp.correlation_heatmap(wb)
     """
     num = data[cols] if cols else data.select_dtypes("number")
+    # A correlation is undefined for a constant column, so pandas fills the
+    # whole row and column with NaN, which the label formatter then rendered as
+    # the literal string "nan". Drop those columns and say so.
+    const = [c for c in num.columns if num[c].dropna().nunique() < 2]
+    if const:
+        warnings.warn(
+            "correlation_heatmap(): dropping zero-variance column(s): "
+            f"{', '.join(str(c) for c in const)}.",
+            UserWarning,
+            stacklevel=2,
+        )
+        num = num.drop(columns=const)
     corr = num.corr()
     order = list(corr.columns)
     long = corr.reset_index().melt(id_vars="index", var_name="var2",
                                    value_name="r").rename(columns={"index": "var1"})
     long["var1"] = pd.Categorical(long["var1"], categories=order, ordered=True)
     long["var2"] = pd.Categorical(long["var2"], categories=order[::-1], ordered=True)
-    long["label"] = long["r"].map(lambda v: f"{v:.2f}")
+    # Pairwise-complete overlap too small to correlate still leaves an NaN cell
+    # after the constant columns have gone, so label it rather than print "nan".
+    long["label"] = long["r"].map(lambda v: "n/a" if pd.isna(v) else f"{v:.2f}")
     return (
         ggplot(long, aes(x="var1", y="var2", fill="r"))
         + geom_tile(color="white")

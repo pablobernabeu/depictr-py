@@ -19,6 +19,7 @@ pip install -e ".[all,test,docs]"
 ```
 
 ```bash
+ruff check src tests      # lint (CI runs the same command)
 pytest                    # run the test suite
 mkdocs build --strict     # build the docs (runs the gallery examples)
 ```
@@ -36,8 +37,8 @@ at build time, so a new family is easiest to review with a guide added there.
 ## Submitting a pull request
 
 Base your work on `main`, keep the change focused, and add or update tests and
-documentation alongside the code. Running `pytest` and `mkdocs build --strict`
-before opening the pull request saves a round trip.
+documentation alongside the code. Running `ruff check src tests`, `pytest` and
+`mkdocs build --strict` before opening the pull request saves a round trip.
 
 By contributing you agree that your contribution is licensed under the same MIT
 licence as the package, and that you will follow the

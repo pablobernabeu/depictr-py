@@ -306,7 +306,10 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     # Each entry of icoord/dcoord is the four-point bracket joining one merge;
     # turn each bracket into three segments (up, across, down).
     rows = []
-    for xs, ys in zip(dnd["icoord"], dnd["dcoord"]):
+    # strict=True: scipy returns one icoord and one dcoord entry per merge, so a
+    # length mismatch is impossible by construction and should raise rather than
+    # silently drop the tail of the dendrogram.
+    for xs, ys in zip(dnd["icoord"], dnd["dcoord"], strict=True):
         for i in range(3):
             rows.append({"x": xs[i], "y": ys[i],
                          "xend": xs[i + 1], "yend": ys[i + 1]})

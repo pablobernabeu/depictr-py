@@ -217,7 +217,11 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
             se = float(v.std(ddof=1)) / np.sqrt(n)
             tc = float(stats.t.ppf(1 - (1 - conf_level) / 2, n - 1))
         else:
-            se = tc = 0.0
+            # nan, not zero: a single observation has no interval, and a
+            # zero-width one would draw a cap pair at the mean claiming perfect
+            # precision while the difference panel below reports the same group
+            # as undefined. Omitting it is what _boot_diff_ci already does.
+            se = tc = np.nan
         summ.append({"group": g, "mean": m, "lo": m - tc * se, "hi": m + tc * se})
     summ_df = pd.DataFrame(summ)
     summ_df["group"] = pd.Categorical(summ_df["group"], categories=levels, ordered=True)
@@ -226,7 +230,8 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         ggplot(summ_df, aes(x="group", y="mean"))
         + geom_jitter(aes(x=group, y=y), data=d, width=0.12, alpha=0.25,
                       color=brand, size=0.9, inherit_aes=False)
-        + geom_errorbar(aes(ymin="lo", ymax="hi"), width=0.12, color=brand, size=0.8)
+        + geom_errorbar(aes(ymin="lo", ymax="hi"), width=0.12, color=brand,
+                        size=0.8, na_rm=True)
         + geom_point(color=brand, size=2.8)
         # The title rides on the top panel so it reads as the figure title
         # (plotnine compositions have no super-title).

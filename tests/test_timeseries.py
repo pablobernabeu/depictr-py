@@ -1,5 +1,7 @@
 """Smoke tests for the time-series plots: each builds a figure without error."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -55,6 +57,56 @@ def test_decompose_plot_needs_period_for_bare_array():
 def test_seasonal_plot():
     assert _builds(ts.seasonal_plot(S))
     assert _builds(ts.seasonal_plot(V, period=12))
+
+
+def test_seasonal_cycles_are_ordered_numerically():
+    # A plain categorical over strings sorts "10" between "1" and "2", which
+    # both scrambles the legend and misassigns the colour ramp.
+    p = ts.seasonal_plot(_monthly_series(144), period=12)
+    categories = list(p.data["cycle"].cat.categories)
+    assert p.data["cycle"].cat.ordered
+    assert categories == [str(c) for c in range(12)]
+
+
+def test_seasonal_cycles_use_the_sequential_ramp():
+    # Twelve cycles is past the eight colourblind-safe qualitative colours, so
+    # the cycle scale must be the sequential ramp rather than an interpolated
+    # qualitative palette (which would also warn).
+    import depictr as dp
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        p = ts.seasonal_plot(_monthly_series(144), period=12)
+    scale = next(s for s in p.scales if "color" in s.aesthetics)
+    assert list(scale.palette(12)) == dp.depictr_palette(12, kind="sequential")
+
+
+def test_annual_index_is_not_a_seasonal_period():
+    # An annual index once mapped to period 1, which is not a seasonal period:
+    # seasonal_plot drew one point per "cycle" and neither function complained.
+    annual = pd.Series(
+        np.arange(20.0), index=pd.period_range("2000", periods=20, freq="Y")
+    )
+    with pytest.raises(ValueError, match="Could not infer the seasonal period"):
+        ts.seasonal_plot(annual)
+    pytest.importorskip("statsmodels")
+    with pytest.raises(ValueError, match="Could not infer the seasonal period"):
+        ts.decompose_plot(annual)
+
+
+def test_seasonal_plot_rejects_an_empty_series():
+    # The cycle count now comes from cycle.max(), so an empty series has to be
+    # turned away by name rather than by a numpy reduction error.
+    with pytest.raises(ValueError, match="no non-missing values"):
+        ts.seasonal_plot(np.array([]), period=12)
+
+
+def test_daily_index_infers_a_weekly_period():
+    daily = pd.Series(
+        np.arange(40.0),
+        index=pd.period_range("2000-01-01", periods=40, freq="D"),
+    )
+    assert ts._infer_period(daily, None) == 7
 
 
 def test_timeseries_plot_raw_and_rolling():

@@ -22,12 +22,14 @@ from plotnine import (
     geom_ribbon,
     geom_segment,
     ggplot,
+    guide_legend,
     labs,
+    scale_color_manual,
     scale_x_continuous,
 )
 
-from .palette import ACCENT, BRAND
-from .theme import scale_colour_depictr, theme_depictr
+from .palette import ACCENT, BRAND, depictr_palette
+from .theme import theme_depictr
 
 
 def _require_statsmodels():
@@ -59,8 +61,12 @@ def _as_series(x):
 def _infer_period(x, period):
     """Return the seasonal period, inferred from a datetime/period index if absent.
 
-    A monthly index gives 12, a quarterly index 4. Anything else needs an
-    explicit ``period``.
+    A monthly index gives 12, a quarterly index 4 and a daily index 7 (the
+    weekly cycle, the only seasonality a bare daily index implies). Anything
+    else needs an explicit ``period``. Annual data is deliberately absent: it
+    has no within-year position to plot against, and a period of 1 is not a
+    seasonal period, so it falls through to the error below rather than
+    producing a figure with one observation per cycle.
     """
     if period is not None:
         return int(period)
@@ -68,7 +74,7 @@ def _infer_period(x, period):
     freq = getattr(idx, "freqstr", None) or getattr(idx, "inferred_freq", None)
     if freq:
         head = freq.upper()[0]
-        mapping = {"M": 12, "Q": 4, "A": 1, "Y": 1, "D": 7}
+        mapping = {"M": 12, "Q": 4, "D": 7}
         if head in mapping:
             return mapping[head]
     raise ValueError(
@@ -159,7 +165,8 @@ def decompose_plot(x, period=None, model="additive", title=None):
         The series. A datetime or period index sets the x-axis; otherwise the
         observation number is used.
     period : int, optional
-        Seasonal period. Inferred from a monthly/quarterly index when omitted.
+        Seasonal period. Inferred from a monthly, quarterly or daily index when
+        omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
     model : {"additive", "multiplicative"}
         The decomposition model.
     title : str, optional
@@ -223,16 +230,19 @@ def decompose_plot(x, period=None, model="additive", title=None):
 def seasonal_plot(x, period=None, title=None):
     """Seasonal subseries plot: value by position in the period, one line per cycle.
 
-    Each completed cycle (for example each year of monthly data) is one line,
-    drawn across the within-period position (month 1 to 12). Overlaying the cycles
-    makes the repeating shape and any drift between cycles easy to read.
+    Each cycle (for example each year of monthly data) is one line, drawn across
+    the within-period position (month 1 to 12); a trailing incomplete cycle is
+    drawn as the short line it is. Overlaying the cycles makes the repeating
+    shape and any drift between cycles easy to read. The lines take a sequential
+    light-to-dark ramp so they read in time order.
 
     Parameters
     ----------
     x : pandas.Series or array-like
         The series.
     period : int, optional
-        Seasonal period. Inferred from a monthly/quarterly index when omitted.
+        Seasonal period. Inferred from a monthly, quarterly or daily index when
+        omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
     title : str, optional
 
     Returns
@@ -257,21 +267,36 @@ def seasonal_plot(x, period=None, title=None):
 
     values = series.to_numpy()
     n = len(values)
+    if n == 0:
+        raise ValueError("`x` has no non-missing values to plot.")
     position = (np.arange(n) % period) + 1
     cycle = np.arange(n) // period
+    n_cycles = int(cycle.max()) + 1
     df = pd.DataFrame({
         "position": position,
         "value": values,
-        "cycle": pd.Categorical(cycle.astype(str)),
+        # Ordered on the cycle number, not on its string form: a plain
+        # categorical over strings sorts lexicographically, which puts cycle 10
+        # between 1 and 2 and hands it the third colour of a ramp meant to run
+        # in time order.
+        "cycle": pd.Categorical(cycle.astype(str),
+                                categories=[str(c) for c in range(n_cycles)],
+                                ordered=True),
     })
 
-    n_cycles = df["cycle"].nunique()
     return (
         ggplot(df, aes("position", "value", color="cycle", group="cycle"))
         + geom_line(size=0.7)
         + geom_point(size=1.5)
         + scale_x_continuous(breaks=list(range(1, period + 1)))
-        + scale_colour_depictr(n=n_cycles, name="Cycle")
+        # The cycles are a sequence, not unrelated categories, so they take a
+        # sequential (light-to-dark) ramp rather than the qualitative palette:
+        # it reads in time order and, unlike the eight Okabe-Ito colours, it
+        # stays legible however many cycles the series holds. The legend is
+        # reversed so the darkest, most recent cycle sits at the top of the key,
+        # matching the R twin.
+        + scale_color_manual(values=depictr_palette(n_cycles, kind="sequential"),
+                             name="Cycle", guide=guide_legend(reverse=True))
         + labs(x="Position in period", y="Value", title=title)
         + theme_depictr()
     )

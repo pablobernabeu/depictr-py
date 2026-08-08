@@ -1,5 +1,8 @@
 """Smoke tests: the posterior/bootstrap forest plots build without error."""
 
+import re
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -42,6 +45,23 @@ def test_posterior_plot_from_dict_with_ragged_arrays_and_labels():
     # Different lengths exercise the ragged-array path.
     draws = {"a": rng.normal(0, 1, 1500), "b": rng.normal(2, 0.5, 1200)}
     assert _builds(posterior_plot(draws, labels={"a": "Alpha", "b": "Beta"}))
+
+
+def test_posterior_labels_warn_on_a_key_that_matches_nothing():
+    # A mistyped key used to be dropped in silence, returning a figure
+    # indistinguishable from the unlabelled one.
+    rng = np.random.default_rng(5)
+    draws = {"stress": rng.normal(-0.4, 0.1, 500),
+             "sleep_hours": rng.normal(0.3, 0.1, 500)}
+    expected = ("`labels` keys not found among the parameters: strss. "
+                "The parameters are stress, sleep_hours.")
+    with pytest.warns(UserWarning, match=re.escape(expected)):
+        p = posterior_plot(draws, labels={"strss": "Stress"})
+    assert list(p.data["term"]) == ["stress", "sleep_hours"]
+    # A mapping that does match must stay quiet.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        posterior_plot(draws, labels={"stress": "Stress"})
 
 
 def test_posterior_plot_rejects_bad_input():

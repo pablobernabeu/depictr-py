@@ -149,3 +149,4 @@ where every figure is drawn from one of them.
 ::: depictr.wellbeing_survey
 ::: depictr.lexical_decision
 ::: depictr.clinical_trial
+::: depictr.DATASETS

@@ -7,12 +7,21 @@ palettes are perceptually ordered single-hue and red-blue ramps. These are the
 defaults behind :func:`depictr.theme.scale_colour_depictr` and the whole package,
 so every figure shares one accessible colour language.
 
+The guarantee is a property of the eight Okabe-Ito colours, not of any number of
+colours: past eight, :func:`depictr_palette` has to interpolate between them, and
+the interpolated colours sit close enough together to fail
+:func:`depictr.cvd.palette_safety` (a ten-colour palette drops to Delta-E 1.9
+against a threshold of 5). Rather than let a package built on accessibility make
+a claim it stops honouring, that case warns and says what to do instead.
+
 Okabe, M., & Ito, K. (2008). Color universal design (CUD): How to make figures
 and presentations that are friendly to colorblind people.
 https://jfly.uni-koeln.de/color/
 """
 
 from __future__ import annotations
+
+import warnings
 
 import matplotlib.colors as mcolors
 import numpy as np
@@ -92,6 +101,15 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
     list of str
         Hex colour codes.
 
+    Warns
+    -----
+    UserWarning
+        When ``n`` exceeds the eight Okabe-Ito colours and the qualitative
+        palette is therefore interpolated. The colourblind-safety guarantee
+        covers the eight base colours only; an interpolated palette fails
+        :func:`depictr.cvd.palette_safety`. Facet the groups, or use the
+        sequential ramp, when there are more than eight of them.
+
     Examples
     --------
     >>> import depictr as dp
@@ -111,5 +129,15 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
     if n <= len(OKABE_ITO):
         return OKABE_ITO[:n]
     # More categories than base colours: interpolate through the set so groups
-    # stay as distinct as the space allows.
+    # stay as distinct as the space allows. "As the space allows" is no longer
+    # far enough apart to be colourblind-safe, and the package says so rather
+    # than handing back colours under a guarantee it cannot keep.
+    warnings.warn(
+        f"{n} colours interpolated through the {len(OKABE_ITO)}-colour "
+        f"Okabe-Ito set: the colour-vision-deficiency guarantee holds only up "
+        f"to {len(OKABE_ITO)} categories. Use a sequential palette, or facet "
+        f"the groups, if the distinction must survive colour-vision "
+        f"deficiency.",
+        stacklevel=2,
+    )
     return _ramp(OKABE_ITO, n)

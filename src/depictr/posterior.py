@@ -15,6 +15,8 @@ sit side by side for the same model.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -80,6 +82,19 @@ def _summarise_draws(draws, labels=None) -> pd.DataFrame:
         })
     out = pd.DataFrame(rows)
     if labels is not None:
+        # Say so when a key matched nothing: a mistyped parameter name would
+        # otherwise return a figure that looks exactly like the unlabelled one,
+        # with no hint that the relabelling never happened.
+        unused = set(labels) - set(out["term"])
+        if unused:
+            # Comma-joined rather than a Python list repr, so the R twin can
+            # raise the same sentence verbatim.
+            warnings.warn(
+                f"`labels` keys not found among the parameters: "
+                f"{', '.join(sorted(unused))}. The parameters are "
+                f"{', '.join(out['term'])}.",
+                stacklevel=3,
+            )
         out["term"] = out["term"].map(lambda t: labels.get(t, t))
     return out
 
@@ -98,7 +113,8 @@ def posterior_plot(draws, labels=None, title=None):
         parameter name to a 1-D array of draws; the arrays may differ in length.
     labels : dict, optional
         Remap raw parameter names to display names, ``{raw: shown}``. Names not
-        in the mapping are left unchanged.
+        in the mapping are left unchanged; a key that matches no parameter
+        warns, since a mistyped one would otherwise silently do nothing.
     title : str, optional
         Plot title.
 

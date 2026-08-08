@@ -7,7 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **`depictr_palette()` interpolated past its accessibility guarantee without saying so.**
+  Beyond the eight Okabe-Ito base colours the palette is a ramp, and the
+  colour-vision-deficiency guarantee that is this package's reason for existing stops
+  holding; the interpolated palette fails the package's own `palette_safety()` check. It
+  now warns at the point of interpolation. The R twin carried the same silence and was
+  fixed with it.
+- **`survival_plot()` drew a phantom arm for a group that does not exist.** A missing
+  value in `group` became a level matching no observation. Missing groups are now
+  dropped with a count, and an all-missing group is an error.
+- **`interaction_plot()` drew a missing grouping value as a literal `nan` line and legend
+  entry** — the same "a missing value stringified into a legitimate-looking value"
+  defect fixed across the family this round.
+- **`summary_table()` counted missing-group records in `Overall` and in no group column**,
+  so the per-group sizes silently fell short of the headline N; they now get a `Missing`
+  column. Its group columns are also ordered by level rather than by row appearance, so
+  the table no longer depends on input row order.
+- **`seasonal_plot()` ordered its cycles lexicographically**, sorting cycle 10 between 1
+  and 2, and coloured them categorically rather than with the sequential ramp. An annual
+  index also inferred a seasonal period of 1; an explicit `period` is now required.
+- Degenerate inputs that returned a confident wrong answer now refuse or abstain:
+  `estimation_plot(two_panel=True)` omits the interval for a single-observation group
+  instead of drawing a zero-width one that implies perfect precision; `palette_safety()`
+  rejects a palette of fewer than two colours rather than reporting it safe at infinite
+  distance; `gain_plot()` and `lift_plot()` refuse a single-class outcome instead of
+  substituting a denominator of 1 and drawing a flat curve; `survival_plot()` raises a
+  clear error for a non-finite follow-up time instead of a bare `StopIteration`; and
+  `correlation_heatmap()` drops zero-variance columns with a message and labels an
+  undefined correlation `n/a` rather than rendering the string `nan` in the cell.
+- `posterior_plot()` warns when a `labels` key matches no parameter, instead of returning
+  an unrelabelled figure.
+- **Three declared dependency floors described a stack no install could produce.**
+  `pandas>=2.0`, `matplotlib>=3.6` and `scipy>=1.7` all sat below what
+  `plotnine>=0.15` already requires (2.2, 3.8 and 1.8 respectively), and the
+  `models` extra named `statsmodels>=0.14` where plotnine forces 0.14.5. A
+  resolver always took the higher bound, so no install was ever affected, but a
+  floor is a claim about what has been tested and this one was false. The floors
+  now state what plotnine forces, and a new CI job installs them.
+
+### Added
+
+- **CI tests what users install, not only the checkout.** The matrix gains Python
+  3.14. A new job installs the built wheel into a bare environment outside the
+  repository and imports it there, so packaged data and distribution metadata are
+  exercised rather than masked by the source tree an editable install sits beside.
+  A second new job installs the declared minimum dependency versions. A weekly
+  schedule runs the suite when nobody has pushed, so upstream drift in the
+  plotting stack surfaces as a dated red badge rather than a surprise.
+- **Linting, matching the rest of the family.** This was the only Python package
+  in the family running no linter, which is why it had quietly accumulated seven
+  findings. The rule set is stated explicitly in `pyproject.toml` (`E, F, W, I,
+  UP, B`, as in the scopusflow and theoryforge twins) rather than inherited from
+  whatever ruff defaults to: an inherited default is what turned a sibling's
+  green CI red without a line of that package changing.
+
+### Changed
+
+- Two `zip()` calls now pass `strict=True`: the dendrogram builder pairs scipy's
+  `icoord` with `dcoord`, and the forest plot pairs two columns of one frame. In
+  both, unequal lengths are impossible by construction, so raising is the right
+  response to the impossible happening rather than silently truncating a plot.
+  Import blocks were sorted and one long line wrapped; no behaviour changed.
 
 ## [0.2.2] - 2026-07-23
 

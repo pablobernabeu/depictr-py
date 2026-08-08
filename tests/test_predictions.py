@@ -73,6 +73,19 @@ def test_interaction_plot_rejects_unknown_columns(ols):
         interaction_plot(ols, "fertiliser", "nope")
 
 
+def test_interaction_plot_ignores_a_missing_group_value():
+    # A missing grouping value used to survive as the string "nan" and be drawn
+    # as a third coloured line with its own legend entry.
+    import numpy as np
+
+    smf = pytest.importorskip("statsmodels.formula.api")
+    cy = crop_yield().copy()
+    cy.loc[:4, "treatment"] = np.nan
+    model = smf.ols('Q("yield") ~ fertiliser * treatment', cy).fit()
+    p = interaction_plot(model, "fertiliser", "treatment")
+    assert sorted(p.data["treatment"].unique()) == ["enhanced", "standard"]
+
+
 def test_compare_models_builds(ols, ols_additive):
     p = compare_models({"additive": ols_additive, "interaction": ols},
                        title="Comparison")
