@@ -3,8 +3,17 @@
 import pytest
 from plotnine import ggplot
 
-from depictr.data import wellbeing_survey
-from depictr.multivariate import (
+# Every plot here delegates to scikit-learn, which is the optional
+# [classification] extra rather than a core dependency. The module still imports
+# without it, because that import is lazy and inside the functions, so the gap
+# only showed when the minimum-versions job installed the core floors alone and
+# every test failed on the deliberate "needs scikit-learn" ImportError. Skipping
+# the module is what the rest of the suite already does for its optional
+# back-ends, and it is what that job's comment claims the suite does.
+pytest.importorskip("sklearn", reason="the multivariate plots need scikit-learn")
+
+from depictr.data import wellbeing_survey  # noqa: E402
+from depictr.multivariate import (  # noqa: E402
     cluster_plot,
     dendrogram_plot,
     pca_plot,
