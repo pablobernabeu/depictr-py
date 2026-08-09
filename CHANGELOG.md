@@ -61,7 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   findings. The rule set is stated explicitly in `pyproject.toml` (`E, F, W, I,
   UP, B`, as in the scopusflow and theoryforge twins) rather than inherited from
   whatever ruff defaults to: an inherited default is what turned a sibling's
-  green CI red without a line of that package changing.
+  green CI red without a line of that package changing. The job lints the whole
+  repository rather than `src` and `tests` by name, which had left
+  `app/streamlit_app.py` and `docs/_exec.py` covered by nothing; the app was
+  carrying an over-long line that no gate could see. Naming directories leaves a
+  new top-level script unlinted until somebody remembers to extend the list.
 
 ### Changed
 

@@ -230,7 +230,8 @@ try:
         target = st.selectbox("Binary outcome", binary_cols)
         pred = st.selectbox("Predicted label", binary_cols)
         show(dp.confusion_matrix_plot(data[target], data[pred], normalise="true"),
-             f"dp.confusion_matrix_plot({data_call}[{target!r}], {data_call}[{pred!r}], normalise='true')",
+             f"dp.confusion_matrix_plot({data_call}[{target!r}], "
+             f"{data_call}[{pred!r}], normalise='true')",
              deficiency)
     elif stage == "Kaplan-Meier":
         time = st.selectbox("Time", num_cols)
