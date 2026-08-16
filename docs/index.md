@@ -23,7 +23,7 @@ pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scip
 pip install depictr[all]       # plus the optional computation back-ends
 ```
 
-The model, classification and survival plots delegate to optional back-ends, so the core install stays light. The [Get started](getting-started.md) guide lists the extras.
+The classification and survival plots delegate to optional back-ends, so the core install stays light; the model plots use statsmodels, which arrives with plotnine. The [Get started](getting-started.md) guide lists the extras.
 
 ## A first plot
 

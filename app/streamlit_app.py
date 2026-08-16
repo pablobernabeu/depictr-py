@@ -250,8 +250,12 @@ try:
         # examples in depictr.timeseries, seeded so the gallery is stable. Any
         # numeric column can stand in, read in row order.
         DEMO = "Demo monthly series (trend + seasonality)"
-        pick = st.selectbox("Series", [DEMO] + num_cols,
-                            help="Data columns are read in row order.")
+        pick = st.selectbox(
+            "Series", [DEMO] + num_cols,
+            help="Data columns are read in row order. The correlation, "
+                 "subseries and decomposition plots need a column with no "
+                 "internal gaps, since closing a gap up would shift every "
+                 "later observation.")
         if pick == DEMO:
             t = np.arange(120)
             series = pd.Series(

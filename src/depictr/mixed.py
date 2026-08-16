@@ -5,7 +5,8 @@ result and re-draws it under the depictr theme. The one plot here is the
 caterpillar plot of the predicted random effects (the BLUPs), the standard way to
 look at how group levels deviate from the population fit.
 
-Install the optional dependency with ``pip install depictr[models]``.
+``statsmodels`` arrives with the core install (plotnine itself requires it);
+the ``depictr[models]`` extra remains to pin the tested floor.
 """
 
 from __future__ import annotations

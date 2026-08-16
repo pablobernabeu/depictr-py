@@ -67,10 +67,19 @@ def _numeric_frame(data, cols):
 
 
 def _standardise(num):
-    """Return the columns centred and scaled to unit variance, as an array."""
-    from sklearn.preprocessing import StandardScaler
+    """Return the columns centred and scaled to unit variance, as an array.
 
-    return StandardScaler().fit_transform(num.to_numpy(dtype=float))
+    A numpy z-score with scikit-learn's ``StandardScaler`` semantics: the
+    population (ddof=0) standard deviation, and a scale of 1 substituted where
+    the deviation is zero, so a constant column is centred to zeros rather than
+    divided by zero. Kept sklearn-free because ``dendrogram_plot`` shares this
+    helper, and the dendrogram's contract is that scipy, a core dependency, is
+    all it needs.
+    """
+    X = num.to_numpy(dtype=float)
+    scale = X.std(axis=0)
+    scale[scale == 0] = 1.0
+    return (X - X.mean(axis=0)) / scale
 
 
 def _nice_label(name):

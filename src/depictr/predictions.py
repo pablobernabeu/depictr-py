@@ -12,7 +12,8 @@ and categoricals at their most common (reference) level, the usual convention fo
 an "effects" plot, so the line shows the partial relationship rather than a
 marginal average over the sample.
 
-Install the optional dependency with ``pip install depictr[models]``.
+``statsmodels`` arrives with the core install (plotnine itself requires it);
+the ``depictr[models]`` extra remains to pin the tested floor.
 """
 
 from __future__ import annotations

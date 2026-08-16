@@ -37,6 +37,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clear error for a non-finite follow-up time instead of a bare `StopIteration`; and
   `correlation_heatmap()` drops zero-variance columns with a message and labels an
   undefined correlation `n/a` rather than rendering the string `nan` in the cell.
+- **`acf_plot()`, `decompose_plot()` and `seasonal_plot()` silently dropped internal
+  missing values**, closing up the gap: the ACF correlated values across it, the
+  decomposition misaligned, and every post-gap observation landed on the wrong
+  within-period position. An internal missing value is now an error, in the wording of
+  `survival_plot()`'s refusal of a non-finite follow-up time; missing values at either
+  end are still trimmed, since trimming only shortens the series.
+- `acf_plot()` turns an all-missing or empty series away by name, as `seasonal_plot()`
+  already did. Its default lag count took the base-10 logarithm of the length, so a
+  series with nothing in it surfaced as an `OverflowError` from the surrounding `int()`,
+  naming neither the argument nor the problem.
+- **`roc_curve_plot()`, `pr_curve_plot()` and `threshold_plot()` accepted a single-class
+  outcome**, annotating an AUC of nan or an average precision of 0.000 as if they
+  measured something (scikit-learn computes both under a warning rather than refusing).
+  They now raise the same refusal `gain_plot()` and `lift_plot()` already carry, with
+  the R twin's wording per curve.
+- **`dendrogram_plot()` needed scikit-learn despite its documented scipy-only
+  contract.** Standardisation went through sklearn's `StandardScaler`; it is now a
+  numpy z-score with identical semantics (population standard deviation, and a scale of
+  1 substituted for a zero-variance column), so the dendrogram runs on the core install
+  and the sklearn-backed plots see the same input as before.
+- **The installation docs called statsmodels optional, but plotnine 0.15 requires it**,
+  so every core install already ships it. The README and the docs now name scikit-learn
+  and lifelines as the genuinely optional back-ends, with `depictr[models]` kept to pin
+  the tested statsmodels floor.
+- `summary_table()`'s documentation promised to sort the levels of an unordered
+  categorical, when any categorical keeps its declared category order (the intended
+  behaviour); the docs now say so.
 - `posterior_plot()` warns when a `labels` key matches no parameter, instead of returning
   an unrelabelled figure.
 - **Three declared dependency floors described a stack no install could produce.**

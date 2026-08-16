@@ -101,6 +101,48 @@ def test_seasonal_plot_rejects_an_empty_series():
         ts.seasonal_plot(np.array([]), period=12)
 
 
+def test_internal_missing_values_are_refused():
+    # Dropping an internal NaN closed up the gap silently: the ACF correlated
+    # values across it, the decomposition misaligned, and every post-gap
+    # observation landed on the wrong within-period position.
+    s = _monthly_series()
+    s.iloc[40] = np.nan
+    with pytest.raises(ValueError, match="internal missing values"):
+        ts.seasonal_plot(s)
+    with pytest.raises(ValueError, match="internal missing values"):
+        ts.seasonal_plot(s.to_numpy(), period=12)
+    pytest.importorskip("statsmodels")
+    with pytest.raises(ValueError, match="internal missing values"):
+        ts.acf_plot(s)
+    with pytest.raises(ValueError, match="internal missing values"):
+        ts.decompose_plot(s)
+
+
+def test_missing_values_at_the_ends_are_trimmed():
+    # Trimming the ends only shortens the series; no observation moves relative
+    # to another, so it stays legitimate where an internal drop is not.
+    s = _monthly_series()
+    s.iloc[[0, -1]] = np.nan
+    assert _builds(ts.seasonal_plot(s))
+    pytest.importorskip("statsmodels")
+    assert _builds(ts.acf_plot(s))
+    assert _builds(ts.decompose_plot(s))
+
+
+def test_all_missing_series_keeps_its_existing_error():
+    # An all-missing series trims to nothing, so it reaches the same named
+    # refusal an empty series does rather than the internal-missing error.
+    with pytest.raises(ValueError, match="no non-missing values"):
+        ts.seasonal_plot(pd.Series([np.nan] * 24), period=12)
+    # acf_plot took log10 of a zero length and raised an OverflowError from the
+    # int() around it, so it is held to the same named refusal.
+    pytest.importorskip("statsmodels")
+    with pytest.raises(ValueError, match="no non-missing values"):
+        ts.acf_plot(pd.Series([np.nan] * 24))
+    with pytest.raises(ValueError, match="no non-missing values"):
+        ts.acf_plot(np.array([]))
+
+
 def test_daily_index_infers_a_weekly_period():
     daily = pd.Series(
         np.arange(40.0),

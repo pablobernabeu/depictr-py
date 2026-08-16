@@ -122,6 +122,26 @@ def test_gain_and_lift_refuse_a_single_class_outcome():
                 fn(y, rng.random(20))
 
 
+def test_curve_plots_refuse_a_single_class_outcome():
+    # scikit-learn does not refuse a single class: it computes AUC = nan and
+    # AP = 0.000 under a warning, which the annotations would print as if they
+    # measured something. The messages are the R twin's, word for word.
+    pytest.importorskip("sklearn")
+    rng = np.random.default_rng(0)
+    cases = [
+        (dp.roc_curve_plot,
+         "ROC needs both positive and negative outcomes."),
+        (dp.pr_curve_plot,
+         "Precision-recall needs both positive and negative outcomes."),
+        (dp.threshold_plot,
+         "A threshold sweep needs both positive and negative outcomes."),
+    ]
+    for y in (np.zeros(20, dtype=int), np.ones(20, dtype=int)):
+        for fn, message in cases:
+            with pytest.raises(ValueError, match=message):
+                fn(y, rng.random(20))
+
+
 def test_survival_plot_rejects_non_finite_times():
     # A NaN follow-up time used to surface as a bare StopIteration from the
     # axis-break search, naming neither the argument nor the problem.

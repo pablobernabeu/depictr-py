@@ -6,7 +6,8 @@ the depictr theme so an ACF stem plot or a decomposition sits in the same visual
 language as the rest of a report. The plain series and seasonal subseries plots
 need only the depictr stack.
 
-Install the optional dependency with ``pip install depictr[models]``.
+``statsmodels`` arrives with the core install (plotnine itself requires it);
+the ``depictr[models]`` extra remains to pin the tested floor.
 """
 
 from __future__ import annotations
@@ -40,22 +41,44 @@ def _require_statsmodels():
             "The time-series plots need statsmodels. Install it with "
             "`pip install depictr[models]`."
         ) from exc
-    import statsmodels  # noqa: F401
-
-    return statsmodels
 
 
 def _as_series(x):
     """Coerce the input to a pandas Series, keeping any index it arrives with.
 
     A 1-D array becomes a Series over a plain integer index; a Series is passed
-    through. The index is used only as the x-axis for the series and seasonal
-    plots, so a datetime, period or integer index all work.
+    through. The index is used only as the x-axis of the series plot, so a
+    datetime, period or integer index all work.
     """
     if isinstance(x, pd.Series):
         return x.dropna()
     arr = np.asarray(x, dtype=float).ravel()
     return pd.Series(arr).dropna()
+
+
+def _as_complete_series(x):
+    """Coerce to a Series, trim missing ends, and refuse internal missing values.
+
+    The ACF, the decomposition and the seasonal subseries plot all read position
+    in the sequence as time. Dropping an internal missing value closes up the
+    gap: the ACF correlates values across it, the decomposition misaligns, and
+    every later observation lands on the wrong within-period position. Whether
+    to drop or impute is the analyst's call, not something to make silently on
+    their behalf. Missing values at either end only shorten the series, so they
+    are trimmed as before.
+    """
+    series = x if isinstance(x, pd.Series) else pd.Series(np.asarray(x, dtype=float).ravel())
+    present = series.notna().to_numpy()
+    if not present.any():
+        return series.dropna()  # empty; each caller reports this case itself
+    first, last = np.flatnonzero(present)[[0, -1]]
+    series = series.iloc[first:last + 1]
+    if series.isna().any():
+        raise ValueError(
+            "`x` must not contain internal missing values; drop or impute "
+            "them before plotting."
+        )
+    return series
 
 
 def _infer_period(x, period):
@@ -94,6 +117,9 @@ def acf_plot(x, kind="acf", lags=None, title=None):
     ----------
     x : pandas.Series or array-like
         The series. Any index is ignored here; only the values are used.
+        Missing values at either end are trimmed; an internal missing value is
+        an error, since dropping it would correlate values across the
+        closed-up gap.
     kind : {"acf", "pacf"}
         Autocorrelation or partial autocorrelation.
     lags : int, optional
@@ -120,8 +146,14 @@ def acf_plot(x, kind="acf", lags=None, title=None):
 
     if kind not in {"acf", "pacf"}:
         raise ValueError("`kind` must be 'acf' or 'pacf'.")
-    series = _as_series(x)
+    series = _as_complete_series(x)
     n = len(series)
+    if n == 0:
+        # The default lag count below takes log10(n), which is -inf at zero and
+        # then an OverflowError from int(), naming neither the argument nor the
+        # problem. The sibling plots turn an all-missing series away by name, so
+        # this one does too.
+        raise ValueError("`x` has no non-missing values to plot.")
     if lags is None:
         lags = int(min(10 * np.log10(n), n - 1))
         if kind == "pacf":
@@ -163,7 +195,9 @@ def decompose_plot(x, period=None, model="additive", title=None):
     ----------
     x : pandas.Series or array-like
         The series. A datetime or period index sets the x-axis; otherwise the
-        observation number is used.
+        observation number is used. Missing values at either end are trimmed;
+        an internal missing value is an error, since dropping it would shift
+        every later observation and misalign the components.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
         omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
@@ -193,7 +227,7 @@ def decompose_plot(x, period=None, model="additive", title=None):
 
     if model not in {"additive", "multiplicative"}:
         raise ValueError("`model` must be 'additive' or 'multiplicative'.")
-    series = _as_series(x)
+    series = _as_complete_series(x)
     period = _infer_period(series, period)
 
     result = seasonal_decompose(series.to_numpy(), model=model, period=period)
@@ -239,7 +273,9 @@ def seasonal_plot(x, period=None, title=None):
     Parameters
     ----------
     x : pandas.Series or array-like
-        The series.
+        The series. Missing values at either end are trimmed; an internal
+        missing value is an error, since dropping it would assign every later
+        observation to the wrong position in the period.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
         omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
@@ -262,7 +298,7 @@ def seasonal_plot(x, period=None, title=None):
     ... )
     >>> p = dp.seasonal_plot(series, period=12)
     """
-    series = _as_series(x)
+    series = _as_complete_series(x)
     period = _infer_period(series, period)
 
     values = series.to_numpy()

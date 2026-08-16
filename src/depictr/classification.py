@@ -40,21 +40,23 @@ def _require_sklearn():
     return m
 
 
-def _positive_count(y_true) -> int:
+def _positive_count(y_true, message) -> int:
     """Number of positive cases, refusing a single-class outcome.
 
-    The gains and lift curves both divide by this. Substituting 1 for a zero
-    denominator, as they once did, draws a curve flat along the axis: a reader
-    sees a catastrophically bad model where the truth is that the quantity does
-    not exist. An all-positive outcome is as meaningless the other way, every
-    depth capturing everything. The sibling curves already fail loudly here,
-    since scikit-learn refuses a single-class input, and so does the R twin,
-    whose wording this shares.
+    None of the curves in this module survives a single class. The gains and
+    lift curves divide by this count, and substituting 1 for a zero denominator
+    draws a curve flat along the axis: a reader sees a catastrophically bad
+    model where the truth is that the quantity does not exist. An all-positive
+    outcome is as meaningless the other way, every depth capturing everything.
+    scikit-learn does not refuse a single-class input: it computes an AUC of
+    nan and an average precision of zero under a warning, numbers the
+    annotations would then print as if they measured something. The R twin
+    words the error per curve, so each caller passes its own ``message``.
     """
     y_true = np.asarray(y_true)
     n_pos = int(np.sum(y_true == 1))
     if n_pos == 0 or n_pos == len(y_true):
-        raise ValueError("Gains/lift need both positive and negative outcomes.")
+        raise ValueError(message)
     return n_pos
 
 
@@ -64,7 +66,9 @@ def roc_curve_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1).
+        Binary outcomes (0/1). Both classes must be present: with only one,
+        the true or false positive rate has no denominator and the AUC is
+        undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -82,6 +86,7 @@ def roc_curve_plot(y_true, y_score, title=None):
     >>> p = dp.roc_curve_plot(ct["adverse_event"], score)
     """
     m = _require_sklearn()
+    _positive_count(y_true, "ROC needs both positive and negative outcomes.")
     fpr, tpr, _ = m.roc_curve(y_true, y_score)
     auc = m.auc(fpr, tpr)
     df = pd.DataFrame({"fpr": fpr, "tpr": tpr})
@@ -106,7 +111,9 @@ def pr_curve_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1).
+        Binary outcomes (0/1). Both classes must be present: with only one,
+        precision or recall has no denominator and the average precision is
+        undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -124,6 +131,8 @@ def pr_curve_plot(y_true, y_score, title=None):
     >>> p = dp.pr_curve_plot(ct["adverse_event"], score)
     """
     m = _require_sklearn()
+    _positive_count(y_true,
+                    "Precision-recall needs both positive and negative outcomes.")
     precision, recall, _ = m.precision_recall_curve(y_true, y_score)
     ap = m.average_precision_score(y_true, y_score)
     baseline = float(np.mean(np.asarray(y_true)))
@@ -260,7 +269,8 @@ def gain_plot(y_true, y_score, title=None):
     >>> p = dp.gain_plot(ct["adverse_event"], score)
     """
     y_true = np.asarray(y_true)
-    n_pos = _positive_count(y_true)
+    n_pos = _positive_count(y_true,
+                            "Gains/lift need both positive and negative outcomes.")
     order = np.argsort(-np.asarray(y_score))
     captured = np.cumsum(y_true[order]) / n_pos
     population = np.arange(1, len(y_true) + 1) / len(y_true)
@@ -309,7 +319,8 @@ def lift_plot(y_true, y_score, title=None):
     >>> p = dp.lift_plot(ct["adverse_event"], score)
     """
     y_true = np.asarray(y_true)
-    n_pos = _positive_count(y_true)
+    n_pos = _positive_count(y_true,
+                            "Gains/lift need both positive and negative outcomes.")
     order = np.argsort(-np.asarray(y_score))
     population = np.arange(1, len(y_true) + 1) / len(y_true)
     captured = np.cumsum(y_true[order]) / n_pos
@@ -332,7 +343,8 @@ def threshold_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1).
+        Binary outcomes (0/1). Both classes must be present: with only one,
+        sensitivity or specificity has no denominator at any threshold.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -352,6 +364,8 @@ def threshold_plot(y_true, y_score, title=None):
     _require_sklearn()
     y_true = np.asarray(y_true)
     y_score = np.asarray(y_score)
+    _positive_count(y_true,
+                    "A threshold sweep needs both positive and negative outcomes.")
     thresholds = np.unique(y_score)
     if len(thresholds) > 200:  # keep the sweep cheap on large score sets
         thresholds = np.quantile(y_score, np.linspace(0, 1, 200))

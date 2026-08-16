@@ -7,7 +7,8 @@ quantities come from statsmodels (its influence machinery and variance-inflation
 factor); each figure is re-drawn under the depictr theme so a diagnostic sits in
 the same visual language as the rest of a report.
 
-Install the optional dependency with ``pip install depictr[models]``.
+``statsmodels`` arrives with the core install (plotnine itself requires it);
+the ``depictr[models]`` extra remains to pin the tested floor.
 """
 
 from __future__ import annotations

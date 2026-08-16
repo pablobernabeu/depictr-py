@@ -22,8 +22,9 @@ screenshot of the result is useful too.
 
 ```
 # Python version, depictr version (depictr.__version__), operating system,
-# and whether the optional back-ends (statsmodels, scikit-learn, lifelines)
-# are installed if the problem involves those plots.
+# and whether the optional back-ends (scikit-learn, lifelines) are installed
+# if the problem involves those plots. The statsmodels version is worth giving
+# too; it comes with the core install, as a requirement of plotnine.
 ```
 
 </details>

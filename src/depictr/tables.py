@@ -31,8 +31,8 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
         ``max_levels``).
     group : str, optional
         A grouping column; one summary column is produced per level, alongside an
-        overall column. The levels are ordered as an ordered categorical declares
-        them and sorted otherwise, so the table does not depend on the row order.
+        overall column. Categorical levels keep their declared category order and
+        everything else is sorted, so the table does not depend on the row order.
         Records whose group value is missing get a ``Missing`` column, so the
         group sizes always sum to the overall ``N``.
     digits : int
@@ -89,7 +89,7 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
     columns = {"Overall": data}
     if group is not None:
         # _levels rather than first-appearance order, the same helper the level
-        # rows use: an ordered categorical keeps its declared order and anything
+        # rows use: a categorical keeps its declared category order and anything
         # else is sorted, so shuffling the rows cannot reorder the table.
         for lvl in _levels(data[group]):
             columns[str(lvl)] = data[data[group] == lvl]
@@ -163,8 +163,8 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
 def _levels(col):
     """Return a column's category levels in a stable, sensible order.
 
-    Ordered categoricals keep their declared order; everything else is sorted so
-    the table is reproducible.
+    Categoricals keep their declared category order; everything else is sorted
+    so the table is reproducible.
     """
     if isinstance(col.dtype, pd.CategoricalDtype):
         return list(col.cat.categories)

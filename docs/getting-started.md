@@ -12,10 +12,12 @@ pip install depictr            # core: plotnine, pandas, numpy, matplotlib, scip
 pip install depictr[all]       # plus the optional computation back-ends
 ```
 
-The exploratory, theme and accessibility tools work with the core install. The
-model, classification and survival plots delegate their computation to
-statsmodels, scikit-learn and lifelines respectively, each an optional extra
-(`depictr[models]`, `depictr[classification]`, `depictr[survival]`).
+The exploratory, theme and accessibility tools work with the core install, and
+so do the model and time-series plots: they delegate to statsmodels, which
+plotnine itself requires. The classification and survival plots delegate to
+scikit-learn and lifelines, each an optional extra (`depictr[classification]`,
+`depictr[survival]`); the `depictr[models]` extra remains to pin the tested
+statsmodels floor.
 
 ## The idea
 

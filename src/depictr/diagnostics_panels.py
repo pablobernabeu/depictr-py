@@ -11,7 +11,8 @@ The panels reuse the single-plot diagnostics in :mod:`depictr.diagnostics` and
 the forest plot in :mod:`depictr.models`, and join them with
 :func:`depictr.compose.arrange_plots`.
 
-Install the optional dependency with ``pip install depictr[models]``.
+``statsmodels`` arrives with the core install (plotnine itself requires it);
+the ``depictr[models]`` extra remains to pin the tested floor.
 
 References
 ----------
