@@ -121,11 +121,11 @@ jobs:
                       "matplotlib==3.8.*" "scipy==1.8.*" pytest
           pip install -e . --no-deps
       # tests/ only, not the default testpaths: those also collect the doctests
-      # in src/, whose Examples call the optional model, classification and
-      # survival back-ends. Those are not installed here, and their floors are
-      # not what this job is checking, so collecting them would fail for a
-      # reason unrelated to the core floors. The suite itself skips a back-end
-      # it cannot import.
+      # in src/, whose Examples call the classification and survival back-ends.
+      # Neither is installed here (statsmodels is, as a dependency of plotnine
+      # itself), and their floors are not what this job is checking, so
+      # collecting them would fail for a reason unrelated to the core floors.
+      # The suite itself skips a back-end it cannot import.
       - name: Run the test suite against the core floors
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
