@@ -13,9 +13,10 @@ package has always documented them. The R index's 'Diagnostics and classificatio
 two, because the classification curves are all computed by scikit-learn and reached through a
 separate install extra. R's 'Uncertainty and power' has no counterpart either, and the posterior
 and power curves are documented with the other model estimates they are drawn from. What the R
-index calls 'Theming and reporting' appears here as 'Theme, palette and accessibility', covering
-the theme and the colour-vision checks, while plot composition and saving move to the last group
-beside the datasets and the one-figure model report stays with the diagnostics it collects.
+index calls 'Theming, accessibility and reporting' appears here as 'Theme, palette and
+accessibility', covering the theme, the colour-vision checks and the figure audit, while plot
+composition and saving move to the last group beside the datasets and the one-figure model report
+stays with the diagnostics it collects.
 
 Everything listed under a group heading is importable straight from `depictr`. The same plots are
 shown rendered, with the code that produced them, in the [gallery](gallery/exploring-data.md).
@@ -118,10 +119,11 @@ the gallery.
 
 ## Theme, palette and accessibility
 
-The shared theme and the colourblind-safe palette, and the tools that verify the
-palette stays distinguishable under colour-vision deficiency.
+The shared theme and the colourblind-safe palette, the tools that verify the
+palette stays distinguishable under colour-vision deficiency, and the audit that
+checks a finished figure rather than the palette it was built from.
 
-The palette and the colour-vision checks are shown in use on the
+The palette, the colour-vision checks and the figure audit are shown in use on the
 [accessibility](gallery/accessibility.md) page of the gallery.
 
 ::: depictr.theme_depictr
@@ -132,6 +134,7 @@ The palette and the colour-vision checks are shown in use on the
 ::: depictr.depictr_palette
 ::: depictr.depictr_brand
 ::: depictr.depictr_accent
+::: depictr.check_figure
 ::: depictr.palette_safety
 ::: depictr.simulate_cvd
 

@@ -60,10 +60,31 @@ def test_unknown_kind_raises():
 
 
 def test_simulate_cvd_validates_inputs():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         simulate_cvd(["#005b96"], "not-a-deficiency")
-    with pytest.raises(ValueError):
+    assert str(excinfo.value) == (
+        "`deficiency` must be one of 'protan', 'deutan' or 'tritan'.")
+    with pytest.raises(ValueError) as excinfo:
         simulate_cvd(["#005b96"], "deutan", severity=2)
+    assert str(excinfo.value) == "`severity` must lie in [0, 1]."
+
+
+def test_simulate_cvd_matches_colorspacious():
+    # colorspacious implements the same Machado model from the published
+    # matrices. Agreement to the eight-bit colour is the strongest external
+    # check available, so it is worth the optional dependency.
+    colorspacious = pytest.importorskip("colorspacious")
+    import matplotlib.colors as mcolors
+
+    palette = depictr_palette()
+    rgb = np.array([mcolors.to_rgb(c) for c in palette])
+    names = {"protan": "protanomaly", "deutan": "deuteranomaly",
+             "tritan": "tritanomaly"}
+    for deficiency, name in names.items():
+        space = {"name": "sRGB1+CVD", "cvd_type": name, "severity": 100}
+        theirs = [mcolors.to_hex(np.clip(row, 0, 1))
+                  for row in colorspacious.cspace_convert(rgb, space, "sRGB1")]
+        assert simulate_cvd(palette, deficiency) == theirs, deficiency
 
 
 def test_severity_zero_is_identity():

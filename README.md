@@ -74,6 +74,27 @@ longer clear the distance threshold, so `depictr_palette` warns when it is asked
 for a ninth. Facet the groups, or map them to the sequential ramp, when a figure
 needs more.
 
+A safe palette is not a safe figure, though. Once a plot has been extended with
+your own scale, shrunk to fit a journal column, or asked to distinguish groups by
+colour alone, the palette's guarantee no longer describes what a reader will see.
+`check_figure` audits the plot you are about to submit and reports what it
+measured beside the threshold it was measured against, so each verdict can be
+argued with:
+
+```python
+p = dp.explore_distribution(dp.lexical_decision(), "RT", group="condition")
+dp.check_figure(p, width_cm=8.9)
+```
+
+It measures colour separability under each dichromacy and in greyscale, the
+smallest text size at the width the figure will be printed at, the WCAG contrast
+of text and geometry against their backgrounds, and whether any distinction rests
+on colour alone. One limitation is worth stating where the claim is made: the
+colourblind-safety guarantee is about hue confusion rather than greyscale, and the
+palette's orange and sky blue differ by only 0.79 in CIE lightness, so they print
+as the same grey. A figure that may be printed in black and white wants fewer
+groups, a sequential palette, or a redundant shape or line type.
+
 ## Installation
 
 depictr is on [PyPI](https://pypi.org/project/depictr/):
@@ -155,7 +176,7 @@ The exported functions fall into families that follow the stages of an analysis.
 | Family | Functions |
 | --- | --- |
 | Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette` |
-| Accessibility | `palette_safety`, `simulate_cvd` |
+| Accessibility | `check_figure`, `palette_safety`, `simulate_cvd` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
 | Estimation and tables | `estimation_plot` (single- or two-panel Gardner-Altman), `summary_table` |
 | Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot` |

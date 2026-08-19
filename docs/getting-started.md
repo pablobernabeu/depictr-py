@@ -108,8 +108,21 @@ dp.palette_safety()
 # {'min_delta_e': ..., 'safe': True, 'by_condition': {...}, ...}
 ```
 
-The gallery's [accessibility page](gallery/accessibility.md) renders this
-report in full.
+A safe palette is not a safe figure, though, so `check_figure` audits a finished
+plot: colour separability under each dichromacy and in greyscale, the smallest
+text size at the width the figure will be printed at, the WCAG contrast of text
+and geometry, and whether any distinction rests on colour alone. Each row reports
+the value it measured beside the threshold, so a verdict can be argued with.
+
+```python
+dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
+                width_cm=8.9)
+```
+
+The gallery's [accessibility page](gallery/accessibility.md) renders both reports
+in full, and states the one limitation worth knowing: the colourblind-safety
+guarantee is about hue confusion rather than greyscale, and two of the palette's
+colours print as the same grey.
 
 ## Extending and composing
 

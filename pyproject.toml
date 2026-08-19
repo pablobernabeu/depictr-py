@@ -66,6 +66,10 @@ test = [
     # needs coverage 7; pytest-cov 6 is the first release to require it.
     "pytest-cov>=6",
     "ruff>=0.4",
+    # An independent implementation of the Machado colour-vision transforms,
+    # kept only so the package's own can be checked against it. The tests that
+    # use it skip when it is absent.
+    "colorspacious>=1.1",
 ]
 docs = [
     "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",

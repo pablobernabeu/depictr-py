@@ -15,6 +15,7 @@ It is the Python sibling of the depictr R package
 
 from __future__ import annotations
 
+from .audit import check_figure
 from .bivariate import explore_bivariate, scatter_trend
 from .classification import (
     calibration_plot,
@@ -80,7 +81,7 @@ __all__ = [
     "scale_fill_depictr", "legend_inside", "depictr_palette",
     "depictr_brand", "depictr_accent",
     # Accessibility
-    "palette_safety", "simulate_cvd",
+    "palette_safety", "simulate_cvd", "check_figure",
     # Exploratory analysis
     "explore_distribution", "explore_categorical", "explore_bivariate",
     "scatter_trend", "correlation_heatmap", "missingness_map", "ecdf_plot",

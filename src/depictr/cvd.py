@@ -6,10 +6,12 @@ and severity of colour-vision deficiency would perceive. The transformation is
 defined on linear-light RGB, so a colour is decoded from sRGB to linear RGB (the
 IEC 61966-2-1 transfer functions), transformed, then re-encoded.
 
-This drives two things: the live colourblind-vision toggle in the web app, and
+This drives three things: the live colourblind-vision toggle in the web app,
 :func:`palette_safety`, which checks that the colours in a palette stay far
-enough apart for each deficiency that they remain distinguishable. depictr uses
-it to validate its default palette rather than merely assert that it is safe.
+enough apart for each deficiency that they remain distinguishable, and the
+colour-separability rows of :func:`depictr.audit.check_figure`, which asks the
+same question of a finished figure. depictr uses them to validate its default
+palette rather than merely assert that it is safe.
 
 Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
 physiologically-based model for simulation of color vision deficiency. IEEE
@@ -86,7 +88,9 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
     ['#275295', '#cab411']
     """
     if deficiency not in _MACHADO_1:
-        raise ValueError(f"`deficiency` must be one of {DEFICIENCIES}.")
+        raise ValueError(
+            "`deficiency` must be one of 'protan', 'deutan' or 'tritan'."
+        )
     if not 0 <= severity <= 1:
         raise ValueError("`severity` must lie in [0, 1].")
     matrix = (1 - severity) * np.eye(3) + severity * _MACHADO_1[deficiency]
@@ -98,10 +102,13 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
 def _rgb_to_lab(colours: list[str]) -> np.ndarray:
     """Convert sRGB colours to CIE L*a*b* (D65)."""
     linear = _srgb_to_linear(_to_rgb01(colours))
+    # The sRGB D65 primaries to seven decimals. The rounded four-decimal form
+    # shifts a Delta-E by a few thousandths, which is enough to round a reported
+    # distance differently from the R twin on the same colours.
     m = np.array([
-        [0.4124, 0.3576, 0.1805],
-        [0.2126, 0.7152, 0.0722],
-        [0.0193, 0.1192, 0.9505],
+        [0.4124564, 0.3575761, 0.1804375],
+        [0.2126729, 0.7151522, 0.0721750],
+        [0.0193339, 0.1191920, 0.9503041],
     ])
     xyz = linear @ m.T
     white = np.array([0.95047, 1.0, 1.08883])
@@ -157,6 +164,12 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
         (the minimum Delta-E for normal vision and each deficiency),
         ``worst_condition`` and ``worst_pair`` (the closest colours and where),
         ``safe`` (whether ``min_delta_e`` meets ``threshold``) and ``threshold``.
+
+    See Also
+    --------
+    depictr.check_figure : the same question asked of a finished figure, which
+        uses only as many colours as it has groups and has text and a background
+        besides.
 
     Examples
     --------
