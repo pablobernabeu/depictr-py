@@ -155,7 +155,8 @@ def explore_pairs(data, cols=None, title=None):
     n = len(cols)
 
     # Axis titles and tick labels belong only on the outer edge, so the inner
-    # cells stay clean and the variable names sit on the left and bottom.
+    # cells carry no repeated axes and the variable names sit on the left and
+    # bottom.
     panels = []
     for r, y_var in enumerate(cols):
         for c, x_var in enumerate(cols):

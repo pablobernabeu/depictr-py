@@ -52,6 +52,13 @@ def _positive_count(y_true, message) -> int:
     nan and an average precision of zero under a warning, numbers the
     annotations would then print as if they measured something. The R twin
     words the error per curve, so each caller passes its own ``message``.
+
+    The count is of values equal to 1, so booleans work and anything else does
+    not. A two-level outcome coded some other way, ``"yes"``/``"no"`` say, has
+    no positives by this test and meets the single-class refusal, whose wording
+    then describes the wrong problem. The R twin coerces a logical or a
+    two-level factor to 0/1 before counting, and this one has no equivalent, so
+    the documented contract on every caller is 0/1.
     """
     y_true = np.asarray(y_true)
     n_pos = int(np.sum(y_true == 1))
@@ -338,7 +345,7 @@ def threshold_plot(y_true, y_score, title=None):
     """Sensitivity, specificity, precision and F1 across the decision threshold.
 
     Sweeps the probability cut-off and plots each metric, so the trade-off when
-    choosing an operating point is visible at a glance.
+    choosing an operating point can be read straight off the curves.
 
     Parameters
     ----------

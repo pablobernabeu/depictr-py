@@ -53,7 +53,7 @@ carries the same metadata in machine-readable form.
 
 ## The developer
 
-depictr is developed by **Pablo Bernabeu**, a researcher in the Department of
+depictr is developed by Pablo Bernabeu, a researcher in the Department of
 Education at the University of Oxford. His work spans cognitive psychology and
 neuroscience, linguistics, education and digital technologies, drawing on a
 range of methods that include behavioural and EEG experiments, corpus analysis

@@ -19,10 +19,14 @@ pip install -e ".[all,test,docs]"
 ```
 
 ```bash
-ruff check src tests      # lint (CI runs the same command)
+ruff check .              # lint (CI runs the same command)
 pytest                    # run the test suite
 mkdocs build --strict     # build the docs (runs the gallery examples)
 ```
+
+The linter is pointed at the whole repository, so `app/` and `docs/` are covered
+along with `src/` and `tests/`. Naming directories leaves a new top-level script
+unlinted until somebody remembers to extend the list.
 
 ## Conventions
 
@@ -30,14 +34,15 @@ Every plotting function returns a [plotnine](https://plotnine.org) object (or a
 composition for multi-panel figures), so a plot can be extended with the usual
 `+` syntax. New or changed plots should keep the shared theme (`theme_depictr`)
 and the colourblind-safe Okabe-Ito palette, and where a specialist package
-computes a quantity well, depictr delegates to it and redraws the result rather
-than re-implementing it. The gallery guides in `docs/gallery/` render their plots
-at build time, so a new family is easiest to review with a guide added there.
+computes a quantity well, depictr delegates to it and redraws the result, leaving
+the computation where it is. The gallery guides in `docs/gallery/` render their
+plots at build time, so a new family is easiest to review with a guide added
+there.
 
 ## Submitting a pull request
 
 Base your work on `main`, keep the change focused, and add or update tests and
-documentation alongside the code. Running `ruff check src tests`, `pytest` and
+documentation alongside the code. Running `ruff check .`, `pytest` and
 `mkdocs build --strict` before opening the pull request saves a round trip.
 
 By contributing you agree that your contribution is licensed under the same MIT

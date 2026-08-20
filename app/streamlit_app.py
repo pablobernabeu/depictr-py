@@ -2,8 +2,8 @@
 
 Pick a bundled dataset (or upload a CSV), choose a plot, and see the depictr
 figure together with the exact Python call that made it. A colourblind-vision
-toggle re-renders the whole figure as each deficiency would be seen, so the
-accessibility of the default palette is visible, not just claimed.
+toggle re-renders the whole figure as each deficiency would be seen, so a reader
+can judge the accessibility of the default palette on the figure itself.
 
 Run with:  streamlit run app/streamlit_app.py
 """
@@ -71,8 +71,8 @@ deficiency = st.sidebar.selectbox(
 
 legend_in = st.sidebar.checkbox(
     "Legend inside plot", value=False,
-    help="For the plots that support it, tucks the legend into the panel "
-         "instead of a right-hand margin.",
+    help="For the plots that support it, tucks the legend into the panel, "
+         "so the figure needs no right-hand margin.",
 )
 report = dp.palette_safety()
 st.sidebar.metric("Palette min ΔE (worst case)", report["min_delta_e"],
@@ -94,8 +94,14 @@ num_cols = list(data.select_dtypes("number").columns)
 cat_cols = [c for c in data.columns if c not in num_cols]
 binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # The ROC/PR/gain/lift/calibration/threshold family does arithmetic on y_true
-# (e.g. a cumulative sum), so it needs a genuine 0/1 column, not just any
-# two-level one -- confusion_matrix_plot has no such constraint.
+# (a cumulative sum, for one), so it needs a column coded 0/1. Any other
+# two-level column counts no positives and meets the single-class refusal.
+# confusion_matrix_plot carries no such constraint and keeps the wider list.
+#
+# The fallback to `binary_cols` covers an uploaded CSV with no 0/1 column at
+# all: an empty selectbox would leave the whole family unreachable with no
+# explanation, so the wider list is offered and the plot's own refusal is what
+# the user sees, through the error handler at the foot of this file.
 binary01_cols = [c for c in binary_cols
                  if set(pd.unique(data[c].dropna())) <= {0, 1}] or binary_cols
 

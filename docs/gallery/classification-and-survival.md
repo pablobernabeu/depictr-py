@@ -59,7 +59,7 @@ print(show(p))
 ```
 
 The threshold plot sweeps the decision cut-off, so the trade-off between the
-metrics as the operating point moves is visible at a glance.
+metrics as the operating point moves can be read straight off the curves.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.threshold_plot(ct["adverse_event"], score)

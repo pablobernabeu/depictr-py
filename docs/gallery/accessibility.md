@@ -1,9 +1,9 @@
 # Accessibility: a validated colourblind-safe palette
 
-depictr defaults to the Okabe-Ito palette and checks that choice rather than
-asserting it. A Machado-2009 simulator and a CIE-Lab distance test confirm the
-colours stay distinguishable under each colour-vision deficiency. A safe palette
-is not a safe figure, though, so the same machinery also audits a finished plot.
+depictr defaults to the Okabe-Ito palette and then measures what that choice
+buys. A Machado-2009 simulator and a CIE-Lab distance test confirm the colours
+stay distinguishable under each colour-vision deficiency. A safe palette is not a
+safe figure, though, so the same machinery also audits a finished plot.
 That is the second half of this page.
 
 ```python exec="1" html="1" session="a11y"
@@ -27,8 +27,8 @@ print(pre(repr(report)))
 ## The palette in use
 
 A grouped distribution in the default palette, a histogram with its density
-curve. `legend_inside` tucks the legend into the empty top-right corner instead
-of a separate margin.
+curve. `legend_inside` tucks the legend into the empty top-right corner, so the
+figure needs no separate margin.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 ld = dp.lexical_decision()
@@ -90,9 +90,9 @@ print(pre("\n".join(lines)))
 Eight colours is the guarantee, not a starting point. Asked for more,
 `depictr_palette` interpolates between the Okabe-Ito colours, and the
 in-between colours land close enough together that the same check fails them.
-The package warns when that happens rather than handing back colours under a
-promise it cannot keep, so the honest reading of the report below is that nine
-groups is already the ceiling and ten is past it.
+The package warns when that happens, so no colours go out under a promise it
+cannot keep, and the honest reading of the report below is that nine groups is
+already the ceiling and ten is past it.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 import warnings
@@ -108,7 +108,7 @@ print(pre("\n".join(lines)))
 
 With more than eight groups, facet them, or map the variable to the sequential
 ramp (`dp.depictr_palette(n, kind="sequential")`), which stays ordered and
-legible at any length because lightness, not hue, does the work.
+legible at any length because lightness carries the ordering.
 
 ## Auditing the figure you are about to submit
 
@@ -138,8 +138,7 @@ print(table(column[column["check"] == "text_size"]))
 ```
 
 A figure built with two well-separated colours, a redundant shape and no
-shrinking clears every row, so the audit is capable of both verdicts rather than
-only of finding fault.
+shrinking clears every row, so the audit returns a pass as readily as a failure.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 from plotnine import aes, geom_point, ggplot, scale_colour_manual
@@ -160,8 +159,8 @@ One limitation belongs here, where the claim is made. The eight-colour palette
 clears every colour-vision check and fails the greyscale check: its orange and its
 sky blue differ by 0.79 in CIE lightness, so a black-and-white printer renders
 them as the same grey. The Okabe-Ito guarantee is about hue confusion and was
-never a claim about greyscale. The threshold has been left where it is rather than
-moved so that depictr's own defaults pass.
+never a claim about greyscale. Moving the threshold would let depictr's own
+defaults through, so it stays where it is.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 eight = pd.DataFrame({"g": list("abcdefgh"), "x": range(8), "y": range(8)})

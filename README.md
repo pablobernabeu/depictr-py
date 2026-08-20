@@ -54,10 +54,10 @@ accessible figure.
 
 ## Accessibility by default
 
-The default palette is the Okabe-Ito set, and that choice is checked rather than
-asserted. The package ships a simulator of colour-vision deficiency based on the
-model of Machado, Oliveira and Fernandes (2009) and a CIE-Lab distance test that
-measures how far apart the palette's colours stay under each deficiency:
+The default palette is the Okabe-Ito set, and the package puts that choice to a
+test. It ships a simulator of colour-vision deficiency based on the model of
+Machado, Oliveira and Fernandes (2009), and a CIE-Lab distance test that measures
+how far apart the palette's colours stay under each deficiency:
 
 ```python
 import depictr as dp
@@ -89,8 +89,8 @@ dp.check_figure(p, width_cm=8.9)
 It measures colour separability under each dichromacy and in greyscale, the
 smallest text size at the width the figure will be printed at, the WCAG contrast
 of text and geometry against their backgrounds, and whether any distinction rests
-on colour alone. One limitation is worth stating where the claim is made: the
-colourblind-safety guarantee is about hue confusion rather than greyscale, and the
+on colour alone. One limitation belongs here, beside the claim it qualifies. The
+colourblind-safety guarantee covers hue confusion alone, and in greyscale the
 palette's orange and sky blue differ by only 0.79 in CIE lightness, so they print
 as the same grey. A figure that may be printed in black and white wants fewer
 groups, a sequential palette, or a redundant shape or line type.
@@ -108,7 +108,7 @@ The classification and survival plots delegate to scikit-learn and lifelines,
 each an optional dependency installed only when your plots need it
 (`depictr[classification]`, `depictr[survival]`). The model and time-series
 plots delegate to statsmodels, which plotnine itself requires, so it arrives
-with the core install; the `depictr[models]` extra remains to pin the tested
+with the core install. The `depictr[models]` extra remains to pin the tested
 statsmodels floor.
 
 The development version comes from GitHub:
@@ -175,7 +175,7 @@ The exported functions fall into families that follow the stages of an analysis.
 
 | Family | Functions |
 | --- | --- |
-| Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette` |
+| Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette`, `legend_inside` |
 | Accessibility | `check_figure`, `palette_safety`, `simulate_cvd` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
 | Estimation and tables | `estimation_plot` (single- or two-panel Gardner-Altman), `summary_table` |
@@ -202,15 +202,17 @@ A few known limitations remain. Compositions in plotnine have no figure-level
 title, so a grid carries its titles on each panel (the survival and estimation
 composites place the title on their top panel). `survival_plot` does not yet
 draw the confidence band or censor marks the R package draws, though its
-`conf_level` argument is accepted for future use. A handful of functions from
-the R package are not ported: `optimizer_fixef_plot` (there is no clean
+`conf_level` argument is accepted for future use. Seven functions from the R
+package have yet to be ported: `optimizer_fixef_plot` (there is no direct
 statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
-`model_fit_table` and `ts_forecast`.
+`model_fit_table`, `ts_forecast`, the label helper `format_terms` and the
+session-wide settings of `depictr_options`. The `monthly_sales` dataset is also
+R-only, so the time-series examples here build their own series.
 
 ## Relationship to the R package
 
-The two are siblings rather than a shared codebase. The R package is built on
-ggplot2 and this one on plotnine, but the design is shared. Each gives the whole
+The two are siblings, with no shared codebase. The R package is built on ggplot2
+and this one on plotnine, and the design is common to both. Each gives the whole
 workflow one accessible theme, takes its input either as a fitted model or as a
 data frame, and returns plot objects that stay extensible.
 

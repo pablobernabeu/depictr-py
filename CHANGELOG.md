@@ -9,130 +9,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`check_figure()`, an accessibility and honesty audit of the figure you are about
-  to submit.** Until now the package could vouch for its palette and say nothing
-  about a finished plot, which is the thing a reader actually sees. Give it anything
-  a depictr function returns, including a plot extended afterwards with `+`, and it
-  introspects the build and returns a tidy DataFrame: the separability of the
-  encoding colours under each dichromacy and in greyscale, the smallest text size
-  against a stated physical output width, the WCAG contrast of the text and of the
-  geometry against their backgrounds, and whether any distinction is carried by
-  colour alone. Every row carries the value it measured beside the threshold it was
-  measured against, so a verdict can be argued with. The R twin gained the same
-  function, with the same check names, thresholds, verdicts and measured numbers.
+- `check_figure()`, an accessibility and honesty audit of the figure you are about
+  to submit. Until now the package could vouch for its palette and say nothing
+  about a finished plot, which is the thing a reader sees. Give it anything a
+  depictr function returns, including a plot extended afterwards with `+`, and it
+  introspects the build and returns a tidy DataFrame. The rows cover the
+  separability of the encoding colours under each dichromacy and in greyscale, the
+  smallest text size against a stated physical output width, the WCAG contrast of
+  the text and of the geometry against their backgrounds, and whether any
+  distinction is carried by colour alone. Every row carries the value it measured
+  beside the threshold it was measured against, so a verdict can be argued with.
+  The R twin gained the same function, with the same check names, thresholds,
+  verdicts and measured numbers.
+- CI now exercises the installed package as well as the checkout. The matrix gains
+  Python 3.14. A new job installs the built wheel into a bare environment outside
+  the repository and imports it there, so packaged data and distribution metadata
+  are tested in the state a user meets them, and not masked by the source tree an
+  editable install sits beside. A second new job installs the declared minimum
+  dependency versions. A weekly schedule runs the suite when nobody has pushed, so
+  upstream drift in the plotting stack shows up as a dated red badge before anyone
+  is surprised by it.
+- Linting, matching the rest of the family. This was the only Python package in the
+  family running no linter, which is why it had quietly accumulated seven findings.
+  The rule set is stated explicitly in `pyproject.toml` (`E, F, W, I, UP, B`, as in
+  the scopusflow and theoryforge twins) so that it does not shift underneath the
+  package: an inherited default is what turned a sibling's green CI red without a
+  line of that package changing. The job lints the whole repository, where naming
+  `src` and `tests` had left `app/streamlit_app.py` and `docs/_exec.py` covered by
+  nothing, and the app was carrying an over-long line that no gate could see. Naming
+  directories leaves a new top-level script unlinted until somebody remembers to
+  extend the list.
 
 ### Changed
 
-- `simulate_cvd()` names the three deficiencies in its refusal message rather than
-  printing a Python tuple, so the wording matches the R twin byte for byte.
+- `simulate_cvd()` names the three deficiencies in its refusal message, in place
+  of the Python tuple it printed before, so the wording matches the R twin byte
+  for byte.
 - The sRGB-to-XYZ matrix behind the CIE Lab conversion is now given to seven decimal
   places instead of four. The rounded form shifted a Delta-E by a few thousandths,
   enough to round a reported distance differently from the R twin on the same
   colours. The distances `palette_safety()` reports for the default palette are
   unchanged at two decimal places.
-- **The accessibility claim has been narrowed to what is true.** The default
+- The accessibility claim has been narrowed to what is true. The default
   eight-colour palette clears every colour-vision check and fails the new greyscale
   check: its orange (`#e69f00`) and sky blue (`#56b4e9`) differ by 0.79 in CIE
   lightness, so a black-and-white printer renders them as the same grey. The
   Okabe-Ito guarantee is about hue confusion and was never a claim about greyscale.
-  The threshold has been left where it is rather than moved so the package's own
-  defaults pass, and the accessibility page now states the limitation where the
-  claim is made.
+  The threshold stays where it is, and the accessibility page now states the
+  limitation where the claim is made, so the package's own defaults are held to the
+  same standard as anybody else's.
+- Two `zip()` calls now pass `strict=True`: the dendrogram builder pairs scipy's
+  `icoord` with `dcoord`, and the forest plot pairs two columns of one frame. In
+  both, unequal lengths are impossible by construction, so raising is the right
+  response to the impossible happening, where a silent truncation would have left a
+  plot missing part of its data. Import blocks were sorted and one long line
+  wrapped, with no change in behaviour.
 
 ### Fixed
 
-- **`depictr_palette()` interpolated past its accessibility guarantee without saying so.**
-  Beyond the eight Okabe-Ito base colours the palette is a ramp, and the
-  colour-vision-deficiency guarantee that is this package's reason for existing stops
-  holding; the interpolated palette fails the package's own `palette_safety()` check. It
-  now warns at the point of interpolation. The R twin carried the same silence and was
-  fixed with it.
-- **`survival_plot()` drew a phantom arm for a group that does not exist.** A missing
+- `depictr_palette()` interpolated past its accessibility guarantee without saying
+  so. Beyond the eight Okabe-Ito base colours the palette is a ramp, and the
+  colour-vision-deficiency guarantee that is this package's reason for existing
+  stops holding, so the interpolated palette fails the package's own
+  `palette_safety()` check. It now warns at the point of interpolation. The R twin
+  carried the same silence and was fixed with it.
+- `survival_plot()` drew a phantom arm for a group that does not exist. A missing
   value in `group` became a level matching no observation. Missing groups are now
   dropped with a count, and an all-missing group is an error.
-- **`interaction_plot()` drew a missing grouping value as a literal `nan` line and legend
-  entry** — the same "a missing value stringified into a legitimate-looking value"
-  defect fixed across the family this round.
-- **`summary_table()` counted missing-group records in `Overall` and in no group column**,
-  so the per-group sizes silently fell short of the headline N; they now get a `Missing`
-  column. Its group columns are also ordered by level rather than by row appearance, so
-  the table no longer depends on input row order.
-- **`seasonal_plot()` ordered its cycles lexicographically**, sorting cycle 10 between 1
-  and 2, and coloured them categorically rather than with the sequential ramp. An annual
-  index also inferred a seasonal period of 1; an explicit `period` is now required.
-- Degenerate inputs that returned a confident wrong answer now refuse or abstain:
-  `estimation_plot(two_panel=True)` omits the interval for a single-observation group
-  instead of drawing a zero-width one that implies perfect precision; `palette_safety()`
-  rejects a palette of fewer than two colours rather than reporting it safe at infinite
-  distance; `gain_plot()` and `lift_plot()` refuse a single-class outcome instead of
-  substituting a denominator of 1 and drawing a flat curve; `survival_plot()` raises a
-  clear error for a non-finite follow-up time instead of a bare `StopIteration`; and
-  `correlation_heatmap()` drops zero-variance columns with a message and labels an
-  undefined correlation `n/a` rather than rendering the string `nan` in the cell.
-- **`acf_plot()`, `decompose_plot()` and `seasonal_plot()` silently dropped internal
-  missing values**, closing up the gap: the ACF correlated values across it, the
+- `interaction_plot()` drew a missing grouping value as a literal `nan` line and
+  legend entry, the same "a missing value stringified into a legitimate-looking
+  value" defect fixed across the family this round.
+- `summary_table()` counted missing-group records in `Overall` and in no group
+  column, so the per-group sizes silently fell short of the headline N. They now
+  get a `Missing` column. Its group columns are also ordered by level, so the table
+  no longer depends on the order the rows arrived in.
+- `seasonal_plot()` ordered its cycles lexicographically, sorting cycle 10 between 1
+  and 2, and coloured them categorically where the sequential ramp belongs. An
+  annual index also inferred a seasonal period of 1, so an explicit `period` is now
+  required.
+- `estimation_plot(two_panel=True)` omits the interval for a single-observation
+  group. The zero-width interval it drew there before implied a precision the data
+  does not have.
+- `palette_safety()` rejects a palette of fewer than two colours, having previously
+  called one safe at an infinite distance.
+- `gain_plot()` and `lift_plot()` refuse a single-class outcome. Both previously
+  substituted a denominator of 1 and drew a flat curve.
+- `survival_plot()` raises a clear error for a non-finite follow-up time, where a
+  bare `StopIteration` escaped before.
+- `correlation_heatmap()` drops zero-variance columns with a message, and an
+  undefined correlation is labelled `n/a` where the string `nan` was being printed
+  in the cell.
+- `acf_plot()`, `decompose_plot()` and `seasonal_plot()` silently dropped internal
+  missing values, closing up the gap: the ACF correlated values across it, the
   decomposition misaligned, and every post-gap observation landed on the wrong
-  within-period position. An internal missing value is now an error, in the wording of
-  `survival_plot()`'s refusal of a non-finite follow-up time; missing values at either
-  end are still trimmed, since trimming only shortens the series.
-- `acf_plot()` turns an all-missing or empty series away by name, as `seasonal_plot()`
-  already did. Its default lag count took the base-10 logarithm of the length, so a
-  series with nothing in it surfaced as an `OverflowError` from the surrounding `int()`,
-  naming neither the argument nor the problem.
-- **`roc_curve_plot()`, `pr_curve_plot()` and `threshold_plot()` accepted a single-class
-  outcome**, annotating an AUC of nan or an average precision of 0.000 as if they
-  measured something (scikit-learn computes both under a warning rather than refusing).
-  They now raise the same refusal `gain_plot()` and `lift_plot()` already carry, with
-  the R twin's wording per curve.
-- **`dendrogram_plot()` needed scikit-learn despite its documented scipy-only
-  contract.** Standardisation went through sklearn's `StandardScaler`; it is now a
-  numpy z-score with identical semantics (population standard deviation, and a scale of
-  1 substituted for a zero-variance column), so the dendrogram runs on the core install
-  and the sklearn-backed plots see the same input as before.
-- **The installation docs called statsmodels optional, but plotnine 0.15 requires it**,
-  so every core install already ships it. The README and the docs now name scikit-learn
-  and lifelines as the genuinely optional back-ends, with `depictr[models]` kept to pin
-  the tested statsmodels floor.
+  within-period position. An internal missing value is now an error, in the wording
+  of `survival_plot()`'s refusal of a non-finite follow-up time. Missing values at
+  either end are still trimmed, since trimming only shortens the series.
+- `acf_plot()` turns an all-missing or empty series away by name, as
+  `seasonal_plot()` already did. Its default lag count took the base-10 logarithm of
+  the length, so a series with nothing in it came back as an `OverflowError` from
+  the surrounding `int()`, naming neither the argument nor the problem.
+- `roc_curve_plot()`, `pr_curve_plot()` and `threshold_plot()` accepted a
+  single-class outcome, annotating an AUC of nan or an average precision of 0.000 as
+  if they measured something (scikit-learn computes both under a warning and does
+  not refuse). They now raise the same refusal `gain_plot()` and `lift_plot()`
+  already carry, with the R twin's wording per curve.
+- `dendrogram_plot()` needed scikit-learn despite its documented scipy-only
+  contract, because standardisation went through sklearn's `StandardScaler`. It is
+  now a numpy z-score with identical semantics (population standard deviation, and a
+  scale of 1 substituted for a zero-variance column), so the dendrogram runs on the
+  core install and the sklearn-backed plots see the same input as before.
+- The installation docs called statsmodels optional, when plotnine 0.15 requires it
+  and every core install therefore already ships it. The README and the docs now
+  name scikit-learn and lifelines as the optional back-ends, with `depictr[models]`
+  kept to pin the tested statsmodels floor.
+- The contributing guide told contributors to run `ruff check src tests`, the
+  command CI stopped using when linting moved to the whole repository. It now
+  names `ruff check .` and says what the wider scope buys.
+- The README's list of functions not yet ported left out `format_terms` and
+  `depictr_options`, and said nothing about the R-only `monthly_sales` dataset.
+  All three are now named, and `legend_inside` joins the table of exported
+  functions, which had omitted it.
 - `summary_table()`'s documentation promised to sort the levels of an unordered
-  categorical, when any categorical keeps its declared category order (the intended
-  behaviour); the docs now say so.
-- `posterior_plot()` warns when a `labels` key matches no parameter, instead of returning
-  an unrelabelled figure.
-- **Three declared dependency floors described a stack no install could produce.**
+  categorical, when any categorical keeps its declared category order, which is the
+  intended behaviour. The docs now say so.
+- `posterior_plot()` warns when a `labels` key matches no parameter. An unmatched
+  key was silently ignored, and the figure came back unrelabelled.
+- Three declared dependency floors described a stack no install could produce.
   `pandas>=2.0`, `matplotlib>=3.6` and `scipy>=1.7` all sat below what
   `plotnine>=0.15` already requires (2.2, 3.8 and 1.8 respectively), and the
   `models` extra named `statsmodels>=0.14` where plotnine forces 0.14.5. A
   resolver always took the higher bound, so no install was ever affected, but a
   floor is a claim about what has been tested and this one was false. The floors
   now state what plotnine forces, and a new CI job installs them.
-
-### Added
-
-- **CI tests what users install, not only the checkout.** The matrix gains Python
-  3.14. A new job installs the built wheel into a bare environment outside the
-  repository and imports it there, so packaged data and distribution metadata are
-  exercised rather than masked by the source tree an editable install sits beside.
-  A second new job installs the declared minimum dependency versions. A weekly
-  schedule runs the suite when nobody has pushed, so upstream drift in the
-  plotting stack surfaces as a dated red badge rather than a surprise.
-- **Linting, matching the rest of the family.** This was the only Python package
-  in the family running no linter, which is why it had quietly accumulated seven
-  findings. The rule set is stated explicitly in `pyproject.toml` (`E, F, W, I,
-  UP, B`, as in the scopusflow and theoryforge twins) rather than inherited from
-  whatever ruff defaults to: an inherited default is what turned a sibling's
-  green CI red without a line of that package changing. The job lints the whole
-  repository rather than `src` and `tests` by name, which had left
-  `app/streamlit_app.py` and `docs/_exec.py` covered by nothing; the app was
-  carrying an over-long line that no gate could see. Naming directories leaves a
-  new top-level script unlinted until somebody remembers to extend the list.
-
-### Changed
-
-- Two `zip()` calls now pass `strict=True`: the dendrogram builder pairs scipy's
-  `icoord` with `dcoord`, and the forest plot pairs two columns of one frame. In
-  both, unequal lengths are impossible by construction, so raising is the right
-  response to the impossible happening rather than silently truncating a plot.
-  Import blocks were sorted and one long line wrapped; no behaviour changed.
 
 ## [0.2.2] - 2026-07-23
 
@@ -191,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an opt-in `legend_inside=False` parameter to `explore_distribution`,
   `ecdf_plot`, `dumbbell_plot`, `missingness_map` and `survival_plot`, plus the
   public `legend_inside()` theme helper, which places the legend inside the
-  panel (over a light background) rather than in a right-hand margin.
+  panel, over a light background, so the figure needs no right-hand margin.
 - Added a 'Getting started' guide that walks through a short analysis end to end.
 
 ### Changed
@@ -199,8 +208,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rebuilt the number-at-risk table beneath `survival_plot(risk_table=True)`.
   The curves now use the full panel width (no left-hand gutter), the group names
   label the rows on the y-axis, and the counts are coloured to match the curves,
-  forming a tidy strip under the curves rather than text floating in loosely
-  spaced negative space.
+  so the table reads as a strip under the plot. It used to be text floating in
+  loosely spaced negative space.
 - The log-rank *p*-value follows APA style (an italicised *p*, no leading zero,
   and *p* < .001 reported below that threshold). The colour legend and the
   risk-table rows now list the groups in the same order (a user-set categorical
@@ -214,12 +223,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Grouped histograms were invisible. `explore_distribution(kind="both"`
   or `"histogram")` with a `group` drew no bars at all, because
-  `geom_histogram(fill=None)` made them fully transparent instead of deferring
-  to the group colour mapping.
+  `geom_histogram(fill=None)` made them fully transparent, where the intention
+  was to defer to the group colour mapping.
 - Axis and legend titles leaked raw column names. Several plots that
   meant to leave a title blank (`labs(x=None, ...)`) instead showed the mapped
   column's literal name (`x`, `value`, `variable`, `term`, `metric`, ...) because
-  this plotnine version treats `None` as unset rather than blank. Corrected 14
+  this plotnine version reads `None` as unset, and only `""` as blank. Corrected 14
   call sites across `diagnostics`, `eda`, `estimation`, `mixed`, `models`,
   `multivariate`, `posterior`, `predictions`, `distributions_extra`,
   `timeseries` and `classification`.
@@ -241,8 +250,8 @@ object you can extend with `+`.
 
 - Okabe-Ito palette and the depictr theme and scales as the default look.
 - A Machado-2009 colour-vision-deficiency simulator (`simulate_cvd`) and a
-  CIE-Lab palette safety check (`palette_safety`), so the default palette is
-  validated rather than asserted.
+  CIE-Lab palette safety check (`palette_safety`), which validate the default
+  palette.
 
 ### Plotting functions, by family
 

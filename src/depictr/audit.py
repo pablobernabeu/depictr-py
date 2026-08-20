@@ -12,8 +12,8 @@ The audit introspects a built plot rather than re-deriving what it thinks the
 plot ought to contain, so it also sees whatever was added after depictr handed
 the plot back: a replacement scale, a different theme, an extra layer. Drawing
 the figure once supplies everything. The layers' data give the colours that
-actually encode groups, and the matplotlib artists give the text that will
-actually be drawn, at the point size and in the colour it will be drawn in.
+encode groups, and the matplotlib artists give the text that will actually be
+drawn, at the point size and in the colour it will be drawn in.
 
 World Wide Web Consortium. (2023). Web content accessibility guidelines (WCAG)
 2.2. W3C Recommendation. https://www.w3.org/TR/WCAG22/
@@ -101,7 +101,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ----------
     plot : plotnine.ggplot
         A plot, as returned by any depictr plotting function, including one
-        extended afterwards with ``+``.
+        extended afterwards with ``+``. A multi-panel composite is refused: its
+        panels have their own scales, themes and text, and one table of numbers
+        cannot describe them all. Check each panel on its own.
     width_cm : float
         The width, in centimetres, that the figure will occupy in the finished
         document. Defaults to 17.78 cm, the seven inches

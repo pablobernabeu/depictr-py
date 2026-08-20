@@ -1,10 +1,10 @@
 """The shared depictr theme and colour/fill scales for plotnine.
 
 Every plotting function builds on :func:`theme_depictr` and the depictr scales,
-so figures across the whole workflow share one clean, accessible look without the
-caller setting anything. The theme is a light refinement of plotnine's
-``theme_minimal``: subtle gridlines, comfortable margins, and centred, bold
-titles (including legend titles).
+so figures across the whole workflow share one consistent, accessible look
+without the caller setting anything. The theme is a light refinement of
+plotnine's ``theme_minimal``: subtle gridlines, comfortable margins, and centred,
+bold titles (including legend titles).
 """
 
 from __future__ import annotations

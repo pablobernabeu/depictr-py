@@ -16,7 +16,7 @@ The exploratory, theme and accessibility tools work with the core install, and
 so do the model and time-series plots: they delegate to statsmodels, which
 plotnine itself requires. The classification and survival plots delegate to
 scikit-learn and lifelines, each an optional extra (`depictr[classification]`,
-`depictr[survival]`); the `depictr[models]` extra remains to pin the tested
+`depictr[survival]`). The `depictr[models]` extra remains to pin the tested
 statsmodels floor.
 
 ## The idea
@@ -96,10 +96,10 @@ dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
 dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 ```
 
-## Accessibility, checked rather than asserted
+## Checking the accessibility claim
 
-The default palette is the Okabe-Ito set, and that choice is verified rather than
-assumed. A simulator of colour-vision deficiency, based on the model of Machado,
+The default palette is the Okabe-Ito set, and the claim behind that choice is
+testable. A simulator of colour-vision deficiency, based on the model of Machado,
 Oliveira and Fernandes (2009), and a CIE-Lab distance test measure how far apart
 the palette's colours stay under each form of deficiency.
 
@@ -109,10 +109,11 @@ dp.palette_safety()
 ```
 
 A safe palette is not a safe figure, though, so `check_figure` audits a finished
-plot: colour separability under each dichromacy and in greyscale, the smallest
-text size at the width the figure will be printed at, the WCAG contrast of text
-and geometry, and whether any distinction rests on colour alone. Each row reports
-the value it measured beside the threshold, so a verdict can be argued with.
+plot. It measures how separable the encoding colours are under each dichromacy
+and in greyscale, how small the text becomes at the width the figure will be
+printed at, how well text and geometry contrast with their backgrounds under
+WCAG, and whether any distinction rests on colour alone. Each row reports the
+value it measured beside the threshold, so a verdict can be argued with.
 
 ```python
 dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
@@ -121,8 +122,8 @@ dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
 
 The gallery's [accessibility page](gallery/accessibility.md) renders both reports
 in full, and states the one limitation worth knowing: the colourblind-safety
-guarantee is about hue confusion rather than greyscale, and two of the palette's
-colours print as the same grey.
+guarantee covers hue confusion alone, and two of the palette's colours print as
+the same grey.
 
 ## Extending and composing
 
