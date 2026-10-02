@@ -18,6 +18,7 @@ import pandas as pd
 from plotnine import (
     aes,
     annotate,
+    coord_fixed,
     coord_flip,
     geom_bar,
     geom_hline,
@@ -87,13 +88,19 @@ def _nice_label(name):
     return str(name).replace("_", " ")
 
 
+#: Loading arrows and their labels: R's grey20, a neutral dark grey outside the
+#: qualitative palette, so that no arrow reads as one of the groups.
+_LOADING_INK = "#333333"
+
+
 def pca_plot(data, cols=None, group=None, title=None):
     """PCA biplot: observations on the first two components, with loading arrows.
 
     Observations are scored on PC1 and PC2 and shown as points, optionally
     coloured by ``group``. Each original variable is drawn as an arrow from the
-    origin in the direction of its loading, labelled with the variable name. The
-    axis labels report the percentage of variance each component explains.
+    origin along its loading, labelled with the variable name just beyond the
+    arrow head. The axis labels report the percentage of variance each component
+    explains.
 
     Parameters
     ----------
@@ -111,6 +118,26 @@ def pca_plot(data, cols=None, group=None, title=None):
     -------
     plotnine.ggplot
 
+    Raises
+    ------
+    KeyError
+        If ``group`` is not a column of ``data``.
+
+    Notes
+    -----
+    Each arrow is a variable's loadings on the two components, multiplied by a
+    factor that all the arrows share, as in the R twin. The factor makes the
+    largest coordinate of any arrow three quarters of the largest absolute
+    score. Both axes use that one factor, as base R's ``biplot()`` uses one
+    ratio for both, and the aspect ratio is fixed at 1. An arrow's angle on the
+    page is therefore its angle in loading space, whatever the size of the
+    figure. The panel's height and width follow the ranges of its two axes, so
+    a figure of another shape leaves blank space around the panel. Because the
+    scores are drawn as they are and the arrows as loadings, the angle between
+    two arrows does not estimate the correlation between their variables.
+    Arrows and labels are drawn in a neutral dark grey (``#333333``), which is
+    not in the palette, so no arrow reads as part of a group.
+
     Examples
     --------
     >>> import depictr as dp
@@ -119,6 +146,10 @@ def pca_plot(data, cols=None, group=None, title=None):
     """
     _require_sklearn()
     from sklearn.decomposition import PCA
+
+    if group is not None and group not in data.columns:
+        # The wording of the R twin, which names the argument as well.
+        raise KeyError(f"Column {group!r} (argument `group`) not found in the data.")
 
     num = _numeric_frame(data, cols)
     X = _standardise(num)
@@ -131,16 +162,22 @@ def pca_plot(data, cols=None, group=None, title=None):
         # Align the kept-aside group to the complete-case rows used above.
         pts[group] = data.loc[num.index, group].to_numpy()
 
-    # Loadings, scaled to the span of the scores so the arrows sit among the
-    # points rather than near the origin (a standard biplot rescaling).
+    # One factor for both axes, so that each arrow points along its loading. A
+    # factor per axis stretches the arrows unevenly and bends every direction.
     loadings = pca.components_.T  # variables x components
-    span = np.abs(scores).max(axis=0)
-    arrow_len = np.abs(loadings).max(axis=0)
-    scale = span / arrow_len * 0.9
+    span = np.abs(scores).max()
+    mult = span / np.abs(loadings).max() * 0.75
+    end = loadings * mult
+    # Each label continues its arrow outward by 8% of the span, clear of the
+    # arrow head. An arrow of zero length has no direction and keeps its label
+    # at the origin.
+    length = np.hypot(end[:, 0], end[:, 1])[:, None]
+    unit = np.divide(end, length, out=np.zeros_like(end), where=length > 0)
+    label_at = end + unit * span * 0.08
     load = pd.DataFrame({
         "x": 0.0, "y": 0.0,
-        "xend": loadings[:, 0] * scale[0],
-        "yend": loadings[:, 1] * scale[1],
+        "xend": end[:, 0], "yend": end[:, 1],
+        "labx": label_at[:, 0], "laby": label_at[:, 1],
         "label": [_nice_label(c) for c in num.columns],
     })
 
@@ -154,11 +191,13 @@ def pca_plot(data, cols=None, group=None, title=None):
     return (
         p
         + geom_segment(aes(x="x", y="y", xend="xend", yend="yend"),
-                       data=load, color=ACCENT, size=0.7,
+                       data=load, color=_LOADING_INK, size=0.7,
                        arrow=_arrow())
-        + geom_text(aes(x="xend", y="yend", label="label"), data=load,
-                    color=ACCENT, size=9, fontweight="bold",
-                    nudge_y=span[1] * 0.04)
+        + geom_text(aes(x="labx", y="laby", label="label"), data=load,
+                    color=_LOADING_INK, size=9, fontweight="bold")
+        # One unit of PC1 spans the same length on the page as one unit of PC2,
+        # so the arrows keep their angles on a figure of any shape.
+        + coord_fixed(ratio=1)
         + labs(x=f"PC1 ({var[0]:.1f}%)", y=f"PC2 ({var[1]:.1f}%)", title=title)
         + theme_depictr()
     )

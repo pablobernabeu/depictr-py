@@ -115,6 +115,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   geometry against the invisible white axes patch in place of the plot
   background, so a figure on a dark background passed in Python and failed in R.
   Both twins now report the same numbers for it.
+- `pca_plot()` stretched the loading arrows by a different factor on each axis,
+  so the drawn directions were wrong, by up to 22 degrees on the
+  `wellbeing_survey()` of 0.3.0. Both axes now share one factor, as in the R
+  twin and in base R's `biplot()`. The aspect ratio is fixed as well, so each
+  arrow points along its loading on a figure of any shape. The panel's height
+  and width follow the ranges of its axes, so a figure of another shape gains
+  blank space around the panel. Each label continues its arrow outward, as in R.
+  Arrows and labels are drawn in a neutral dark grey (`#333333`) in place of
+  the accent, which is also the second group colour and so tied the variables
+  to the second group. The `KeyError` for a misspelt `group` now names the
+  column and the argument, in the R twin's words.
 
 ## [0.3.0] - 2026-08-21
 
