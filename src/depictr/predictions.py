@@ -10,7 +10,11 @@ so a prediction plot sits in the same visual language as the rest of a report.
 For a single-predictor effect the other numeric predictors are held at their mean
 and categoricals at their most common (reference) level, the usual convention for
 an "effects" plot, so the line shows the partial relationship rather than a
-marginal average over the sample.
+marginal average over the sample. The predictors are the columns the formula
+names, and their means, levels and ranges are taken over the rows the model was
+fitted to. A model fitted with an ``offset`` or ``exposure`` is predicted at the
+mean offset over those rows on the link scale, which for an exposure is its
+geometric mean, as in the R twin.
 
 ``statsmodels`` arrives with the core install (plotnine itself requires it);
 the ``depictr[models]`` extra remains to pin the tested floor.
@@ -63,16 +67,157 @@ def _model_frame(model) -> pd.DataFrame:
     return frame
 
 
+def _estimation_frame(model) -> pd.DataFrame:
+    """The rows of the source data the model was fitted to.
+
+    statsmodels keeps the whole source frame, including rows its missing-value
+    handling dropped, and records the positions of those rows in
+    ``missing_row_idx`` and the labels of the rows it used in ``row_labels``.
+    Typical values and ranges are taken over the rows it used, so they are
+    statistics of the estimation sample. Positions pick them out even when the
+    frame's index repeats a label, as after ``pd.concat()``.
+    """
+    frame = _model_frame(model)
+    data = model.model.data
+    dropped = getattr(data, "missing_row_idx", None) or []
+    keep = np.ones(len(frame), dtype=bool)
+    keep[np.asarray(dropped, dtype=int)] = False
+    if keep.sum() == len(model.model.endog):
+        return frame[keep]
+    rows = getattr(data, "row_labels", None)
+    if rows is not None and frame.index.is_unique:
+        return frame.loc[rows]
+    raise ValueError(
+        "The rows this model was fitted to cannot be found in its source data, "
+        "so a prediction grid cannot be built."
+    )
+
+
 def _response_label(model) -> str:
     """A readable name for the response, unwrapping a formula Q(\"...\") guard."""
     name = str(model.model.endog_names)
     return re.sub(r'Q\("([^"]+)"\)', r"\1", name)
 
 
+# In a formula: a Q("...") name, any other string literal or an identifier.
+_FORMULA_TOKEN = re.compile(
+    r"""Q\(\s*(?P<quoted>"[^"]*"|'[^']*')\s*\)"""
+    r"""|(?P<string>"[^"]*"|'[^']*')"""
+    r"""|(?P<name>[^\W\d]\w*)"""
+)
+
+
 def _predictor_columns(model, frame: pd.DataFrame) -> list[str]:
-    """Source columns that are predictors (the response column dropped)."""
+    """Source columns the formula names as predictors, in formula order.
+
+    The right-hand side names a column as an identifier, as in ``np.log(rainfall)``
+    or ``C(treatment)``, or inside ``Q("...")``. A column it never names is no
+    predictor, since holding or sweeping it changes nothing the model predicts.
+    A model without a formula falls back to every column but the response.
+    """
     response = _response_label(model)
-    return [c for c in frame.columns if c != response]
+    formula = getattr(model.model, "formula", None)
+    if not formula:
+        return [c for c in frame.columns if c != response]
+    formula = str(formula)
+    # The first "~" outside a string literal separates the response.
+    masked = re.sub(r""""[^"]*"|'[^']*'""", lambda m: " " * len(m.group()), formula)
+    rhs = formula[masked.find("~") + 1:]
+    named = []
+    for token in _FORMULA_TOKEN.finditer(rhs):
+        if token.group("quoted"):
+            named.append(token.group("quoted")[1:-1])
+        elif token.group("name"):
+            named.append(token.group("name"))
+    columns = set(frame.columns)
+    return [c for c in dict.fromkeys(named) if c in columns and c != response]
+
+
+def _check_grid_terms(model, frame: pd.DataFrame, predictors: list[str]) -> None:
+    """Refuse a formula term that a prediction grid would change.
+
+    get_prediction() rebuilds every term from the grid's rows alone. patsy's
+    stateful transforms, such as ``center()``, ``standardize()`` and ``bs()``,
+    keep what they learnt from the fit. An expression such as
+    ``I(x - x.mean())`` takes a statistic of whatever rows it is given, so over
+    a grid it shifts. As in the R twin, each estimation row at a numeric
+    predictor's minimum or maximum is rebuilt on its own and compared with the
+    fit's design matrix, since such a statistic lies furthest from the row's own
+    value there.
+    """
+    design_info = getattr(model.model.data, "design_info", None)
+    if design_info is None:
+        return
+    from patsy import NAAction, build_design_matrices
+
+    # A statistic of one row can be NaN, as x.std() is. patsy would drop such a
+    # row as missing, so nothing counts as missing here.
+    keep_nan = NAAction(NA_types=[])
+    exog = np.asarray(model.model.exog, dtype=float)
+    rows = {0}
+    for col in predictors:
+        if pd.api.types.is_numeric_dtype(frame[col]):
+            values = frame[col].to_numpy(dtype=float, na_value=np.nan)
+            if np.isfinite(values).any():
+                rows.update((int(np.nanargmin(values)), int(np.nanargmax(values))))
+    unsafe = []
+    for i in sorted(rows):
+        try:
+            rebuilt = np.asarray(
+                build_design_matrices([design_info], frame.iloc[[i]],
+                                      NA_action=keep_nan)[0], dtype=float)
+        except Exception:  # patsy raises PatsyError and others on a bad rebuild
+            rebuilt = np.empty((0, exog.shape[1]))
+        if rebuilt.shape != (1, exog.shape[1]):
+            unsafe = None
+            break
+        same = np.isclose(rebuilt[0], exog[i], rtol=1e-9, atol=1e-12, equal_nan=True)
+        for term, columns in design_info.term_slices.items():
+            if not same[columns].all() and term.name() not in unsafe:
+                unsafe.append(term.name())
+    if unsafe is None:
+        what = "A term of this model cannot be computed from a single row of its data"
+    elif len(unsafe) == 1:
+        what = (f"The term `{unsafe[0]}` depends on statistics of the rows it is "
+                "computed from")
+    elif unsafe:
+        what = ("The terms " + " and ".join(f"`{t}`" for t in unsafe)
+                + " depend on statistics of the rows they are computed from")
+    else:
+        return
+    several = bool(unsafe) and len(unsafe) > 1
+    raise ValueError(
+        f"{what}. get_prediction() computes every term afresh over a prediction "
+        f"grid, so transform the {'variables' if several else 'variable'} in the "
+        "data and refit the model."
+    )
+
+
+def _offset_arguments(model, n: int) -> dict:
+    """Hold an offset or exposure at its mean over the estimation rows.
+
+    statsmodels predicts new rows at an offset of zero unless one is passed. An
+    offset expression cannot in general be inverted to a value of its variable,
+    so the offset is held at its mean on the link scale, as in the R twin. The
+    model stores an exposure as its log, so the exposure is held at its
+    geometric mean.
+    """
+    arguments = {}
+    offset = getattr(model.model, "offset", None)
+    if offset is not None:
+        arguments["offset"] = np.full(n, float(np.mean(offset)))
+    exposure = getattr(model.model, "exposure", None)
+    if exposure is not None:
+        arguments["exposure"] = np.full(n, float(np.exp(np.mean(exposure))))
+    return arguments
+
+
+def _prediction_label(model) -> str:
+    """The y-axis label, which names the convention for an offset model."""
+    label = f"Predicted {_response_label(model)}"
+    if _offset_arguments(model, 1):
+        label += " at the mean offset"
+    return label
 
 
 def _reference_row(frame: pd.DataFrame, predictors: list[str]) -> dict:
@@ -96,9 +241,11 @@ def _prediction_band(model, grid: pd.DataFrame, conf_level: float) -> pd.DataFra
 
     Both OLS and GLM expose ``mean``, ``mean_ci_lower`` and ``mean_ci_upper`` from
     ``summary_frame``; for a GLM these are on the response scale (probabilities),
-    which is what a reader expects from a prediction plot.
+    which is what a reader expects from a prediction plot. An offset or exposure
+    is held at its mean (see ``_offset_arguments``).
     """
-    summary = model.get_prediction(grid).summary_frame(alpha=1 - conf_level)
+    prediction = model.get_prediction(grid, **_offset_arguments(model, len(grid)))
+    summary = prediction.summary_frame(alpha=1 - conf_level)
     return pd.DataFrame({
         "fit": summary["mean"].to_numpy(),
         "lower": summary["mean_ci_lower"].to_numpy(),
@@ -114,13 +261,25 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     (most common) level. The line is the predicted response and the ribbon its
     confidence band, both read from statsmodels' ``get_prediction``.
 
+    The predictors are the columns the formula names, so a column of the source
+    frame outside the model plays no part. The range, means and levels come from
+    the rows the model was fitted to, without the rows its missing-value
+    handling dropped. A formula term computed from statistics of its rows, such
+    as ``I(x - x.mean())``, is refused with ``ValueError``, since
+    ``get_prediction()`` would compute it afresh over the grid. patsy's
+    ``center()`` and ``standardize()`` keep the values of the fit and are safe.
+    A model fitted with an ``offset`` is predicted at the mean offset over the
+    estimation rows, and one fitted with an ``exposure`` at the geometric mean
+    exposure. The y-axis label then ends in "at the mean offset".
+
     Parameters
     ----------
     model : statsmodels results object
         A fitted OLS/GLM result from a formula and a DataFrame (so the source
         data is retained for building the grid).
     var : str
-        The predictor to vary along the x-axis. Must be a numeric column.
+        The predictor to vary along the x-axis: a numeric column that the
+        formula names.
     conf_level : float
         Confidence level for the band.
     n : int
@@ -144,16 +303,17 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     if not _is_fitted_model(model):
         raise TypeError("effects_plot needs a fitted statsmodels result.")
 
-    frame = _model_frame(model)
-    if var not in frame.columns:
+    frame = _estimation_frame(model)
+    predictors = _predictor_columns(model, frame)
+    if var not in predictors:
         raise KeyError(f"{var!r} is not a predictor in the fitted model.")
     if not pd.api.types.is_numeric_dtype(frame[var]):
         raise TypeError(
             f"effects_plot varies {var!r} continuously, so it must be numeric. "
             "Use interaction_plot for a categorical predictor."
         )
+    _check_grid_terms(model, frame, predictors)
 
-    predictors = _predictor_columns(model, frame)
     others = [c for c in predictors if c != var]
     grid = pd.DataFrame({var: np.linspace(frame[var].min(), frame[var].max(), n)})
     for col, value in _reference_row(frame, others).items():
@@ -166,7 +326,7 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
         ggplot(df, aes(x=var, y="fit"))
         + geom_ribbon(aes(ymin="lower", ymax="upper"), fill=BRAND, alpha=0.2)
         + geom_line(color=BRAND, size=0.9)
-        + labs(x=var, y=f"Predicted {_response_label(model)}", title=title)
+        + labs(x=var, y=_prediction_label(model), title=title)
         + theme_depictr()
     )
 
@@ -178,7 +338,10 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     One coloured line per group shows how the predicted response changes with
     ``x`` within that group, so a fan of non-parallel lines is the visible mark of
     an interaction. The remaining predictors are held at their mean (numeric) or
-    reference level (categorical).
+    reference level (categorical). As in :func:`effects_plot`, the predictors are
+    the columns the formula names, the range, means and levels come from the
+    rows the model was fitted to, a term computed from statistics of its rows is
+    refused, and an offset or exposure is held at its mean.
 
     Parameters
     ----------
@@ -187,7 +350,8 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     x : str
         The numeric predictor on the x-axis.
     group : str
-        The categorical predictor whose levels are drawn as separate lines.
+        The categorical predictor whose levels are drawn as separate lines. A
+        level that occurs only in rows the fit dropped is not drawn.
     conf_level : float
         Confidence level for the bands.
     n : int
@@ -213,14 +377,15 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     if not _is_fitted_model(model):
         raise TypeError("interaction_plot needs a fitted statsmodels result.")
 
-    frame = _model_frame(model)
+    frame = _estimation_frame(model)
+    predictors = _predictor_columns(model, frame)
     for name in (x, group):
-        if name not in frame.columns:
+        if name not in predictors:
             raise KeyError(f"{name!r} is not a predictor in the fitted model.")
     if not pd.api.types.is_numeric_dtype(frame[x]):
         raise TypeError(f"interaction_plot needs a numeric x; {x!r} is not.")
+    _check_grid_terms(model, frame, predictors)
 
-    predictors = _predictor_columns(model, frame)
     others = [c for c in predictors if c not in (x, group)]
     held = _reference_row(frame, others)
     x_seq = np.linspace(frame[x].min(), frame[x].max(), n)
@@ -254,7 +419,7 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
         + geom_line(size=0.9)
         + scale_colour_depictr(len(levels))
         + scale_fill_depictr(len(levels))
-        + labs(x=x, y=f"Predicted {_response_label(model)}",
+        + labs(x=x, y=_prediction_label(model),
                color=group, fill=group, title=title)
         + theme_depictr()
     )

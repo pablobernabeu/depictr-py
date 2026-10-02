@@ -53,6 +53,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any transparent background composited onto white, unless `pil_kwargs` is
   passed. A missing output directory is now created, as in the R twin, where it
   raised `FileNotFoundError`.
+- `effects_plot()` and `interaction_plot()` held covariates at means taken over
+  every row of the source frame, including rows the fit dropped, and treated
+  every column as a predictor, so an unrelated all-missing column raised
+  `IndexError`. They now use the estimation rows and the columns the formula
+  names. A column outside the formula is no longer accepted as `var`, `x` or
+  `group`, where sweeping it drew a flat line, and a group level found only in
+  dropped rows is no longer drawn.
+- Offset and exposure models were predicted at an offset of zero. They are now
+  predicted at the mean offset over the estimation rows, which for an exposure
+  is its geometric mean, as in the R twin, and the y-axis label says so.
+- A formula term computed from statistics of its rows, such as
+  `I(x - x.mean())`, shifted the predicted line, since `get_prediction()`
+  computed it afresh over the grid. Such a term is now refused with
+  `ValueError`, as in the R twin. patsy's `center()` and `standardize()` keep
+  the values of the fit and are unaffected.
 
 ## [0.3.0] - 2026-08-21
 
