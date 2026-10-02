@@ -98,6 +98,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   computed it afresh over the grid. Such a term is now refused with
   `ValueError`, as in the R twin. patsy's `center()` and `standardize()` keep
   the values of the fit and are unaffected.
+- `check_figure()` measured all text against the plot background, so text on a
+  coloured facet strip or legend box was judged against a background it is not
+  drawn on: white strip text on a dark strip failed and unreadable grey strip text
+  passed. Each text is now measured against its own background, with a
+  translucent fill taken as the colour it shows over what lies beneath it. Large
+  text (18 pt, or 14 pt bold, as printed) is held to the 3:1 that WCAG asks of it,
+  where it used to be held to 4.5:1. The `text_contrast` row reports the text that
+  falls furthest short of its own threshold and gives that threshold, and its
+  detail names the text's printed size and weight. A translucent plot or panel
+  background is also measured as the colour it shows. Its alpha used to be
+  dropped, so `geometry_contrast` moves for such a figure. The
+  relative-luminance code now cites the current WCAG 2.2 definition and its
+  0.04045 breakpoint, which changes no ratio.
+- With a blank panel, as under `theme_depictr()`, `check_figure()` measured
+  geometry against the invisible white axes patch in place of the plot
+  background, so a figure on a dark background passed in Python and failed in R.
+  Both twins now report the same numbers for it.
 
 ## [0.3.0] - 2026-08-21
 

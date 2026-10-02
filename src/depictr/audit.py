@@ -22,20 +22,35 @@ World Wide Web Consortium. (2023). Web content accessibility guidelines (WCAG)
 from __future__ import annotations
 
 import copy
+from typing import NamedTuple
 
 import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.text as mtext
 import numpy as np
 import pandas as pd
+from matplotlib.font_manager import weight_dict
+from matplotlib.offsetbox import AnchoredOffsetbox
 
-from .cvd import DEFICIENCIES, _min_pairwise_delta_e, _rgb_to_lab, simulate_cvd
+from .cvd import (
+    DEFICIENCIES,
+    _min_pairwise_delta_e,
+    _rgb_to_lab,
+    _srgb_to_linear,
+    simulate_cvd,
+)
 
 # WCAG 2.2 contrast floors, used as published rather than tuned so that any
-# particular figure passes: 4.5:1 for text at normal size (success criterion
-# 1.4.3) and 3:1 for graphical objects that carry meaning (1.4.11). They are
-# fixed rather than arguments because they are somebody else's standard.
+# particular figure passes: 4.5:1 for text at normal size and 3:1 for
+# large-scale text (success criterion 1.4.3), and 3:1 for graphical objects
+# that carry meaning (1.4.11). WCAG defines large-scale text as at least 18
+# point, or 14 point in bold. They are fixed rather than arguments because they
+# are somebody else's standard.
 _WCAG_TEXT_CONTRAST = 4.5
+_WCAG_LARGE_TEXT_CONTRAST = 3.0
+_WCAG_LARGE_TEXT_PT = 18.0
+_WCAG_LARGE_BOLD_TEXT_PT = 14.0
 _WCAG_OBJECT_CONTRAST = 3.0
 
 # What every colour-dependent check says when the figure encodes nothing by
@@ -76,9 +91,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     engines size a layer's text in different units, which would leave the check
     disagreeing with its R twin on the same figure.
 
-    ``text_contrast`` and ``geometry_contrast`` are the smallest WCAG 2.x
-    contrast ratios of, respectively, any drawn text against the plot background
-    and any encoding colour against the panel background.
+    ``text_contrast`` is the WCAG 2.2 contrast ratio of the text that falls
+    furthest short of its own threshold. Each text is measured against the
+    background it is drawn on: a facet strip's fill for strip text, the legend
+    box's fill for legend text, and the plot background for the rest. A
+    translucent fill is measured as the colour it shows over what lies beneath
+    it. Text that is large at its printed size, 18 pt or 14 pt in bold, is held
+    to 3:1, and other text to 4.5:1, as success criterion 1.4.3 asks. The row's
+    ``threshold`` is the one that applies to the text it reports, and its
+    ``detail`` names that text's colour, background, printed size and weight.
+
+    ``geometry_contrast`` is the smallest WCAG 2.2 contrast ratio of any
+    encoding colour against the panel background, or against the plot
+    background where the panel paints none.
 
     ``redundant_encoding`` counts how many of shape and line type also vary in a
     layer whose colour varies. Zero means the distinction between groups is
@@ -176,17 +201,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     built = copy.deepcopy(plot)
     figure = built.draw(show=False)
     try:
-        plot_bg = _plot_background(built, figure) or "#ffffff"
-        panel_bg = (_artist_background(built.axs[0].patch) if built.axs
+        plot_bg = _plot_background(built, figure)
+        # A blank panel, as under theme_depictr(), leaves the axes patch
+        # invisible but white, so it is read only when it is drawn.
+        panel_bg = (_painted(built.axs[0].patch, plot_bg) if built.axs
                     else None) or plot_bg
         colours, redundant = _figure_colour_encoding(built)
-        text = _figure_text(figure)
+        text = _figure_text(figure, plot_bg)
     finally:
         plt.close(figure)
 
     rows = _separability_rows(colours, min_delta_e)
     rows.append(_text_size_row(text, width_cm, render_width_cm, min_text_pt))
-    rows.append(_text_contrast_row(text, plot_bg))
+    rows.append(_text_contrast_row(text, width_cm, render_width_cm))
     rows.append(_geometry_contrast_row(colours, panel_bg))
     rows.append(_redundant_encoding_row(colours, redundant))
     return pd.DataFrame(
@@ -229,13 +256,41 @@ def _as_hex(colours) -> list[str]:
     return out
 
 
-def _artist_background(patch) -> str | None:
-    """The painted face colour of a background patch, or None when nothing is."""
-    hex_colours = _as_hex([patch.get_facecolor()])
-    return hex_colours[0] if hex_colours else None
+def _composite(colour, background: str) -> str:
+    """A colour as drawn over a background, given its own alpha.
+
+    Each channel, scaled to run from 0 to 1, is
+    ``alpha * colour + (1 - alpha) * background``,
+    then scaled to 8 bits with ``floor(255 * drawn + 0.5)``. The R twin does
+    the same arithmetic in the same order, so the two agree to the last bit.
+    matplotlib's ``to_hex`` rounds half to even and would disagree with R at
+    some alphas.
+    """
+    r, g, b, a = mcolors.to_rgba(colour)
+    fg = np.array([r, g, b])
+    bg = np.array(mcolors.to_rgb(background))
+    drawn = a * fg + (1 - a) * bg
+    channels = np.floor(255 * drawn + 0.5).astype(int)
+    return "#" + "".join(f"{int(c):02x}" for c in channels)
 
 
-def _plot_background(plot, figure) -> str | None:
+def _painted(patch, parent: str) -> str | None:
+    """The colour a background patch paints over its parent, or None.
+
+    None when the patch is missing, hidden or fully transparent, so that a
+    blank element falls back to whatever lies beneath it. A translucent face is
+    composited over the parent, so a half-transparent black strip on white is
+    measured as the grey it shows.
+    """
+    if patch is None or not patch.get_visible():
+        return None
+    face = mcolors.to_rgba(patch.get_facecolor())
+    if face[3] == 0:
+        return None
+    return _composite(face, parent)
+
+
+def _plot_background(plot, figure) -> str:
     """The colour the figure's own background is painted.
 
     plotnine paints ``plot_background`` onto a rectangle of its own and leaves
@@ -244,34 +299,35 @@ def _plot_background(plot, figure) -> str | None:
     figure with a dark background, reporting a contrast the reader never gets
     and disagreeing with the R twin, which reads the resolved
     ``plot.background`` element. The patch stays as the fallback, for a theme
-    that paints nothing.
+    that paints nothing, and white stands in for the paper beneath both.
     """
     painted = getattr(getattr(plot, "theme", None), "targets", None)
     painted = getattr(painted, "plot_background", None)
-    if painted is not None and painted.get_visible():
-        colour = _artist_background(painted)
-        if colour is not None:
-            return colour
-    return _artist_background(figure.patch)
+    return (_painted(painted, "#ffffff") or _painted(figure.patch, "#ffffff")
+            or "#ffffff")
 
 
 def _relative_luminance(colours) -> np.ndarray:
-    """WCAG 2.x relative luminance of one or more colours, in [0, 1].
+    """WCAG 2.2 relative luminance of one or more colours, in [0, 1].
 
-    The 0.03928 breakpoint is the one the guidelines print, which differs
-    slightly from the IEC 61966-2-1 0.04045 used elsewhere in the package. The
-    published figure is kept here so a contrast ratio can be recomputed from the
-    standard alone.
+    The linearisation is the sRGB transfer function that ``_srgb_to_linear``
+    applies everywhere else in the package, with its 0.04045 breakpoint, which
+    is the one the WCAG 2.2 definition of relative luminance prints. Before May
+    2021 that definition printed 0.03928, and the W3C's note on the change says
+    the old value had no practical effect: no 8-bit channel value lies between
+    the two, so no ratio differs.
     """
     rgb = np.array([mcolors.to_rgb(c) for c in np.atleast_1d(colours)])
-    linear = np.where(rgb <= 0.03928, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
-    return linear @ np.array([0.2126, 0.7152, 0.0722])
+    return _srgb_to_linear(rgb) @ np.array([0.2126, 0.7152, 0.0722])
 
 
-def _contrast_ratio(colours, background: str) -> np.ndarray:
-    """WCAG 2.x contrast ratio: (L1 + 0.05) / (L2 + 0.05), lighter on top."""
+def _contrast_ratio(colours, backgrounds) -> np.ndarray:
+    """WCAG 2.2 contrast ratio: (L1 + 0.05) / (L2 + 0.05), lighter on top.
+
+    ``backgrounds`` is one colour for all, or one per colour.
+    """
     a = _relative_luminance(colours)
-    b = _relative_luminance([background])[0]
+    b = _relative_luminance(backgrounds)
     return (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
 
 
@@ -330,7 +386,23 @@ def _figure_colour_encoding(plot) -> tuple[list[str], list[str]]:
 # --- text bookkeeping -------------------------------------------------------
 
 
-def _figure_text(figure) -> list[tuple[float, str]]:
+class _Text(NamedTuple):
+    """One drawn text: point size, colour, weight and its own background."""
+
+    size: float
+    colour: str
+    bold: bool
+    background: str
+
+
+def _is_bold(weight) -> bool:
+    """Whether a matplotlib font weight, named or numeric, is bold (700+)."""
+    if isinstance(weight, str):
+        weight = weight_dict.get(weight.lower(), 400)
+    return float(weight) >= 700
+
+
+def _figure_text(figure, plot_bg: str) -> list[_Text]:
     """Every piece of text the figure will actually draw.
 
     Reads the matplotlib text artists, which is where the resolved point size
@@ -341,10 +413,26 @@ def _figure_text(figure) -> list[tuple[float, str]]:
     annotation text out of the measurement: tick labels, axis titles and the
     legend belong to the axis, the figure or the legend rather than to
     ``Axes.texts``.
+
+    Each text is paired with the background it is drawn on, which WCAG measures
+    contrast against. plotnine's strip text carries its strip as ``.patch``,
+    and legend text sits inside an anchored box whose patch is the legend
+    background. Either counts only when it is drawn, and everything else is on
+    the plot background.
     """
+    # matplotlib's findobj lists an artist's children before the artist, so an
+    # inner box is met before the box around it and the innermost one wins.
+    boxed: dict[int, str] = {}
+    for box in figure.findobj(lambda a: isinstance(a, AnchoredOffsetbox)):
+        painted = _painted(box.patch, plot_bg)
+        if painted is None:
+            continue
+        for text in box.findobj(mtext.Text):
+            boxed.setdefault(id(text), painted)
+
     from_layers = {id(t) for ax in figure.axes for t in ax.texts}
     seen: set[int] = set()
-    out: list[tuple[float, str]] = []
+    out: list[_Text] = []
     for artist in figure.findobj(mtext.Text):
         if id(artist) in from_layers or id(artist) in seen:
             continue
@@ -358,7 +446,13 @@ def _figure_text(figure) -> list[tuple[float, str]]:
         size = float(artist.get_fontsize())
         if not colour or not np.isfinite(size):
             continue
-        out.append((size, colour[0]))
+        strip = getattr(artist, "patch", None)
+        if isinstance(strip, mpatches.Patch):
+            background = _painted(strip, plot_bg) or plot_bg
+        else:
+            background = boxed.get(id(artist), plot_bg)
+        out.append(_Text(size, colour[0], _is_bold(artist.get_fontweight()),
+                         background))
     return out
 
 
@@ -425,21 +519,42 @@ def _text_size_row(text, width_cm: float, render_width_cm: float,
     if not text:
         return _row("text_size", np.nan, min_text_pt,
                     "The figure draws no text.")
-    nominal = min(size for size, _ in text)
+    nominal = min(t.size for t in text)
     return _row("text_size", nominal * width_cm / render_width_cm, min_text_pt,
                 f"Smallest text {nominal:.2f} pt, drawn at "
                 f"{render_width_cm:.2f} cm and printed at {width_cm:.2f} cm.")
 
 
-def _text_contrast_row(text, background: str) -> dict:
+def _text_contrast_row(text: list[_Text], width_cm: float,
+                       render_width_cm: float) -> dict:
+    """The text that falls furthest short of its own WCAG threshold.
+
+    Each text is measured against its own background and held to 3:1 when it
+    is large at its printed size (18 pt, or 14 pt in bold) and to 4.5:1
+    otherwise. The row reports the text with the smallest ratio relative to its
+    threshold. Ties go to the smaller printed size, then to the colour and
+    background in byte order, which is the order the R twin breaks them in.
+    """
     if not text:
         return _row("text_contrast", np.nan, _WCAG_TEXT_CONTRAST,
                     "The figure draws no text.")
-    colours = [colour for _, colour in text]
-    ratios = _contrast_ratio(colours, background)
-    worst = int(np.argmin(ratios))
-    return _row("text_contrast", ratios[worst], _WCAG_TEXT_CONTRAST,
-                f"Lowest-contrast text {colours[worst]} on {background}.")
+    printed = [t.size * width_cm / render_width_cm for t in text]
+    thresholds = [
+        _WCAG_LARGE_TEXT_CONTRAST
+        if p >= _WCAG_LARGE_TEXT_PT or (t.bold and p >= _WCAG_LARGE_BOLD_TEXT_PT)
+        else _WCAG_TEXT_CONTRAST
+        for t, p in zip(text, printed, strict=True)
+    ]
+    ratios = _contrast_ratio([t.colour for t in text],
+                             [t.background for t in text])
+    worst = min(range(len(text)), key=lambda i: (
+        ratios[i] / thresholds[i], printed[i], text[i].colour,
+        text[i].background))
+    chosen = text[worst]
+    weight = " bold" if chosen.bold else ""
+    return _row("text_contrast", ratios[worst], thresholds[worst],
+                f"Lowest-contrast text {chosen.colour} on {chosen.background} "
+                f"at {printed[worst]:.2f} pt{weight}.")
 
 
 def _geometry_contrast_row(colours: list[str], background: str) -> dict:

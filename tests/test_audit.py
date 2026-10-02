@@ -9,12 +9,16 @@ from plotnine import (
     aes,
     element_blank,
     element_rect,
+    element_text,
+    facet_wrap,
     geom_line,
     geom_point,
     ggplot,
+    labs,
     scale_colour_manual,
     scale_fill_manual,
     theme,
+    theme_dark,
     theme_void,
 )
 
@@ -61,13 +65,26 @@ def verdict_for(report, check):
     return report.loc[report["check"] == check, "verdict"].item()
 
 
+def detail_for(report, check):
+    return report.loc[report["check"] == check, "detail"].item()
+
+
+def threshold_for(report, check):
+    return report.loc[report["check"] == check, "threshold"].item()
+
+
 def wcag_contrast(a, b):
-    """The WCAG 2.x ratio recomputed from the published definition alone."""
+    """The WCAG 2.2 ratio recomputed from the published definition alone.
+
+    Kept independent of the package code: each sRGB channel is linearised at the
+    0.04045 breakpoint, the channels are weighted, then
+    (L1 + 0.05) / (L2 + 0.05).
+    """
     import matplotlib.colors as mcolors
 
     def luminance(colour):
         channels = np.array(mcolors.to_rgb(colour))
-        linear = np.where(channels <= 0.03928, channels / 12.92,
+        linear = np.where(channels <= 0.04045, channels / 12.92,
                           ((channels + 0.055) / 1.055) ** 2.4)
         return float(linear @ np.array([0.2126, 0.7152, 0.0722]))
 
@@ -138,10 +155,20 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         "Closest pair #009e73 and #56b4e9 of 8 encoding colours.",
         "Closest pair #56b4e9 and #e69f00 in CIE lightness.",
         "Smallest text 8.80 pt, drawn at 17.78 cm and printed at 17.78 cm.",
-        "Lowest-contrast text #4d4d4d on #ffffff.",
+        "Lowest-contrast text #4d4d4d on #ffffff at 8.80 pt.",
         "Lowest-contrast colour #f0e442 on #ffffff.",
         "Colour alone distinguishes the groups.",
     ]
+
+    # A dark plot background behind a blank panel: the geometry is measured
+    # against the plot background in both twins. This twin used to read the
+    # invisible axes patch here, which is white, and passed the figure at 3.87.
+    dark = dp.check_figure(good_figure()
+                           + theme(plot_background=element_rect(fill="#333333")))
+    assert dark["measured"].tolist() == [
+        111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 1.49, 1.77, 1]
+    assert (detail_for(dark, "geometry_contrast")
+            == "Lowest-contrast colour #005b96 on #333333.")
 
 
 # --- the measurements themselves ---------------------------------------------
@@ -213,12 +240,144 @@ def test_contrast_ratios_match_the_wcag_definition():
             == round(wcag_contrast("#005b96", "#333333"), 2))
     assert (repainted.loc[repainted["check"] == "text_contrast",
                           "detail"].item()
-            == "Lowest-contrast text #4d4d4d on #eeeeee.")
+            == "Lowest-contrast text #4d4d4d on #eeeeee at 8.80 pt.")
     # A blank plot background paints nothing, so white stands in for the paper.
     blanked = dp.check_figure(good_figure()
                               + theme(plot_background=element_blank()))
     assert (measured_for(blanked, "text_contrast")
             == round(wcag_contrast("#4d4d4d", "#ffffff"), 2))
+
+
+# --- each text against its own background ------------------------------------
+
+
+def strip_figure(text_colour, strip_fill="#1a1a1a"):
+    # A facetted figure with dark strips. The strip text size is set explicitly
+    # because the twins' default strip sizes differ.
+    return (good_figure() + facet_wrap("treatment")
+            + theme(strip_background=element_rect(fill=strip_fill),
+                    strip_text=element_text(color=text_colour, size=8.8)))
+
+
+def test_strip_text_is_measured_against_its_strip():
+    # White on a near-black strip reads at 17.4:1. Measured against the white
+    # plot background it used to read 1.00 and fail.
+    light = dp.check_figure(strip_figure("white"))
+    assert measured_for(light, "text_contrast") == 8.45
+    assert verdict_for(light, "text_contrast") == "pass"
+    assert (detail_for(light, "text_contrast")
+            == "Lowest-contrast text #4d4d4d on #ffffff at 8.80 pt.")
+    # Dark grey on the same strip is unreadable. It used to pass at 8.45, the
+    # value of the axis text, because it was measured against white.
+    dark = dp.check_figure(strip_figure("#333333"))
+    assert measured_for(dark, "text_contrast") == 1.38
+    assert (measured_for(dark, "text_contrast")
+            == round(wcag_contrast("#333333", "#1a1a1a"), 2))
+    assert verdict_for(dark, "text_contrast") == "fail"
+    assert (detail_for(dark, "text_contrast")
+            == "Lowest-contrast text #333333 on #1a1a1a at 8.80 pt.")
+    # A translucent strip is composited over the plot background before the
+    # text is measured against it: black at alpha 128/255 over white is #7f7f7f.
+    veiled = dp.check_figure(strip_figure("white", strip_fill="#00000080"))
+    assert (measured_for(veiled, "text_contrast")
+            == round(wcag_contrast("#ffffff", "#7f7f7f"), 2))
+    assert (detail_for(veiled, "text_contrast")
+            == "Lowest-contrast text #ffffff on #7f7f7f at 8.80 pt.")
+
+
+def test_legend_text_is_measured_against_the_legend_box():
+    def boxed(text_colour):
+        return good_figure() + theme(
+            legend_background=element_rect(fill="#222222"),
+            legend_text=element_text(color=text_colour),
+            legend_title=element_text(color="white"))
+
+    light = dp.check_figure(boxed("white"))
+    assert verdict_for(light, "text_contrast") == "pass"
+    assert measured_for(light, "text_contrast") == 8.45
+    dark = dp.check_figure(boxed("#333333"))
+    assert (measured_for(dark, "text_contrast")
+            == round(wcag_contrast("#333333", "#222222"), 2))
+    assert (detail_for(dark, "text_contrast")
+            == "Lowest-contrast text #333333 on #222222 at 8.80 pt.")
+    # ggplot2 paints legend_box_background beneath the legends, and the R twin
+    # measures against it. plotnine does not draw it (its themeable is marked
+    # not implemented), so here the text sits on the plot background and the
+    # white legend text fails. If plotnine starts drawing the box, this fails
+    # and the box should be read as R reads it.
+    outer = dp.check_figure(good_figure() + theme(
+        legend_box_background=element_rect(fill="#222222"),
+        legend_background=element_blank(),
+        legend_text=element_text(color="white"),
+        legend_title=element_text(color="white")))
+    assert (detail_for(outer, "text_contrast")
+            == "Lowest-contrast text #ffffff on #ffffff at 8.80 pt.")
+
+
+def test_a_translucent_background_is_measured_as_the_colour_it_shows():
+    # Blue at alpha 64/255 over the white plot background shows as #bfbfff. Its
+    # alpha used to be dropped, so the panel was measured as opaque blue.
+    report = dp.check_figure(good_figure() + theme(
+        panel_background=element_rect(fill="#0000ff40")))
+    assert (measured_for(report, "geometry_contrast")
+            == round(wcag_contrast("#d55e00", "#bfbfff"), 2))
+    assert (detail_for(report, "geometry_contrast")
+            == "Lowest-contrast colour #d55e00 on #bfbfff.")
+
+
+def test_stock_dark_theme_facets_pass_the_text_check():
+    # theme_dark draws white strip text on a dark strip. Measured against the
+    # white plot background, it used to fail at 1.00.
+    report = dp.check_figure(good_figure() + facet_wrap("treatment")
+                             + theme_dark())
+    assert verdict_for(report, "text_contrast") == "pass"
+
+
+def test_large_text_is_held_to_three_to_one_at_its_printed_size():
+    def titled(**kwargs):
+        return (good_figure() + labs(title="A title")
+                + theme(plot_title=element_text(color="#8c8c8c", **kwargs)))
+
+    # #8c8c8c on white is 3.36:1, short of 4.5 and clear of the 3 that WCAG 2.2
+    # asks of text at 18 pt or more.
+    large = dp.check_figure(titled(size=20, weight="normal"))
+    assert measured_for(large, "text_contrast") == 3.36
+    assert threshold_for(large, "text_contrast") == 3
+    assert verdict_for(large, "text_contrast") == "pass"
+    assert (detail_for(large, "text_contrast")
+            == "Lowest-contrast text #8c8c8c on #ffffff at 20.00 pt.")
+    # Bold text counts as large from 14 pt.
+    bold = dp.check_figure(titled(size=14, weight="bold"))
+    assert threshold_for(bold, "text_contrast") == 3
+    assert verdict_for(bold, "text_contrast") == "pass"
+    assert (detail_for(bold, "text_contrast")
+            == "Lowest-contrast text #8c8c8c on #ffffff at 14.00 pt bold.")
+    # The same plain title is not large at 14 pt, so it fails at 4.5.
+    plain = dp.check_figure(titled(size=14, weight="normal"))
+    assert threshold_for(plain, "text_contrast") == 4.5
+    assert verdict_for(plain, "text_contrast") == "fail"
+    # Size is judged as printed: the 20 pt title in a half-width column prints
+    # at 10 pt, which is normal-sized text again.
+    shrunk = dp.check_figure(titled(size=20, weight="normal"), width_cm=8.89)
+    assert threshold_for(shrunk, "text_contrast") == 4.5
+    assert verdict_for(shrunk, "text_contrast") == "fail"
+    assert (detail_for(shrunk, "text_contrast")
+            == "Lowest-contrast text #8c8c8c on #ffffff at 10.00 pt.")
+
+
+def test_relative_luminance_follows_the_current_wcag_definition():
+    # The definition's breakpoint is 0.04045. It read 0.03928 before May 2021,
+    # and no 8-bit channel value lies between the two, so no ratio moves.
+    from depictr.audit import _relative_luminance
+    from depictr.cvd import _srgb_to_linear
+
+    channels = np.arange(256) / 255
+    greys = [f"#{v:02x}{v:02x}{v:02x}" for v in range(256)]
+    old = np.where(channels <= 0.03928, channels / 12.92,
+                   ((channels + 0.055) / 1.055) ** 2.4)
+    np.testing.assert_allclose(_relative_luminance(greys), old)
+    np.testing.assert_allclose(_relative_luminance(greys),
+                               _srgb_to_linear(channels))
 
 
 def test_redundant_encoding_counts_the_channels_that_vary_with_colour():
