@@ -43,6 +43,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web app no longer offers the time column as the event indicator. Its
   Kaplan-Meier pane offers the columns coded 0/1 or 1/2, opens on one named
   `event` or `status`, and says so when a dataset has none.
+- `save_plot()` wrote files that journals reject. A PDF or EPS carried Type 3
+  fonts, which Nature refuses. An EPS drew its translucent layers opaque, which
+  matplotlib reported only in its log. A TIFF was uncompressed RGBA, 10.8 MiB at
+  the default 7 by 4.5 inches, where PLOS requires LZW compression and no alpha
+  channel. Fonts in a PDF or EPS are now embedded as TrueType (Type 42), for that
+  save only, and an EPS with translucent layers warns and says how many there
+  are. A TIFF is saved as LZW-compressed RGB at the requested resolution, with
+  any transparent background composited onto white, unless `pil_kwargs` is
+  passed. A missing output directory is now created, as in the R twin, where it
+  raised `FileNotFoundError`.
 
 ## [0.3.0] - 2026-08-21
 
