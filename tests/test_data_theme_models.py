@@ -1,5 +1,8 @@
 """Tests for the bundled data, the theme/scales, and the model-or-frame input."""
 
+from statistics import NormalDist
+
+import numpy as np
 import pandas as pd
 import pytest
 from plotnine import theme
@@ -8,6 +11,7 @@ from plotnine.scales.scale import scale
 from depictr import (
     DATASETS,
     coefficient_plot,
+    compare_models,
     scale_colour_depictr,
     scale_fill_depictr,
     theme_depictr,
@@ -55,6 +59,105 @@ def test_tidy_estimates_rejects_bad_input():
         tidy_estimates(pd.DataFrame({"term": ["a"]}))
     with pytest.raises(TypeError):
         tidy_estimates(42)
+
+
+def _mixed_data():
+    # lexical_decision has no participant column, so borrow the one the
+    # mixed-model tests simulate, with its random intercept.
+    from test_mixed import _grouped_data
+
+    return _grouped_data()
+
+
+def test_tidy_estimates_keeps_only_the_fixed_effects_of_a_mixedlm():
+    # Regression: every entry of params was kept, so the random-effect variance
+    # and covariance entries, which statsmodels divides by the residual scale,
+    # were drawn as coefficients. The R twin keeps lme4::fixef() only.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    df = _mixed_data()
+    fit = smf.mixedlm("RT ~ condition", df, groups=df["participant"],
+                      re_formula="~word_frequency").fit()
+    tidy = tidy_estimates(fit)
+    assert list(tidy["term"]) == list(fit.fe_params.index)
+    assert not tidy["term"].str.contains("Var|Cov").any()
+    np.testing.assert_allclose(tidy["estimate"], fit.fe_params)
+    # Wald intervals on the normal distribution, as the R twin's merMod method
+    # computes them from lme4::fixef() and its standard errors.
+    z = NormalDist().inv_cdf(0.975)
+    np.testing.assert_allclose(tidy["conf_low"], fit.fe_params - z * fit.bse_fe)
+    np.testing.assert_allclose(tidy["conf_high"], fit.fe_params + z * fit.bse_fe)
+    assert set(coefficient_plot(fit).data["term"]) == {"condition[T.unrelated]"}
+    assert set(compare_models({"mixed": fit}).data["term"]) == {
+        "condition[T.unrelated]"}
+
+
+def test_tidy_estimates_reads_a_mixedlm_fitted_from_arrays():
+    # Regression: fitted from arrays, params is a bare ndarray, and reading its
+    # index raised AttributeError. The fixed-effect names then come from the
+    # design matrix, and the variance entry is dropped as for a formula fit.
+    sm = pytest.importorskip("statsmodels.api")
+    df = _mixed_data()
+    fit = sm.MixedLM(df["RT"].to_numpy(),
+                     sm.add_constant(df["word_frequency"].to_numpy()),
+                     groups=df["participant"].to_numpy()).fit()
+    tidy = tidy_estimates(fit)
+    assert list(tidy["term"]) == ["const", "x1"]
+    np.testing.assert_allclose(tidy["estimate"], fit.fe_params)
+    np.testing.assert_allclose(tidy[["conf_low", "conf_high"]],
+                               np.asarray(fit.conf_int())[: fit.k_fe])
+
+
+def test_tidy_estimates_reads_an_ols_fitted_from_arrays():
+    # Regression: the same AttributeError broke every plot built on
+    # tidy_estimates() for a model fitted from arrays.
+    sm = pytest.importorskip("statsmodels.api")
+    rng = np.random.default_rng(1)
+    x = rng.normal(size=(60, 2))
+    y = 1 + x @ np.array([0.5, -0.3]) + rng.normal(size=60)
+    fit = sm.OLS(y, sm.add_constant(x)).fit()
+    tidy = tidy_estimates(fit)
+    assert list(tidy["term"]) == ["const", "x1", "x2"]
+    np.testing.assert_allclose(tidy["estimate"], fit.params)
+    np.testing.assert_allclose(tidy[["conf_low", "conf_high"]], fit.conf_int())
+    p = coefficient_plot(fit)
+    p.draw(show=False)
+    assert set(p.data["term"]) == {"x1", "x2"}
+    compare_models({"arrays": fit}).draw(show=False)
+
+
+def test_tidy_estimates_returns_string_terms_for_numbered_columns():
+    # Regression: a model fitted on a data frame with numbered columns, as
+    # pd.DataFrame() makes from an array, kept integer terms. The intercept
+    # filter in coefficient_plot() and compare_models() then failed on them.
+    # The R twin returns character terms.
+    sm = pytest.importorskip("statsmodels.api")
+    rng = np.random.default_rng(1)
+    x = pd.DataFrame(rng.normal(size=(60, 2)))
+    y = 1 + x.to_numpy() @ np.array([0.5, -0.3]) + rng.normal(size=60)
+    fit = sm.OLS(y, sm.add_constant(x)).fit()
+    assert list(tidy_estimates(fit)["term"]) == ["const", "0", "1"]
+    p = coefficient_plot(fit)
+    p.draw(show=False)
+    assert set(p.data["term"]) == {"0", "1"}
+    compare_models({"numbered": fit}).draw(show=False)
+
+
+def test_tidy_estimates_refuses_estimates_it_cannot_name():
+    # Bare estimates with no design matrix to name them, held in an array and
+    # in a list. A list's index attribute is a method, which must not pass for
+    # a set of names.
+    class Unnamed:
+        params = np.array([1.0, 2.0])
+
+        def conf_int(self, alpha=0.05):
+            return np.array([[0.5, 1.5], [1.5, 2.5]])
+
+    class Listed(Unnamed):
+        params = [1.0, 2.0]
+
+    for model in (Unnamed(), Listed()):
+        with pytest.raises(TypeError, match="Cannot name the estimates"):
+            tidy_estimates(model)
 
 
 def test_coefficient_plot_from_fitted_model():

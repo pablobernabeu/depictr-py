@@ -8,6 +8,7 @@ table from a paper) and it plots those directly.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from plotnine import (
     aes,
@@ -32,8 +33,8 @@ def tidy_estimates(model, conf_level: float = 0.95) -> pd.DataFrame:
     ----------
     model : statsmodels results object or pandas.DataFrame
         A fitted model exposing ``params`` and ``conf_int`` (for example a
-        statsmodels ``OLS``/``GLM`` result), or a data frame already carrying the
-        estimates.
+        statsmodels ``OLS``, ``GLM`` or ``MixedLM`` result, fitted from a formula
+        or from arrays), or a data frame already carrying the estimates.
     conf_level : float
         Confidence level for the interval when reading it from a model.
 
@@ -41,6 +42,21 @@ def tidy_estimates(model, conf_level: float = 0.95) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Columns ``term``, ``estimate``, ``conf_low``, ``conf_high``.
+
+    Notes
+    -----
+    For a mixed model, only the fixed effects are kept, as the R twin keeps
+    ``lme4::fixef()``. The variance and covariance entries that follow them in
+    a ``MixedLM`` result's ``params`` are not coefficients, and statsmodels
+    reports them divided by the residual scale. The intervals kept are Wald
+    intervals on the normal distribution, as the R twin computes them for an
+    lme4 fit.
+
+    A model fitted from arrays has unnamed estimates, so its terms are named
+    from the model's ``exog_names`` (``const``, ``x1``, ...), as statsmodels'
+    own summary names them. Terms read from a model are always strings, as in
+    R, so the numbered columns of a data frame made from an array give the
+    terms ``"0"``, ``"1"`` and so on.
 
     Examples
     --------
@@ -54,20 +70,49 @@ def tidy_estimates(model, conf_level: float = 0.95) -> pd.DataFrame:
     if isinstance(model, pd.DataFrame):
         return _tidy_from_frame(model)
     if hasattr(model, "params") and hasattr(model, "conf_int"):
-        ci = model.conf_int(alpha=1 - conf_level)
-        ci = pd.DataFrame(ci)
-        ci.columns = ["conf_low", "conf_high"][: ci.shape[1]]
-        out = pd.DataFrame({
-            "term": list(model.params.index),
-            "estimate": model.params.to_numpy(),
-            "conf_low": ci.iloc[:, 0].to_numpy(),
-            "conf_high": ci.iloc[:, 1].to_numpy(),
-        })
-        return out
+        return _tidy_from_results(model, conf_level)
     raise TypeError(
         "`model` must be a fitted statsmodels result or a tidy DataFrame with "
         "columns term/estimate/conf_low/conf_high."
     )
+
+
+def _tidy_from_results(model, conf_level: float) -> pd.DataFrame:
+    """Read the estimates and intervals of a fitted model, fixed effects only."""
+    params = model.params
+    estimate = np.asarray(params, dtype=float)
+    ci = np.asarray(model.conf_int(alpha=1 - conf_level), dtype=float)
+    # A formula fit labels its params with a pandas index. A fit from arrays
+    # returns a bare ndarray, and the names live on the model. The type test
+    # matters because a list also has an index attribute, a method.
+    if isinstance(params, pd.Series):
+        names = params.index
+    else:
+        names = getattr(getattr(model, "model", None), "exog_names", None)
+    k_fe = getattr(model, "k_fe", None)
+    if k_fe is not None:
+        # A MixedLM result's params hold the k_fe fixed effects first, then the
+        # random-effect variances and covariances and any variance components.
+        estimate, ci = estimate[:k_fe], ci[:k_fe]
+        fe_params = getattr(model, "fe_params", None)
+        if isinstance(fe_params, pd.Series):
+            names = fe_params.index
+        elif names is not None:
+            names = names[:k_fe]
+    if names is None or len(names) != len(estimate):
+        raise TypeError(
+            "Cannot name the estimates of `model`: its `params` have no index "
+            "and its model's `exog_names` do not give one name per estimate. "
+            "Pass a tidy DataFrame with columns term/estimate/conf_low/conf_high."
+        )
+    return pd.DataFrame({
+        # Strings, as the R twin returns them. A data frame made from an array
+        # numbers its columns, and the plots cannot filter integer terms.
+        "term": [str(name) for name in names],
+        "estimate": estimate,
+        "conf_low": ci[:, 0],
+        "conf_high": ci[:, 1],
+    })
 
 
 def _tidy_from_frame(df: pd.DataFrame) -> pd.DataFrame:

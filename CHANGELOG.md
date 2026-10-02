@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and from the R twin. They now order up the axis, so `"ascending"` puts the
   largest estimate at the top, as in R. Terms with tied estimates keep their
   model order, as R's `order()` keeps them.
+- `tidy_estimates()` kept every entry of a MixedLM's `params`, so
+  `coefficient_plot()` and `compare_models()` drew the random-effect variances
+  and covariances beside the fixed effects as if they were coefficients. The
+  `Group Var` entry is not even a variance: statsmodels divides it by the
+  residual scale. Only the fixed effects are kept now, as in the R twin.
+- A model fitted from arrays, without a formula, made `tidy_estimates()` raise
+  `AttributeError`, and with it `coefficient_plot()`, `compare_models()` and
+  `frequentist_bayesian_plot()`. Its terms are now named from the model's
+  `exog_names`, as statsmodels' own summary names them.
+- A model fitted on a data frame with numbered columns, as `pd.DataFrame()`
+  makes from an array, gave `tidy_estimates()` integer terms, on which
+  `coefficient_plot()` and `compare_models()` failed. Terms read from a model
+  are now always strings, as in the R twin.
 
 ## [0.3.0] - 2026-08-21
 
