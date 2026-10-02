@@ -27,6 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   makes from an array, gave `tidy_estimates()` integer terms, on which
   `coefficient_plot()` and `compare_models()` failed. Terms read from a model
   are now always strings, as in the R twin.
+- `survival_plot()` read any non-zero `event` as an event. With the
+  `survival::Surv()` 1/2 coding (1 = censored), which the R twin accepts, every
+  subject became an event, and the curves and the log-rank test were wrong
+  without a warning. A 0/0.5 coding was cast to integers and so read as all
+  censored, and a missing event became a large negative integer, which lifelines
+  counted as an event. The 0/1 and 1/2 codings are now accepted, read over all
+  observations together as in R. Any other coding raises, and a missing event is
+  dropped with a warning.
+- The number-at-risk table rounded its times to one decimal, so short follow-up
+  collapsed onto a single tick and quarter-unit breaks sat under the wrong
+  labels. Times are kept exact and only the labels are formatted. The table also
+  gained a column of zeros at a break past the longest follow-up, outside the
+  time axis. Its breaks now stop at the last follow-up time, as the R twin's do.
+- The web app no longer offers the time column as the event indicator. Its
+  Kaplan-Meier pane offers the columns coded 0/1 or 1/2, opens on one named
+  `event` or `status`, and says so when a dataset has none.
 
 ## [0.3.0] - 2026-08-21
 

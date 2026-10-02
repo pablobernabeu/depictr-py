@@ -30,9 +30,13 @@ from plotnine import (
 from .theme import legend_inside as _legend_inside
 from .theme import scale_colour_depictr, theme_depictr
 
+_CODING_MESSAGE = (
+    "`event` must use the 0/1 (0 = censored) or 1/2 (1 = censored) coding."
+)
+
 
 def _nice_breaks(tmax, n=5):
-    """Round, evenly spaced axis breaks from 0 to about ``tmax``.
+    """Round, evenly spaced axis breaks from 0 to at most ``tmax``.
 
     Picks a 1/2/2.5/5/10 step so the time axis reads in round numbers rather
     than the arbitrary values an even split would give.
@@ -45,7 +49,50 @@ def _nice_breaks(tmax, n=5):
     raw = tmax / n
     mag = 10 ** np.floor(np.log10(raw))
     step = next(m * mag for m in (1, 2, 2.5, 5, 10) if raw <= m * mag)
-    return np.arange(0, tmax + step * 0.5, step)
+    breaks = np.arange(0, tmax + step * 0.5, step)
+    # arange accumulates floating-point error, so a 0.1 step reaches
+    # 0.30000000000000004. A break a hair above its round value would leave out
+    # a subject followed up to exactly that time, so the breaks are rounded to
+    # the step's own decimals.
+    breaks = np.round(breaks, max(0, 1 - int(np.floor(np.log10(step)))))
+    # A break past the last follow-up time is a time nobody reached. It would
+    # add a column of zeros to the at-risk table, outside the x scale, and
+    # plotnine would drop it with a warning about missing values.
+    return breaks[breaks <= tmax]
+
+
+def _event_values(event):
+    """The event indicator as floats, with NaN wherever a value is missing.
+
+    Going through pandas also reads the missing value of its nullable integer
+    and boolean columns, which numpy cannot convert on its own.
+    """
+    try:
+        return pd.Series(event).to_numpy(dtype=float, na_value=np.nan)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "`event` must be numeric (0/1 or 1/2) or boolean; recode a "
+            "categorical or string indicator first."
+        ) from exc
+
+
+def _normalise_event(event):
+    """Read a complete event indicator as 0/1 integers, with 1 = event.
+
+    The two codings are the R twin's: 0/1 (0 = censored, 1 = event) and the
+    ``survival::Surv()`` 1/2 coding (1 = censored, 2 = event). Booleans arrive
+    as 0/1. The codes are judged over every observation at once, so a group
+    censored throughout keeps its meaning under the 1/2 coding. Any other set
+    of codes raises. Given 1/2 codes, lifelines would count each censoring as
+    a death, since it takes every non-zero value for an event, and a cast to
+    int would read 0.5 as a censoring.
+    """
+    codes = set(np.unique(event).tolist())
+    if codes <= {0, 1}:
+        return event.astype(int)
+    if codes <= {1, 2}:
+        return event.astype(int) - 1
+    raise ValueError(_CODING_MESSAGE)
 
 
 def _require_lifelines():
@@ -78,7 +125,13 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         Follow-up times. Must be finite: a missing or infinite time raises,
         since dropping or imputing it is the analyst's decision.
     event : array-like
-        Event indicator (1 = event, 0 = censored).
+        Event indicator, coded 0/1 (0 = censored, 1 = event) or with the
+        ``survival::Surv()`` 1/2 coding (1 = censored, 2 = event), the two
+        codings the R twin accepts. Booleans read as 0/1. The coding is judged
+        over all observations together, and any other coding raises, a code
+        that is not a whole number among them. An observation whose event is
+        missing records neither an event nor a censoring, so it is dropped
+        with a warning.
     group : array-like, optional
         Group label per observation; one curve per group, plus a log-rank test
         of the difference. Observations with a missing group are dropped with a
@@ -100,8 +153,10 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     Returns
     -------
     plotnine.ggplot
-        The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts) and,
-        when grouped, ``.logrank_p`` and ``.logrank_stat``.
+        The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts at
+        round times from 0 to at most the longest follow-up, which are the
+        time-axis breaks when ``risk_table=True``) and, when grouped,
+        ``.logrank_p`` and ``.logrank_stat``.
 
     Examples
     --------
@@ -122,7 +177,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
             "`time` must be finite; drop or impute missing follow-up times "
             "before plotting."
         )
-    event = np.asarray(event, dtype=int)
+    event = _event_values(event)
     groups = (np.asarray(group) if group is not None
               else np.repeat("all", len(time)))
     # A missing group belongs to no arm, so drop those rows before the levels
@@ -141,6 +196,23 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         time, event, groups = time[keep], event[keep], groups[keep]
         if not len(groups):
             raise ValueError("`group` is missing for every observation.")
+    # A missing event is neither an event nor a censoring, so the observation
+    # cannot enter the estimate. A cast to int used to turn it into the integer
+    # sentinel numpy fills a NaN with, which lifelines counted as a death. The
+    # warning is the R twin's message, word for word.
+    missing_event = np.isnan(event)
+    if missing_event.any():
+        warnings.warn(
+            f"{int(missing_event.sum())} observation(s) with a missing status "
+            f"were dropped.",
+            UserWarning,
+            stacklevel=2,
+        )
+        keep = ~missing_event
+        time, event, groups = time[keep], event[keep], groups[keep]
+        if not len(event):
+            raise ValueError("`event` is missing for every observation.")
+    event = _normalise_event(event)
     # One factor order for the whole figure -- a user-set categorical order if
     # there is one, otherwise first appearance -- so the colour legend and the
     # risk-table rows list the groups identically.
@@ -161,7 +233,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         sf["group"] = str(lvl)
         curves.append(sf)
         for b in breaks:
-            at_risk_rows.append({"group": str(lvl), "time": round(float(b), 1),
+            at_risk_rows.append({"group": str(lvl), "time": float(b),
                                  "n_at_risk": int(np.sum(time[mask] >= b))})
     curve = pd.concat(curves, ignore_index=True)
     curve["group"] = pd.Categorical(curve["group"],
@@ -213,7 +285,10 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     tbl["group"] = tbl["group"].astype(str)
     tbl["y"] = tbl["group"].map(y_of)
     ymin = -(header + row_h * len(order) + 0.02)
-    breaks = [b for b in np.unique(at_risk_df["time"]) if b >= 0]
+    # The ticks sit at the exact break times the counts were taken at, and only
+    # their labels are formatted. Rounding the times themselves collapsed short
+    # follow-up onto one tick and put the count at 0.25 under a "0.2".
+    break_labels = [f"{b:g}" for b in breaks]
     # Survival-axis ticks plus one tick per table row, labelled with the group.
     surv_breaks = [0.0, 0.25, 0.5, 0.75, 1.0]
     y_breaks = surv_breaks + [y_of[g] for g in order]
@@ -235,7 +310,8 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     p = (
         p
         + scale_y_continuous(breaks=y_breaks, labels=y_labels, limits=(ymin, 1.0))
-        + scale_x_continuous(limits=(0, tmax), breaks=breaks)
+        + scale_x_continuous(limits=(0, tmax), breaks=breaks.tolist(),
+                             labels=break_labels)
         + labs(x=x_lab, y=y_lab, title=title, subtitle=subtitle)
         + theme_depictr(grid="y")
     )

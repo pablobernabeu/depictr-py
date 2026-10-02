@@ -240,16 +240,36 @@ try:
              f"{data_call}[{pred!r}], normalise='true')",
              deficiency)
     elif stage == "Kaplan-Meier":
-        time = st.selectbox("Time", num_cols)
-        event = st.selectbox("Event (1=event, 0=censored)", num_cols)
-        g = _opt("Group (optional)", cat_cols)
-        rt = st.checkbox("Number-at-risk table", value=True)
-        gv = None if g is None else data[g]
-        show(dp.survival_plot(data[time], data[event], group=gv, risk_table=rt,
-                              legend_inside=legend_in),
-             f"dp.survival_plot({data_call}[{time!r}], {data_call}[{event!r}], "
-             f"group=..., risk_table={rt}, legend_inside={legend_in})",
-             deficiency)
+        # survival_plot reads the event under the 0/1 coding (0 = censored) or
+        # the survival::Surv() 1/2 coding (1 = censored) and refuses any other,
+        # so only such columns are offered. There is no fallback to the other
+        # two-level columns, as binary01_cols has, since each would only meet
+        # the refusal. The default is a column named event or status, since
+        # the first numeric column is as likely to be the follow-up time.
+        event_cols = [c for c in binary_cols
+                      if set(pd.unique(data[c].dropna())) in ({0, 1}, {1, 2})]
+        if not event_cols:
+            st.info("The Kaplan-Meier plot needs an event column coded 0/1 "
+                    "(0 = censored) or 1/2 (1 = censored), and this dataset "
+                    "has none.")
+        else:
+            time = st.selectbox("Time", num_cols)
+            names = [str(c).lower() for c in event_cols]
+            default = next((names.index(n) for n in ("event", "status")
+                            if n in names), 0)
+            event = st.selectbox(
+                "Event (0/1 or 1/2 coding)", event_cols, index=default,
+                help="0 = censored and 1 = event, or the survival::Surv() "
+                     "coding, 1 = censored and 2 = event.")
+            g = _opt("Group (optional)", cat_cols)
+            rt = st.checkbox("Number-at-risk table", value=True)
+            gv = None if g is None else data[g]
+            show(dp.survival_plot(data[time], data[event], group=gv,
+                                  risk_table=rt, legend_inside=legend_in),
+                 f"dp.survival_plot({data_call}[{time!r}], "
+                 f"{data_call}[{event!r}], group=..., risk_table={rt}, "
+                 f"legend_inside={legend_in})",
+                 deficiency)
     elif family == "Time series":
         # None of the bundled datasets is temporal, so this family carries its
         # own demo: the trend-plus-seasonality series from the docstring
