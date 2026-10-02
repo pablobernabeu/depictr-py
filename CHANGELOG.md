@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `coefficient_plot(order="ascending")` and `order="descending"` drew the terms
+  the opposite way round from the docstring ("order of the terms up the axis")
+  and from the R twin. They now order up the axis, so `"ascending"` puts the
+  largest estimate at the top, as in R. Terms with tied estimates keep their
+  model order, as R's `order()` keeps them.
+
 ## [0.3.0] - 2026-08-21
 
 ### Added

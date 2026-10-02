@@ -96,7 +96,10 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     intercept : bool
         Whether to include the intercept term.
     order : {"model", "ascending", "descending"}
-        Order of the terms up the axis.
+        Order of the terms. ``"ascending"`` puts the smallest estimate at the
+        bottom and the largest at the top, so estimates increase up the axis.
+        ``"descending"`` does the reverse, and ``"model"`` keeps the model's
+        order from top to bottom. The R twin reads ``order`` the same way.
     conf_level : float
         Confidence level passed to :func:`tidy_estimates`.
     title : str, optional
@@ -116,12 +119,18 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     est = tidy_estimates(model, conf_level=conf_level)
     if not intercept:
         est = est[~est["term"].str.fullmatch(r"(?i)\(?intercept\)?|const")]
+    # plotnine draws the first category of the y axis at the bottom. A sorted
+    # order is therefore listed as it stands, so estimates increase up the axis
+    # under "ascending", while model order is reversed so that the first term
+    # reads at the top. The stable sort keeps tied terms in model order, as R's
+    # order() does.
     if order == "ascending":
-        est = est.sort_values("estimate")
+        est = est.sort_values("estimate", kind="stable")
     elif order == "descending":
-        est = est.sort_values("estimate", ascending=False)
-    # Reverse so the first term reads at the top.
-    levels = list(est["term"])[::-1]
+        est = est.sort_values("estimate", ascending=False, kind="stable")
+    levels = list(est["term"])
+    if order not in ("ascending", "descending"):
+        levels = levels[::-1]
     est = est.assign(term=pd.Categorical(est["term"], categories=levels, ordered=True))
     return (
         ggplot(est, aes(x="estimate", y="term"))
