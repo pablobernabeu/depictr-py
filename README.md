@@ -206,8 +206,7 @@ draw the confidence band or censor marks the R package draws, though its
 package have yet to be ported: `optimizer_fixef_plot` (there is no direct
 statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
 `model_fit_table`, `ts_forecast`, the label helper `format_terms` and the
-session-wide settings of `depictr_options`. The `monthly_sales` dataset is also
-R-only, so the time-series examples here build their own series.
+session-wide settings of `depictr_options`.
 
 ## Relationship to the R package
 

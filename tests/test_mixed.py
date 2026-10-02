@@ -6,7 +6,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # headless; the default Tk backend is broken here
 
-import numpy as np
+import warnings
+
 import pandas as pd
 import pytest
 import statsmodels.formula.api as smf
@@ -16,23 +17,30 @@ from depictr.data import lexical_decision
 from depictr.mixed import random_effects_plot
 
 
-def _grouped_data(seed: int = 7):
-    """lexical_decision with a participant column carrying a random intercept."""
-    df = lexical_decision()
-    rng = np.random.default_rng(seed)
-    n = len(df)
-    n_part = 24
-    part_id = rng.integers(0, n_part, n)
-    part_offset = rng.normal(0, 40, n_part)
-    df = df.assign(participant=[f"P{i:02d}" for i in part_id])
-    df["RT"] = df["RT"] + part_offset[part_id]
-    return df
+def _grouped_data():
+    """lexical_decision, whose 24 participants each carry a random intercept."""
+    return lexical_decision()
 
 
 @pytest.fixture(scope="module")
 def fitted_model():
     df = _grouped_data()
     return smf.mixedlm("RT ~ condition", df, groups=df["participant"]).fit()
+
+
+def test_participant_model_matches_lme4_and_is_not_singular():
+    # The documented example. The one it replaced grouped the simulated
+    # wellbeing survey by region, which had no variance to find: cov_re was
+    # 4.7e-11 and statsmodels warned that the covariance was singular. Here
+    # each participant carries a random intercept, and R's lme4 on the same data,
+    # lmer(RT ~ condition + (1 | participant)), gives 6050.6824
+    # (dev/goldens/datasets.R).
+    df = _grouped_data()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fit = smf.mixedlm("RT ~ condition", df, groups=df["participant"]).fit()
+    assert float(fit.cov_re.iloc[0, 0]) == pytest.approx(6050.6824, rel=1e-3)
+    assert len(fit.random_effects) == 24
 
 
 def test_returns_ggplot_and_builds(fitted_model):

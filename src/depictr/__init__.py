@@ -28,7 +28,14 @@ from .classification import (
 )
 from .compose import arrange_plots, save_plot
 from .cvd import palette_safety, simulate_cvd
-from .data import DATASETS, clinical_trial, crop_yield, lexical_decision, wellbeing_survey
+from .data import (
+    DATASETS,
+    clinical_trial,
+    crop_yield,
+    lexical_decision,
+    monthly_sales,
+    wellbeing_survey,
+)
 from .diagnostics import binned_residual_plot, influence_plot, qq_plot, vif_plot
 
 # Multi-panel composites and model-specific plots
@@ -110,5 +117,5 @@ __all__ = [
     "arrange_plots", "save_plot",
     # Data
     "crop_yield", "wellbeing_survey", "lexical_decision", "clinical_trial",
-    "DATASETS",
+    "monthly_sales", "DATASETS",
 ]

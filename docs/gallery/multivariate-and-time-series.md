@@ -51,7 +51,7 @@ print(show(p))
 A hierarchical-clustering tree over the regional profiles.
 
 ```python exec="1" html="1" source="material-block" session="mv"
-p = dp.dendrogram_plot(wb.groupby("region").mean(numeric_only=True))
+p = dp.dendrogram_plot(wb.groupby("region", observed=True).mean(numeric_only=True))
 print(show(p))
 ```
 

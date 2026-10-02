@@ -95,6 +95,14 @@ jobs:
           )
           plot.save("smoke.png", width=4, height=3, dpi=72, verbose=False)
           assert os.path.getsize("smoke.png") > 0
+          # The datasets are CSV files inside the package, so each one is read
+          # here to prove the wheel carries them all, with levels.json.
+          shapes = {"crop_yield": (200, 6), "wellbeing_survey": (300, 9),
+                    "lexical_decision": (960, 7), "clinical_trial": (300, 7),
+                    "monthly_sales": (144, 3)}
+          for name, shape in shapes.items():
+              assert getattr(dp, name)().shape == shape, name
+          assert dp.wellbeing_survey()["education"].cat.ordered
           # The accessibility check is the package's central claim, so the wheel
           # has to be able to run it, not merely to ship the module.
           assert dp.palette_safety()["safe"] is True

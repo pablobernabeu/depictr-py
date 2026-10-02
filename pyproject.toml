@@ -109,6 +109,9 @@ exclude = [
 # the API without a test going red.
 addopts = "--doctest-modules"
 testpaths = ["tests", "src/depictr"]
+markers = [
+    "slow: takes minutes; runs with the full suite, deselect with -m 'not slow'",
+]
 
 [tool.ruff]
 line-length = 100

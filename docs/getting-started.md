@@ -35,7 +35,7 @@ display. In a script, call `.show()`, or save it with `dp.save_plot(p, "fig.png"
 
 ## A first look at the data
 
-depictr ships a few reproducibly simulated datasets. Here is a lexical-decision
+depictr ships the R package's synthetic datasets. Here is a lexical-decision
 experiment with reaction times in two priming conditions.
 
 ```python

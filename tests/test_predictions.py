@@ -156,13 +156,16 @@ def test_interaction_plot_uses_the_estimation_rows():
     smf = pytest.importorskip("statsmodels.formula.api")
     cy = _without_wettest_yields()
     # A level seen only in rows the fit dropped has no estimate to draw.
+    # treatment is categorical in R's level order, so "standard" is the
+    # reference level and the new level has to be added as a category first.
     dropped = cy.index[cy["yield"].isna()]
+    cy["treatment"] = cy["treatment"].cat.add_categories("organic")
     cy.loc[dropped[:5], "treatment"] = "organic"
     model = smf.ols('Q("yield") ~ fertiliser * treatment + rainfall', cy).fit()
     p = interaction_plot(model, "fertiliser", "treatment")
     assert sorted(p.data["treatment"].unique()) == ["enhanced", "standard"]
     est = cy[cy["yield"].notna()]
-    ref = p.data[p.data["treatment"] == "enhanced"]
+    ref = p.data[p.data["treatment"] == "standard"]
     b = model.params
     expected = (b["Intercept"] + b["fertiliser"] * ref["fertiliser"]
                 + b["rainfall"] * est["rainfall"].mean())

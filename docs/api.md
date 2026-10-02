@@ -140,8 +140,9 @@ The palette, the colour-vision checks and the figure audit are shown in use on t
 
 ## Composition and data
 
-Compose several plots into one figure or save one to disk, and the reproducibly
-simulated datasets used throughout the documentation.
+Compose several plots into one figure or save one to disk, and the datasets used
+throughout the documentation. These are the R package's own synthetic datasets,
+shipped as files, so an example gives the same numbers in both packages.
 
 The datasets are used throughout the [gallery](gallery/exploring-data.md),
 where every figure is drawn from one of them.
@@ -152,4 +153,5 @@ where every figure is drawn from one of them.
 ::: depictr.wellbeing_survey
 ::: depictr.lexical_decision
 ::: depictr.clinical_trial
+::: depictr.monthly_sales
 ::: depictr.DATASETS

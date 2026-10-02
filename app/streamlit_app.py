@@ -91,7 +91,11 @@ if data is None:
 
 st.dataframe(data.head(), use_container_width=True)
 num_cols = list(data.select_dtypes("number").columns)
-cat_cols = [c for c in data.columns if c not in num_cols]
+# A grouping column is offered only when it has 2 to 12 distinct values. An
+# identifier (participant, item, field, id, patient) has dozens or hundreds,
+# which would draw a legend nobody can read, and one value is no grouping.
+cat_cols = [c for c in data.columns
+            if c not in num_cols and 2 <= data[c].nunique() <= 12]
 binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # The ROC/PR/gain/lift/calibration/threshold family does arithmetic on y_true
 # (a cumulative sum, for one), so it needs a column coded 0/1. Any other
@@ -271,8 +275,9 @@ try:
                  f"legend_inside={legend_in})",
                  deficiency)
     elif family == "Time series":
-        # None of the bundled datasets is temporal, so this family carries its
-        # own demo: the trend-plus-seasonality series from the docstring
+        # None of the datasets offered here is temporal (monthly_sales, which
+        # holds two series in long format, is not among them), so this family
+        # carries its own demo: the trend-plus-seasonality series from the docstring
         # examples in depictr.timeseries, seeded so the gallery is stable. Any
         # numeric column can stand in, read in row order.
         DEMO = "Demo monthly series (trend + seasonality)"
@@ -330,9 +335,12 @@ try:
                  deficiency)
     elif family.startswith("Models"):
         outcome = st.selectbox("Outcome (numeric)", num_cols)
-        predictors = st.multiselect(
-            "Predictors", [c for c in data.columns if c != outcome],
-            default=[c for c in data.columns if c != outcome][:2])
+        # Identifiers are left out, as for the grouping choices: one dummy per
+        # field or respondent would saturate the model.
+        candidates = [c for c in data.columns
+                      if c != outcome and (c in num_cols or c in cat_cols)]
+        predictors = st.multiselect("Predictors", candidates,
+                                    default=candidates[:2])
         if predictors:
             model = _fit_ols(outcome, predictors)
             rhs = " + ".join(predictors)

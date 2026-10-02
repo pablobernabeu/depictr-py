@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `monthly_sales()`, the time-series dataset that was R-only.
+
+### Changed
+
+- The bundled datasets are now the R package's own data, shipped as CSV files,
+  so an example gives the same numbers in both twins and every column an R
+  example uses exists here. Their shapes, columns and values change. `crop_yield` gains its
+  field identifier and loses two impossible negative yields. `wellbeing_survey`
+  gains respondent ids, exercise days and an ordered education factor.
+  `lexical_decision` becomes the crossed design of 24 participants and 40 items,
+  so the mixed-model example is no longer singular. The arms of
+  `clinical_trial` are placebo and treatment. Factor columns are categorical in
+  R's level order. The files are written from the R package by
+  `dev/export_r_datasets.R`, and the tests pin their checksums and a set of
+  values computed in R.
+- The `random_effects_plot()` example and gallery entry fit participant
+  intercepts to `lexical_decision`, whose participant variance statsmodels and
+  lme4 estimate alike (about 6050). The old example grouped the wellbeing survey
+  by region, whose variance was estimated at zero.
+- The web app offers a column as a grouping variable only when it has 2 to 12
+  distinct values, so an identifier such as `participant` or `patient` is never
+  the default group, and it leaves identifiers out of the model predictors.
+
+### Deprecated
+
+- The `seed` argument of the dataset loaders, which no longer generate data.
+  Passing a value raises a `FutureWarning` and has no effect.
+
 ### Fixed
 
 - `coefficient_plot(order="ascending")` and `order="descending"` drew the terms

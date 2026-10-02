@@ -301,7 +301,7 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     --------
     >>> import depictr as dp
     >>> wb = dp.wellbeing_survey()
-    >>> p = dp.dendrogram_plot(wb.groupby("region").mean(numeric_only=True))
+    >>> p = dp.dendrogram_plot(wb.groupby("region", observed=True).mean(numeric_only=True))
     """
     _require_scipy()
     from scipy.cluster.hierarchy import dendrogram, linkage

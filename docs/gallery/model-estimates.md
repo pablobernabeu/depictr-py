@@ -109,14 +109,13 @@ print(show(p))
 ## Random effects
 
 A caterpillar plot of the conditional modes from a mixed model. Each point is one
-region's predicted departure from the population fit, sorted against a zero
+participant's predicted departure from the population fit, sorted against a zero
 reference line.
 
 ```python exec="1" html="1" source="material-block" session="models"
-wb = dp.wellbeing_survey().dropna(subset=["life_satisfaction", "sleep_hours"])
-mm = smf.mixedlm("life_satisfaction ~ stress + sleep_hours", wb,
-                 groups=wb["region"]).fit()
-p = dp.random_effects_plot(mm)
+ld = dp.lexical_decision()
+mm = smf.mixedlm("RT ~ condition", ld, groups=ld["participant"]).fit()
+p = dp.random_effects_plot(mm, title="Participant intercepts")
 print(show(p))
 ```
 

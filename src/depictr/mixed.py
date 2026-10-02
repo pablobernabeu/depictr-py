@@ -78,10 +78,9 @@ def random_effects_plot(model, title=None):
     --------
     >>> import depictr as dp
     >>> import statsmodels.formula.api as smf
-    >>> wb = dp.wellbeing_survey().dropna(subset=["life_satisfaction", "sleep_hours"])
-    >>> mm = smf.mixedlm("life_satisfaction ~ stress + sleep_hours", wb,
-    ...                  groups=wb["region"]).fit()
-    >>> p = dp.random_effects_plot(mm)
+    >>> ld = dp.lexical_decision()
+    >>> mm = smf.mixedlm("RT ~ condition", ld, groups=ld["participant"]).fit()
+    >>> p = dp.random_effects_plot(mm, title="Participant intercepts")
     """
     _require_statsmodels()
     if not hasattr(model, "random_effects"):
