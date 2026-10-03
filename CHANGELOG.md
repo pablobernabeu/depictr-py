@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cluster_plot(clusters=)` draws a clustering computed elsewhere, as the R
   twin's `clusters` argument does, and every cluster plot carries its
   assignments as `p.clusters`, one per complete-case row of `data`.
+- `power_curve_plot()` gains `target`, `lower`, `upper`, `ribbon` and `y_lab`
+  after `title`, as in the R twin. The target line was fixed at 0.8, and no
+  confidence band was drawn. It also takes a list of dicts, one per row, which
+  is how pilotr returns a power curve in Python, and recognises `n_subject` and
+  `<power>_lo`/`<power>_hi` columns, so pilotr's output plots as it is, with
+  its band.
 
 ### Changed
 
@@ -43,6 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assignments change. Each centroid is drawn at the projection of its k-means
   centre, and the axes give each component's share of the variance, as
   `pca_plot()` and the R twin do.
+- `power_curve_plot()` finds its columns as the R twin does when `n` and
+  `power` are not given, so `n`, `nlevels`, `x`, `sample_size` or `n_subject`
+  serves as the sample size and `power`, `mean` or `p` as the power. A table
+  with several curves and no `group` was joined into a single zig-zag line. An
+  `effect`, `param` or `term` column with more than one level now separates the
+  curves, with a warning naming the columns used, and rows that share a sample
+  size with no such column raise `ValueError`. Each curve takes a line type as
+  well as a colour. The y-axis title is "Power" for the usual power columns and
+  the column's name otherwise.
 
 ### Deprecated
 

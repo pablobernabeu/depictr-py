@@ -202,8 +202,10 @@ A few known limitations remain. Compositions in plotnine have no figure-level
 title, so a grid carries its titles on each panel (the survival and estimation
 composites place the title on their top panel). `survival_plot` does not yet
 draw the confidence band or censor marks the R package draws, though its
-`conf_level` argument is accepted for future use. Seven functions from the R
-package have yet to be ported: `optimizer_fixef_plot` (there is no direct
+`conf_level` argument is accepted for future use. `power_curve_plot` reads the
+same tables as the R function, pilotr's included, but it has no `x_lab`,
+`x_breaks` or `x_expand`, and there is no simr object to read. Seven functions
+from the R package have yet to be ported: `optimizer_fixef_plot` (there is no direct
 statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
 `model_fit_table`, `ts_forecast`, the label helper `format_terms` and the
 session-wide settings of `depictr_options`.
