@@ -18,12 +18,13 @@ https://doi.org/10.3102/10769986006002107
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from plotnine import (
     aes,
     element_text,
-    expand_limits,
     geom_errorbar,
     geom_hline,
     geom_jitter,
@@ -38,6 +39,7 @@ from plotnine import (
 
 from .compose import arrange_plots
 from .palette import depictr_brand
+from .tables import _levels
 from .theme import theme_depictr
 
 
@@ -81,16 +83,25 @@ def _effsize_diff(treat, ref):
     return float(d), float(j * d)
 
 
+def _shown(level):
+    """How a warning names a level, 'East' for text and 2 for a number."""
+    return repr(level.item() if isinstance(level, np.generic) else level)
+
+
 def estimation_plot(data, y, group, reference=None, conf_level=0.95,
-                    n_boot=2000, effsize="hedges_g", two_panel=False,
+                    n_boot=5000, effsize="hedges_g", two_panel=False,
                     title=None, seed=None):
-    """Cumming-style estimation plot of mean differences.
+    """Cumming estimation plot of mean differences.
 
     For each non-reference group, the mean difference from the reference group is
-    drawn as a point with a bootstrap confidence interval. A dashed line marks a
-    difference of zero (the reference), and the standardised effect size is
-    annotated beside each point. With ``two_panel=True`` this difference axis sits
-    beneath a panel of the raw data and group means (the Gardner-Altman layout).
+    drawn as a point with a bootstrap confidence interval, in that group's
+    column. The reference's column is left empty, a dashed line marks a
+    difference of zero, and the standardised effect size is annotated beside
+    each point. A caption names the interval and the number of resamples. With
+    ``two_panel=True``, the differences sit beneath a panel of the raw data and
+    group means, each in its group's column. This is the Cumming estimation plot
+    (Cumming, 2012) that the R twin draws, and its two panels have independent
+    outcome axes.
 
     Parameters
     ----------
@@ -102,21 +113,31 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         Name of the grouping column.
     reference : str, optional
         The reference (control) group the others are compared with. Defaults to
-        the first group level.
+        the first level of ``group`` among those observed: a categorical's first
+        category in its declared order, otherwise the first value in sorted
+        order, with numbers sorted by value as R's ``factor()`` sorts them. The
+        bundled datasets' groups are categoricals in the R twin's level order,
+        so their default reference is R's. depictr 0.3.0 took the group of the
+        first row instead, so the order of the rows decided the sign of every
+        difference. Where that rule would have chosen another group, a
+        ``FutureWarning`` names both. Passing ``reference`` chooses the group
+        and silences it.
     conf_level : float
         Confidence level for the bootstrap difference intervals.
     n_boot : int
-        Number of bootstrap resamples for each difference interval.
+        Number of bootstrap resamples for each difference interval. The default
+        of 5,000 is the R twin's.
     effsize : {"hedges_g", "cohens_d", "none"}
         Standardised effect size annotated beside each difference. Hedges' g is
         the small-sample corrected default; pass ``"none"`` to omit it.
     two_panel : bool
-        When ``True``, place the difference axis beneath a panel of the raw data
-        and group means (the Gardner-Altman layout), returning a composition.
+        When ``True``, place the differences beneath a panel of the raw data
+        and group means, returning a composition.
     title : str, optional
         Plot title.
     seed : int, optional
-        Seed for the bootstrap, for reproducible intervals.
+        Seed for the bootstrap and, in the two-panel layout, for the jitter of
+        the raw data, so that a seeded figure comes out the same every time.
 
     Returns
     -------
@@ -143,14 +164,39 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         raise ValueError("`n_boot` must be a positive integer.")
 
     d = data[[y, group]].dropna()
-    levels = list(pd.unique(d[group]))
+    # Levels in a categorical's declared order, otherwise sorted, leaving out
+    # any category no row falls in. The reference decides the sign of every
+    # difference, so it must not depend on which row comes first. Numbers are
+    # sorted by value, as R's factor() sorts them. _levels() sorts them as
+    # text, which would put a group of 10 before a group of 5.
+    if pd.api.types.is_numeric_dtype(d[group]):
+        levels = sorted(d[group].unique())
+    else:
+        observed = set(d[group])
+        levels = [lvl for lvl in _levels(d[group]) if lvl in observed]
     if len(levels) < 2:
         raise ValueError("`group` must have at least two non-empty levels.")
 
-    ref = reference if reference is not None else levels[0]
+    if reference is None:
+        ref = levels[0]
+        first_row = d[group].iloc[0]
+        if first_row != ref:
+            warnings.warn(
+                f"estimation_plot() took {_shown(ref)} as the reference, the "
+                f"first level of {group!r} (in a categorical's declared order, "
+                "otherwise in sorted order). depictr 0.3.0 took the group of "
+                f"the first row, {_shown(first_row)}, so these differences are "
+                "not those of a figure made with 0.3.0. Pass `reference` to "
+                "choose the group and silence this warning.",
+                FutureWarning, stacklevel=2,
+            )
+    else:
+        ref = reference
     if ref not in levels:
         raise ValueError(f"`reference` ({ref!r}) is not a level of `group`.")
     others = [g for g in levels if g != ref]
+    # Both panels give every group a column, the reference's first.
+    groups = [ref, *others]
 
     rng = np.random.default_rng(seed)
     ref_vals = d.loc[d[group] == ref, y].to_numpy(dtype=float)
@@ -165,7 +211,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
                      "lower": lo, "upper": hi,
                      "cohens_d": cohens_d, "hedges_g": hedges_g})
     diffs = pd.DataFrame(rows)
-    # Keep the non-reference groups in their original order up the axis.
+    # The non-reference groups, in the order of their columns.
     diffs["group"] = pd.Categorical(diffs["group"], categories=others, ordered=True)
 
     brand = depictr_brand()
@@ -193,11 +239,16 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
                  + scale_y_continuous(expand=(0.08, 0, 0.3, 0)))
 
     p = (p
-         # Pad an invisible slot for the reference so the axis reads naturally.
-         + scale_x_discrete(limits=others)
-         + expand_limits(x=levels)
+         # A column for every group, in the upper panel's order, so that each
+         # difference sits beneath its own group, and an empty, unlabelled one
+         # for the reference. The limits name every group because
+         # expand_limits() cannot add a slot to explicit discrete limits.
+         + scale_x_discrete(limits=groups,
+                            labels=["" if g == ref else str(g) for g in groups])
          + labs(x="", y=f"Mean difference\n(vs. {ref})",
-                title=None if two_panel else title)
+                title=None if two_panel else title,
+                caption=f"Bootstrap {100 * conf_level:g}% CI "
+                        f"({n_boot:,} resamples)")
          + theme_depictr(grid="y")
          + theme(axis_text_x=element_text(weight="bold")))
     p.differences = diffs
@@ -205,11 +256,11 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         return p
 
     # Top panel: the raw data with each group's mean and a t-based interval, on
-    # the outcome scale, above the aligned difference axis.
+    # the outcome scale, in the same columns as the differences below.
     from scipy import stats
 
     summ = []
-    for g in levels:
+    for g in groups:
         v = d.loc[d[group] == g, y].to_numpy(dtype=float)
         n = len(v)
         m = float(v.mean())
@@ -224,15 +275,27 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
             se = tc = np.nan
         summ.append({"group": g, "mean": m, "lo": m - tc * se, "hi": m + tc * se})
     summ_df = pd.DataFrame(summ)
-    summ_df["group"] = pd.Categorical(summ_df["group"], categories=levels, ordered=True)
+    summ_df["group"] = pd.Categorical(summ_df["group"], categories=groups, ordered=True)
 
+    # plotnine reads a seed of 0 as no seed, and from an integer seed it draws
+    # the same numbers for the horizontal and the vertical jitter. A RandomState
+    # avoids both. plotnine copies it before each draw, so the figure jitters
+    # the same way every time it is drawn.
+    jitter_state = (None if seed is None
+                    else np.random.RandomState(np.random.MT19937(seed)))
+    # The raw data's groups as a categorical in the columns' order, as R makes
+    # a factor of them. A numeric group would otherwise be drawn at its value
+    # on a continuous axis, far from its column.
+    raw = d.assign(**{group: pd.Categorical(d[group], categories=groups)})
     top = (
         ggplot(summ_df, aes(x="group", y="mean"))
-        + geom_jitter(aes(x=group, y=y), data=d, width=0.12, alpha=0.25,
-                      color=brand, size=0.9, inherit_aes=False)
+        + geom_jitter(aes(x=group, y=y), data=raw, width=0.12, alpha=0.25,
+                      color=brand, size=0.9, inherit_aes=False,
+                      random_state=jitter_state)
         + geom_errorbar(aes(ymin="lo", ymax="hi"), width=0.12, color=brand,
                         size=0.8, na_rm=True)
         + geom_point(color=brand, size=2.8)
+        + scale_x_discrete(limits=groups)
         # The title rides on the top panel so it reads as the figure title
         # (plotnine compositions have no super-title).
         + labs(x="", y=y, title=title)

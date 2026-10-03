@@ -215,7 +215,7 @@ try:
     elif stage == "Estimation plot":
         y = st.selectbox("Outcome", num_cols)
         g = st.selectbox("Group", cat_cols)
-        two = st.checkbox("Two-panel (Gardner-Altman)", value=True)
+        two = st.checkbox("Two-panel (Cumming)", value=True)
         show(dp.estimation_plot(data, y, g, two_panel=two, seed=1),
              f"dp.estimation_plot({data_call}, {y!r}, {g!r}, two_panel={two})",
              deficiency)

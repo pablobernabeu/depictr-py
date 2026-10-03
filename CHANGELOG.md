@@ -98,6 +98,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   computed it afresh over the grid. Such a term is now refused with
   `ValueError`, as in the R twin. patsy's `center()` and `standardize()` keep
   the values of the fit and are unaffected.
+- `estimation_plot()` drew the differences out of line with the groups they
+  belong to. Its difference panel had one column fewer than there are groups
+  and spread its columns across the full width, so with two groups the single
+  difference sat midway between them, beneath neither. The default reference
+  was the group of the first row, so shuffling the rows could change the
+  reference and with it the sign of every difference, and the interval carried
+  no label. In both layouts, every group now keeps its column, with an empty
+  one for the reference, which comes first as in the R twin. The default
+  reference is the first level of the group, in a categorical's declared order
+  or else in sorted order, with numbers sorted by value. A `FutureWarning` names
+  both groups wherever the 0.3.0 rule would have chosen another. A numeric
+  group made the two-panel layout raise `TypeError` and is now drawn as in R. A
+  caption names the interval ("Bootstrap 95% CI (5,000 resamples)") as in R,
+  and the default `n_boot` rises from 2,000 to the R twin's 5,000. A `seed` now
+  fixes the jitter of the raw data as well, so a seeded two-panel figure comes
+  out the same every time. The layout is now called a Cumming estimation plot.
+  Gardner-Altman names a layout that sets the difference beside the data, which
+  this function does not draw.
 - `check_figure()` measured all text against the plot background, so text on a
   coloured facet strip or legend box was judged against a background it is not
   drawn on: white strip text on a dark strip failed and unreadable grey strip text

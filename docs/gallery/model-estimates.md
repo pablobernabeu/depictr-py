@@ -64,7 +64,8 @@ print(show(p))
 
 ## Estimation plot
 
-A two-panel Gardner-Altman estimation plot of the group difference.
+A two-panel Cumming estimation plot of the group difference, drawn beneath the
+group it belongs to.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.estimation_plot(cy, "yield", "treatment", two_panel=True, seed=1)

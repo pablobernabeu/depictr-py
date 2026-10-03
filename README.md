@@ -178,7 +178,7 @@ The exported functions fall into families that follow the stages of an analysis.
 | Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette`, `legend_inside` |
 | Accessibility | `check_figure`, `palette_safety`, `simulate_cvd` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
-| Estimation and tables | `estimation_plot` (single- or two-panel Gardner-Altman), `summary_table` |
+| Estimation and tables | `estimation_plot` (single- or two-panel Cumming), `summary_table` |
 | Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot` |
 | Diagnostics | `qq_plot`, `influence_plot`, `vif_plot`, `binned_residual_plot`, `residual_diagnostics_plot`, `model_report` |
 | Classification | `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`, `calibration_plot`, `gain_plot`, `lift_plot`, `threshold_plot` |
@@ -195,7 +195,7 @@ family (EDA, estimation, model estimates, diagnostics, classification,
 multivariate, survival and time series) are in place and tested. Multi-panel
 composites are built on `arrange_plots`, which uses plotnine's native plot
 composition, and they include the four-panel `residual_diagnostics_plot`, the
-`model_report` dashboard, the two-panel Gardner-Altman `estimation_plot`, the
+`model_report` dashboard, the two-panel Cumming `estimation_plot`, the
 frequentist-over-Bayesian overlay and the survival number-at-risk table.
 
 A few known limitations remain. Compositions in plotnine have no figure-level
