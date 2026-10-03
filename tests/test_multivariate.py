@@ -1,16 +1,19 @@
 """The multivariate plots build a figure, and the PCA biplot draws its loadings faithfully."""
 
+import copy
 import io
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
 from matplotlib.collections import LineCollection, PathCollection
 from matplotlib.colors import to_hex
 from plotnine import coord_fixed, ggplot, theme
 from plotnine.exceptions import PlotnineWarning
 
-from depictr.data import wellbeing_survey
+from depictr.data import crop_yield, wellbeing_survey
 from depictr.multivariate import (
     _standardise,
     cluster_plot,
@@ -180,6 +183,94 @@ def test_cluster_plot():
     pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
     assert _builds(cluster_plot(WB, cols=NUM, k=3, title="Clusters"))
     assert _builds(cluster_plot(WB, cols=NUM, k=4))
+
+
+def _silhouette_bars(labels, X):
+    """Silhouette widths sorted by cluster and width, as silhouette_plot draws them."""
+    from sklearn.metrics import silhouette_samples
+
+    labels = np.asarray(labels)
+    widths = silhouette_samples(X, labels)
+    order = np.lexsort((widths, labels))
+    return labels[order], widths[order]
+
+
+@pytest.mark.parametrize(
+    ("frame", "cols", "k"),
+    [
+        (WB, NUM, 4),
+        (crop_yield(), ["rainfall", "fertiliser", "soil_ph", "yield"], 4),
+    ],
+)
+def test_cluster_plot_draws_the_partition_silhouette_plot_measures(frame, cols, k):
+    # cluster_plot() once ran k-means on the two PCA scores, while
+    # silhouette_plot() and the R twin cluster the full standardised data. The
+    # two partitions agreed with an adjusted Rand index of 0.39 on crop_yield
+    # and 0.42 on wellbeing_survey at k = 4, so the silhouette widths described
+    # a partition the scatter did not show.
+    pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
+    p = cluster_plot(frame, cols=cols, k=k)
+    X = _standardise(frame[cols].dropna())
+    # The labels the scatter colours its points by, in complete-case row order.
+    clusters, widths = _silhouette_bars(p.data["cluster"].astype(int).to_numpy(), X)
+    drawn = silhouette_plot(frame, cols=cols, k=k).data
+    np.testing.assert_array_equal(clusters, drawn["cluster"].astype(int).to_numpy())
+    np.testing.assert_allclose(widths, drawn["width"].to_numpy(), rtol=0, atol=1e-12)
+
+
+def test_cluster_plot_projects_only_for_display():
+    pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
+    from sklearn.decomposition import PCA
+
+    frame = WB[NUM].dropna()
+    pca = PCA(n_components=2)
+    scores = pca.fit_transform(_standardise(frame))
+    p = cluster_plot(WB, cols=NUM, k=3)
+    # The points are the PCA scores of the complete-case rows, in their order.
+    np.testing.assert_allclose(p.data[["PC1", "PC2"]].to_numpy(), scores, atol=1e-9)
+    assert p.clusters.index.equals(frame.index)
+    assert list(p.clusters) == list(p.data["cluster"].astype(int))
+    # Each centroid sits at its cluster's mean score, which is where the
+    # k-means centre in the full space projects to.
+    built = copy.deepcopy(p)
+    figure = built.draw(show=False)
+    plt.close(figure)
+    cent = built.layers[1].data.sort_values("x")
+    means = (pd.DataFrame(scores, columns=["PC1", "PC2"])
+             .groupby(p.clusters.to_numpy()).mean().sort_values("PC1"))
+    np.testing.assert_allclose(cent[["x", "y"]].to_numpy(), means.to_numpy(),
+                               atol=1e-6)
+    # The axes report each component's share of the variance, as in the R twin
+    # and pca_plot().
+    share = pca.explained_variance_ratio_ * 100
+    assert p.labels.x == f"PC1 ({share[0]:.1f}%)"
+    assert p.labels.y == f"PC2 ({share[1]:.1f}%)"
+
+
+def test_cluster_plot_draws_supplied_clusters():
+    pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
+    frame = WB.copy()
+    frame.loc[frame.index[:3], "income"] = np.nan
+    supplied = np.where(np.arange(len(frame)) % 2 == 0, "even", "odd")
+    p = cluster_plot(frame, cols=NUM, clusters=supplied)
+    kept = frame[NUM].notna().all(axis=1).to_numpy()
+    # The caller's labels survive, aligned to the complete-case rows.
+    assert list(p.clusters) == list(supplied[kept])
+    assert list(p.data["cluster"].astype(str)) == list(supplied[kept])
+    assert _builds(p)
+
+
+def test_cluster_plot_supplied_clusters_must_match_the_rows():
+    pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
+    with pytest.raises(ValueError, match="`clusters` must have one entry per row of `data`."):
+        cluster_plot(WB, cols=NUM, clusters=[1, 2, 1])
+
+
+def test_cluster_plot_with_one_cluster():
+    pytest.importorskip("sklearn", reason="k-means delegates to scikit-learn")
+    p = cluster_plot(WB, cols=NUM, k=1)
+    assert set(p.clusters) == {1}
+    assert _builds(p)
 
 
 def test_dendrogram_plot_methods():

@@ -261,12 +261,16 @@ def scree_plot(data, cols=None, title=None):
     )
 
 
-def cluster_plot(data, cols=None, k=3, title=None):
+def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
     """k-means clusters drawn on the first two principal components.
 
-    The data are reduced to two principal components for display, k-means is run
-    in that two-dimensional space, and points are coloured by cluster with each
-    cluster centroid marked by a larger outlined point.
+    k-means is run on the standardised data in all of its dimensions, with the
+    settings :func:`silhouette_plot` uses, so the two functions show the same
+    partition for the same ``k``, as the R twin does. The principal components
+    serve only to display it. Points are drawn at their PC1 and PC2 scores,
+    coloured by cluster, and each centroid is marked by a larger outlined
+    point at the projection of its k-means centre. The axis labels report the
+    percentage of variance each component explains.
 
     Parameters
     ----------
@@ -274,44 +278,96 @@ def cluster_plot(data, cols=None, k=3, title=None):
     cols : list of str, optional
         Numeric columns to use; defaults to all numeric columns.
     k : int
-        Number of clusters.
+        Number of clusters. Ignored when ``clusters`` is supplied.
     title : str, optional
+    clusters : array-like, optional
+        A clustering computed elsewhere, such as the labels of a hierarchical
+        or PAM clustering. When it is given, it is drawn and k-means is not
+        run. It needs one entry per row of ``data``. Rows with a missing value
+        in ``cols`` are dropped from both, and the labels are kept as they are.
 
     Returns
     -------
     plotnine.ggplot
+        The cluster of each complete-case row is attached as ``p.clusters``, a
+        :class:`pandas.Series` on the index of ``data``. k-means clusters are
+        numbered from 1.
+
+    Raises
+    ------
+    ValueError
+        If ``clusters`` does not have one entry per row of ``data``.
+
+    Notes
+    -----
+    The two displayed components hold only part of the variance, so k-means
+    run on them would partition a different space from the one the silhouette
+    widths describe. A k-means centroid is the cluster's mean in the full
+    space, projected, which equals the mean of its members' scores. Supplied
+    clusters are marked at the mean of their members' scores.
+
+    k-means settles in a local optimum. scikit-learn's algorithm and random
+    starts differ from those of R's ``kmeans()``, so on data without clear
+    clusters the two twins can still assign some points differently for the
+    same ``k``.
 
     Examples
     --------
     >>> import depictr as dp
     >>> wb = dp.wellbeing_survey()
     >>> p = dp.cluster_plot(wb, k=3)
+    >>> p.clusters.value_counts().sort_index().index.tolist()
+    [1, 2, 3]
     """
     _require_sklearn()
     from sklearn.cluster import KMeans
     from sklearn.decomposition import PCA
 
+    if clusters is not None and len(clusters) != len(data):
+        # Checked against every row before the incomplete ones are dropped, so
+        # labels sized to the complete rows cannot be misaligned in silence.
+        # The R twin's wording.
+        raise ValueError("`clusters` must have one entry per row of `data`.")
+
     num = _numeric_frame(data, cols)
     X = _standardise(num)
-    scores = PCA(n_components=2).fit_transform(X)
-    km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(scores)
+    pca = PCA(n_components=2).fit(X)
+    scores = pca.transform(X)
+    var = pca.explained_variance_ratio_ * 100
+
+    if clusters is None:
+        km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(X)
+        labels = pd.Series(km.labels_ + 1, index=num.index, name="cluster")
+        centres = pca.transform(km.cluster_centers_)
+        cent = pd.DataFrame(centres, columns=["PC1", "PC2"])
+        cent["cluster"] = np.arange(1, k + 1)
+    else:
+        # The complete-case rows by position, so a repeated index cannot
+        # misalign the labels.
+        kept = data[num.columns].notna().all(axis=1).to_numpy()
+        labels = pd.Series(np.asarray(clusters)[kept], index=num.index, name="cluster")
+        cent = (pd.DataFrame(scores, columns=["PC1", "PC2"])
+                .groupby(labels.to_numpy(), sort=True).mean()
+                .rename_axis("cluster").reset_index())
+    levels = pd.Categorical(labels.to_numpy()).categories
+    cent["cluster"] = pd.Categorical(cent["cluster"], categories=levels)
 
     pts = pd.DataFrame({
         "PC1": scores[:, 0], "PC2": scores[:, 1],
-        "cluster": pd.Categorical(km.labels_ + 1),
+        "cluster": pd.Categorical(labels.to_numpy(), categories=levels),
     })
-    cent = pd.DataFrame(km.cluster_centers_, columns=["PC1", "PC2"])
-    cent["cluster"] = pd.Categorical(np.arange(1, k + 1))
 
-    return (
+    p = (
         ggplot(pts, aes("PC1", "PC2", color="cluster"))
         + geom_point(alpha=0.7, size=2)
         + geom_point(data=cent, size=6, shape="X", color="#1a1a1a")
         + geom_point(data=cent, size=4, shape="X")
-        + scale_colour_depictr(n=k, name="Cluster")
-        + labs(x="PC1", y="PC2", title=title)
+        + scale_colour_depictr(n=len(levels), name="Cluster")
+        + labs(x=f"PC1 ({var[0]:.1f}%)", y=f"PC2 ({var[1]:.1f}%)", title=title)
         + theme_depictr()
     )
+    p.clusters = labels
+    return p
 
 
 def dendrogram_plot(data, cols=None, method="ward", title=None):

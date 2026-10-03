@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `monthly_sales()`, the time-series dataset that was R-only.
+- `cluster_plot(clusters=)` draws a clustering computed elsewhere, as the R
+  twin's `clusters` argument does, and every cluster plot carries its
+  assignments as `p.clusters`, one per complete-case row of `data`.
 
 ### Changed
 
@@ -31,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web app offers a column as a grouping variable only when it has 2 to 12
   distinct values, so an identifier such as `participant` or `patient` is never
   the default group, and it leaves identifiers out of the model predictors.
+- `cluster_plot()` clustered the two-dimensional PCA projection, so its
+  clusters could differ from `silhouette_plot()`'s and the R twin's for the
+  same `k`. On the bundled data with their default columns, the two partitions
+  agreed with an adjusted Rand index of 0.39 for `crop_yield` and 0.63 for
+  `wellbeing_survey` at `k = 4`. It now clusters the full standardised data with
+  `silhouette_plot()`'s settings and projects only for display, so cluster
+  assignments change. Each centroid is drawn at the projection of its k-means
+  centre, and the axes give each component's share of the variance, as
+  `pca_plot()` and the R twin do.
 
 ### Deprecated
 

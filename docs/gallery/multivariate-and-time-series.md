@@ -30,7 +30,8 @@ print(show(p, width=8, height=6))
 
 ## Clustering
 
-k-means clusters on the first two principal components.
+k-means clusters of the standardised data, drawn on the first two principal
+components. They are the clusters the silhouette plot below measures.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.cluster_plot(wb, k=3)
