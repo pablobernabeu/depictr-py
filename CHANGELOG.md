@@ -172,6 +172,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the plot has groups, so past eight groups they interpolate the palette and
   warn, as the R twin and the README describe. Figures with eight groups or
   fewer are drawn exactly as before.
+- `group_comparison_plot()` drew mean ± 1.96 SE, which covers 81% at n = 3 and
+  88% at n = 5 for a nominal 95%. It now uses the t distribution, as the R twin
+  and `estimation_plot()` do, and gains `conf_level`. The intervals of small
+  groups widen accordingly. A group with a single observation shows its mean
+  only, with a warning in the R twin's words, where plotnine used to drop its
+  interval with a generic message about missing values.
 
 ## [0.3.0] - 2026-08-21
 

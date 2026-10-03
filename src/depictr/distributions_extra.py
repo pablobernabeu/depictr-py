@@ -8,6 +8,8 @@ one-call function returning a single plotnine object you can extend with ``+``.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -283,7 +285,7 @@ def outlier_plot(data, x, title=None):
     )
 
 
-def group_comparison_plot(data, x, group, title=None):
+def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     """Group means with confidence intervals over the raw points.
 
     The estimate-with-uncertainty alternative to a bar chart: each group shows its
@@ -301,6 +303,8 @@ def group_comparison_plot(data, x, group, title=None):
         The grouping column on the x-axis.
     title : str, optional
         Plot title.
+    conf_level : float
+        Confidence level for the t intervals, strictly between 0 and 1.
 
     Returns
     -------
@@ -308,9 +312,16 @@ def group_comparison_plot(data, x, group, title=None):
 
     Notes
     -----
-    The interval is a normal-approximation 95% confidence interval for the mean
-    (mean plus or minus 1.96 standard errors). It describes the precision of the
-    mean, not the spread of the data.
+    Each interval is the t interval for the group's mean, as in the R twin and
+    in the upper panel of :func:`depictr.estimation_plot`. Its half-width is the
+    standard error times the ``1 - (1 - conf_level) / 2`` quantile of the t
+    distribution with n - 1 degrees of freedom. It describes the precision
+    of the mean, not the spread of the data. depictr 0.3.0 used 1.96 standard
+    errors, a normal approximation that covers only 81% of the time at n = 3
+    and 88% at n = 5 for a nominal 95%.
+
+    A group with a single observation has no degrees of freedom for the
+    interval, so only its mean is drawn and a warning names the group.
 
     Examples
     --------
@@ -321,19 +332,37 @@ def group_comparison_plot(data, x, group, title=None):
     for col in (x, group):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
+    if not 0 < conf_level < 1:
+        raise ValueError("`conf_level` must lie strictly between 0 and 1.")
+
+    from scipy.stats import t as t_dist
 
     df = data[[x, group]].dropna()
     stats = (df.groupby(group, observed=True)[x]
              .agg(["mean", "std", "count"]).reset_index())
     se = stats["std"] / np.sqrt(stats["count"])
-    stats["lower"] = stats["mean"] - 1.96 * se
-    stats["upper"] = stats["mean"] + 1.96 * se
+    # A single observation has no degrees of freedom: its standard deviation
+    # and t quantile are NaN, so its bounds are NaN and only the mean is drawn.
+    df_t = (stats["count"] - 1).where(stats["count"] > 1)
+    tc = t_dist.ppf(1 - (1 - conf_level) / 2, df_t)
+    stats["lower"] = stats["mean"] - tc * se
+    stats["upper"] = stats["mean"] + tc * se
+    sparse = stats.loc[stats["count"] < 2, group]
+    if len(sparse):
+        warnings.warn(
+            "No confidence interval drawn for group(s) with n < 2: "
+            f"{', '.join(str(g) for g in sparse)}; showing the mean only.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     return (
         ggplot(df, aes(x=group, color=group))
         + geom_jitter(aes(y=x), width=0.12, height=0, alpha=0.25, size=1.5)
+        # na_rm: the NaN bounds of a single-observation group are dropped
+        # quietly, since the warning above has already named the group.
         + geom_errorbar(stats, aes(ymin="lower", ymax="upper"),
-                        width=0.15, size=0.9)
+                        width=0.15, size=0.9, na_rm=True)
         + geom_point(stats, aes(y="mean"), size=3.5)
         + scale_colour_depictr()
         + labs(x=group, y=x, title=title)
