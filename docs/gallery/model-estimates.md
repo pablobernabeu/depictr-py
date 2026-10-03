@@ -173,7 +173,10 @@ print(show(p))
 ## A one-figure model report
 
 The coefficient forest with the residuals-versus-fitted and normal
-quantile-quantile panels, composed into a single figure for a quick review.
+quantile-quantile panels, composed into a single figure for a quick review. A
+GLM, Logit or Probit fit gets the Q-Q plot of quantile residuals that
+`residual_diagnostics_plot` draws for it, and a binomial one its binned
+residuals.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.model_report(model)

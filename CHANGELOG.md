@@ -126,6 +126,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the accent, which is also the second group colour and so tied the variables
   to the second group. The `KeyError` for a misspelt `group` now names the
   column and the argument, in the R twin's words.
+- `residual_diagnostics_plot()` and `model_report()` raised `AttributeError`
+  for every GLM, Logit and Probit fit, although documented for GLMs. Such a fit
+  now gets a Q-Q panel of randomised quantile residuals, which are standard
+  normal under a correct model whatever the family. A binomial fit gets
+  `binned_residual_plot()` as its residual panel, as in the R twin, and other
+  families plot their deviance residuals against the fitted values. Both
+  functions gain `glm_panels=True`, where `False` draws the classic panels, and
+  `seed=` for a reproducible randomisation. `binned_residual_plot()` now takes
+  a Logit or Probit fit. Such a result's `fittedvalues` holds the linear
+  predictor, so the panels read its fitted probabilities from `predict()`.
 
 ## [0.3.0] - 2026-08-21
 

@@ -61,7 +61,145 @@ def _studentised_residuals(model) -> np.ndarray:
         if hasattr(infl, name):
             return np.asarray(getattr(infl, name))
     # Last resort: fall back to the raw residuals.
-    return np.asarray(model.resid)
+    return _raw_residuals(model)[0]
+
+
+def _is_glm(model) -> bool:
+    """True for a fitted GLM of any family."""
+    from statsmodels.genmod.generalized_linear_model import GLM
+
+    return isinstance(getattr(model, "model", None), GLM)
+
+
+def _is_binary(model) -> bool:
+    """True for a fitted Logit or Probit model, statsmodels' binary models."""
+    from statsmodels.discrete.discrete_model import BinaryModel
+
+    return isinstance(getattr(model, "model", None), BinaryModel)
+
+
+def _is_binomial(model) -> bool:
+    """True for a binomial GLM, or a Logit or Probit fit."""
+    sm = _require_statsmodels()
+    if _is_binary(model):
+        return True
+    return _is_glm(model) and isinstance(model.family, sm.families.Binomial)
+
+
+def _fitted_values(model) -> np.ndarray:
+    """Fitted values on the scale of the response.
+
+    A GLM's ``fittedvalues`` are its fitted means, but a Logit or Probit
+    result's are its linear predictor. Its fitted probabilities come from
+    ``predict()``, so the two fits of one binomial model plot alike.
+    """
+    if _is_binary(model):
+        return np.asarray(model.predict(), dtype=float)
+    return np.asarray(model.fittedvalues, dtype=float)
+
+
+def _raw_residuals(model):
+    """The residuals of a fit, with the axis label that names them.
+
+    statsmodels gives a GLM no ``resid``, so its deviance residuals are used,
+    the type R's ``residuals.glm()`` returns by default. A Logit or Probit
+    result calls them ``resid_dev``.
+    """
+    if _is_glm(model):
+        return np.asarray(model.resid_deviance, dtype=float), "Deviance residuals"
+    if _is_binary(model):
+        return np.asarray(model.resid_dev, dtype=float), "Deviance residuals"
+    return np.asarray(model.resid, dtype=float), "Residuals"
+
+
+def _quantile_residuals(model, seed=None):
+    """Randomised quantile residuals of a GLM, Logit or Probit fit.
+
+    The residual of observation i is the standard-normal quantile of u_i
+    (Dunn & Smyth, 1996). For a continuous response, u_i is the fitted
+    distribution function at the observation. For a discrete response, it is
+    drawn uniformly between the fitted distribution function just below the
+    observation and at it. Under a correctly specified model, the residuals are
+    independent and standard normal whatever the family, so a normal Q-Q plot
+    of them is readable even for a binary or count response.
+
+    Variance weights w_i enter each fitted distribution as they enter the fit,
+    through the variance scale * V(mu_i) / w_i. The Gaussian standard
+    deviation is therefore sqrt(scale / w_i) and the Gamma shape w_i / scale,
+    and binomial weights count trials, as do the totals of a two-column
+    (successes, failures) response. Poisson residuals do not use the weights.
+    An observation with zero weight takes no part in the fit and gets NaN.
+
+    The supported families are those of the R twin's ``quantile_residuals()``:
+    binomial (including Logit and Probit fits), Poisson, Gaussian and Gamma.
+    For any other model the deviance residuals come back, flagged, so that a
+    caller can label them as such.
+
+    Parameters
+    ----------
+    model : statsmodels results object
+        A fitted GLM, Logit or Probit model.
+    seed : int, optional
+        Seed for the randomisation of binomial and Poisson residuals. The draws
+        come from a generator of their own, so numpy's global random state is
+        left alone. The R twin draws from R's generator, so the same seed gives
+        other randomised residuals there.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, bool)
+        One residual per observation of the fit, and whether they are quantile
+        residuals (``False`` where the deviance residuals stand in).
+
+    References
+    ----------
+    Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
+    Journal of Computational and Graphical Statistics, 5(3), 236-244.
+    https://doi.org/10.1080/10618600.1996.10474708
+    """
+    from scipy import stats
+
+    sm = _require_statsmodels()
+    families = sm.families
+    supported = (families.Binomial, families.Poisson, families.Gaussian,
+                 families.Gamma)
+    if _is_binary(model):
+        family = families.Binomial()
+        mu = _fitted_values(model)
+        weights = np.ones_like(mu)
+        trials = weights
+    elif _is_glm(model) and isinstance(model.family, supported):
+        family = model.family
+        mu = _fitted_values(model)
+        weights = np.asarray(model.model.var_weights, dtype=float)
+        trials = np.asarray(getattr(model.model, "n_trials", 1.0), dtype=float)
+    else:
+        return _raw_residuals(model)[0], False
+    y = np.asarray(model.model.endog, dtype=float)
+    rng = np.random.default_rng(seed)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        if isinstance(family, families.Binomial):
+            # A proportion over its trials, or a 0/1 outcome over one trial.
+            size = trials * weights
+            counts = np.round(y * size)
+            below = stats.binom.cdf(counts - 1, size, mu)
+            at = stats.binom.cdf(counts, size, mu)
+            u = rng.uniform(np.minimum(below, at), np.maximum(below, at))
+        elif isinstance(family, families.Poisson):
+            u = rng.uniform(stats.poisson.cdf(y - 1, mu), stats.poisson.cdf(y, mu))
+        elif isinstance(family, families.Gaussian):
+            u = stats.norm.cdf(y, loc=mu, scale=np.sqrt(model.scale / weights))
+        else:
+            # Gamma: shape w_i / scale and mean mu_i, so variance
+            # scale * mu_i^2 / w_i.
+            shape = weights / model.scale
+            u = stats.gamma.cdf(y, a=shape, scale=mu / shape)
+
+    eps = np.finfo(float).eps
+    resid = stats.norm.ppf(np.clip(u, eps, 1 - eps))
+    resid[weights == 0] = np.nan
+    return resid, True
 
 
 def qq_plot(model, title=None):
@@ -72,6 +210,14 @@ def qq_plot(model, title=None):
     systematic bend away from it flags skew or heavy tails. The line is drawn
     through the first and third quartiles, the robust choice R's ``qqline`` uses,
     so a few outliers do not tilt it.
+
+    The residuals of a linear model should follow the line. The studentised
+    residuals of a non-Gaussian GLM are not expected to, even when the model
+    is correctly specified: those of a binary model take only two values at
+    each fitted value. A bend then says little about the fit. For a GLM,
+    :func:`depictr.residual_diagnostics_plot` and :func:`depictr.model_report`
+    plot randomised quantile residuals (Dunn & Smyth, 1996), which are standard
+    normal under a correct model.
 
     Parameters
     ----------
@@ -85,6 +231,12 @@ def qq_plot(model, title=None):
     Returns
     -------
     plotnine.ggplot
+
+    References
+    ----------
+    Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
+    Journal of Computational and Graphical Statistics, 5(3), 236-244.
+    https://doi.org/10.1080/10618600.1996.10474708
 
     Examples
     --------
@@ -233,7 +385,7 @@ def vif_plot(model, title=None):
 
 
 def binned_residual_plot(model, n_bins=None, title=None):
-    """Binned residual plot for a binomial GLM (Gelman & Hill, 2007).
+    """Binned residual plot for a binomial model (Gelman & Hill, 2007).
 
     Raw residuals from a logistic model are uninformative point by point, so the
     fitted probabilities are split into equal-count bins and the mean residual is
@@ -245,7 +397,8 @@ def binned_residual_plot(model, n_bins=None, title=None):
     Parameters
     ----------
     model : statsmodels results object
-        A fitted binomial GLM (logistic regression).
+        A fitted binomial GLM (logistic regression), or a Logit or Probit
+        result, whose fitted probabilities are used.
     n_bins : int, optional
         Number of bins. Defaults to the square root of the sample size, rounded,
         the rule of thumb in Gelman & Hill.
@@ -271,18 +424,18 @@ def binned_residual_plot(model, n_bins=None, title=None):
     ...               family=sm.families.Binomial()).fit()
     >>> p = dp.binned_residual_plot(glm)
     """
-    sm = _require_statsmodels()
+    _require_statsmodels()
     if not _is_fitted_model(model):
         raise TypeError("binned_residual_plot needs a fitted statsmodels GLM.")
-    # OLS results have no `family`; only a binomial GLM is meaningful here.
-    family = getattr(model, "family", None)
-    if not isinstance(family, sm.families.Binomial):
+    # Only a binomial model is meaningful here: a binomial GLM, or a Logit or
+    # Probit fit of the same kind of outcome.
+    if not _is_binomial(model):
         raise ValueError(
             "binned_residual_plot expects a binomial GLM "
-            "(family=sm.families.Binomial())."
+            "(family=sm.families.Binomial()) or a Logit or Probit fit."
         )
 
-    fitted = np.asarray(model.fittedvalues)
+    fitted = _fitted_values(model)
     resid = np.asarray(model.resid_response)
     n = len(fitted)
     if n_bins is None:

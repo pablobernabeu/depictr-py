@@ -1,6 +1,7 @@
 """Smoke tests: every regression-diagnostic plot builds without error."""
 
 import numpy as np
+import pandas as pd
 import pytest
 from plotnine import ggplot
 
@@ -64,3 +65,19 @@ def test_binned_residual_plot(glm):
 def test_binned_residual_plot_rejects_non_binomial(ols):
     with pytest.raises(ValueError):
         binned_residual_plot(ols)
+
+
+def test_binned_residual_plot_accepts_logit_and_probit(glm):
+    # Logit and Probit fits are binomial models fitted another way, and the
+    # check on a GLM family turned them away. A Logit fit is the same model as
+    # the binomial GLM, so its bins are the same.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    ct = clinical_trial()
+    logit = smf.logit("adverse_event ~ biomarker + age + arm", ct).fit(disp=0)
+    probit = smf.probit("adverse_event ~ biomarker + age + arm", ct).fit(disp=0)
+    assert _builds(binned_residual_plot(logit))
+    assert _builds(binned_residual_plot(probit))
+    by_logit = binned_residual_plot(logit).data.reset_index(drop=True)
+    by_glm = binned_residual_plot(glm).data.reset_index(drop=True)
+    pd.testing.assert_frame_equal(by_logit, by_glm, check_exact=False,
+                                  atol=1e-6)
