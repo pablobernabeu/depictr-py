@@ -154,6 +154,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `seed=` for a reproducible randomisation. `binned_residual_plot()` now takes
   a Logit or Probit fit. Such a result's `fittedvalues` holds the linear
   predictor, so the panels read its fitted probabilities from `predict()`.
+- `scale_colour_depictr()` and `scale_fill_depictr()` drew a ninth group in the
+  missing-value grey, indistinguishable from missing data, with no warning of
+  depictr's own, and so did every plot that adds them, such as `ecdf_plot()`
+  and `raincloud_plot()`. Without `n`, the scales now take as many colours as
+  the plot has groups, so past eight groups they interpolate the palette and
+  warn, as the R twin and the README describe. Figures with eight groups or
+  fewer are drawn exactly as before.
 
 ## [0.3.0] - 2026-08-21
 

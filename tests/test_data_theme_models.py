@@ -1,23 +1,29 @@
 """Tests for the bundled data, the theme/scales, and the model-or-frame input."""
 
+import copy
+import warnings
 from statistics import NormalDist
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
-from plotnine import theme
+from plotnine import aes, geom_bar, geom_point, ggplot, theme
 from plotnine.scales.scale import scale
 
 from depictr import (
     DATASETS,
     coefficient_plot,
     compare_models,
+    depictr_palette,
+    ecdf_plot,
     scale_colour_depictr,
     scale_fill_depictr,
     theme_depictr,
     tidy_estimates,
     wellbeing_survey,
 )
+from depictr.palette import NA_VALUE, OKABE_ITO
 
 
 def test_datasets_load_and_are_reproducible():
@@ -43,6 +49,74 @@ def test_theme_returns_a_theme_and_validates_grid():
 def test_scales_return_scale_objects():
     assert isinstance(scale_colour_depictr(), scale)
     assert isinstance(scale_fill_depictr(3), scale)
+
+
+def _drawn(p, aesthetic):
+    """The colours a plot's first layer is drawn in, read back after drawing."""
+    built = copy.deepcopy(p)
+    figure = built.draw(show=False)
+    try:
+        return [str(c).lower() for c in built.layers[0].data[aesthetic]]
+    finally:
+        plt.close(figure)
+
+
+def _groups(k, per_group=5):
+    rng = np.random.default_rng(1)
+    return pd.DataFrame({
+        "g": np.repeat([f"g{i}" for i in range(1, k + 1)], per_group),
+        "x": rng.normal(size=k * per_group),
+    })
+
+
+def test_a_ninth_group_is_interpolated_not_drawn_as_missing():
+    # The scale used to hold eight fixed values, so plotnine drew a ninth group
+    # in the missing-value grey, with only its own generic warning.
+    p = ecdf_plot(_groups(9), "x", group="g")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        colours = set(_drawn(p, "color"))
+    messages = [str(w.message) for w in caught]
+    assert any("9 colours interpolated" in m for m in messages)
+    assert not any("can return a maximum of" in m for m in messages)
+    assert len(colours) == 9
+    assert NA_VALUE not in colours
+
+
+def test_the_fill_scale_interpolates_past_eight_groups():
+    p = ggplot(_groups(9), aes("g", fill="g")) + geom_bar() + scale_fill_depictr()
+    with pytest.warns(UserWarning, match="9 colours interpolated"):
+        fills = set(_drawn(p, "fill"))
+    assert len(fills) == 9
+    assert NA_VALUE not in fills
+
+
+def test_eight_groups_keep_the_okabe_ito_colours_without_a_warning():
+    p = (ggplot(_groups(8), aes("x", "x", colour="g")) + geom_point()
+         + scale_colour_depictr())
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        colours = _drawn(p, "color")
+    assert not any("interpolated" in str(w.message) for w in caught)
+    assert list(dict.fromkeys(colours)) == OKABE_ITO
+
+
+def test_missing_rows_stay_grey_beside_nine_interpolated_groups():
+    df = _groups(9)
+    df.loc[0, "g"] = None
+    p = (ggplot(df, aes("x", "x", colour="g")) + geom_point()
+         + scale_colour_depictr())
+    with pytest.warns(UserWarning, match="9 colours interpolated"):
+        colours = _drawn(p, "color")
+    assert colours[0] == NA_VALUE
+    assert NA_VALUE not in colours[1:]
+    assert len(set(colours[1:])) == 9
+
+
+def test_an_explicit_n_still_fixes_the_palette():
+    p = (ggplot(_groups(3), aes("x", "x", colour="g")) + geom_point()
+         + scale_colour_depictr(n=5))
+    assert list(dict.fromkeys(_drawn(p, "color"))) == depictr_palette(5)[:3]
 
 
 def test_tidy_estimates_from_frame_normalises_columns():

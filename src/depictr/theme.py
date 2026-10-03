@@ -20,7 +20,7 @@ from plotnine import (
     theme_minimal,
 )
 
-from .palette import NA_VALUE, depictr_brand, depictr_palette
+from .palette import NA_VALUE, OKABE_ITO, depictr_brand, depictr_palette
 
 
 def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
@@ -75,18 +75,43 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
     return th
 
 
+def _sized_to_the_data(scale, n):
+    """Let a depictr manual scale size the palette to the levels it is given.
+
+    A manual scale holds a fixed list of values, so plotnine draws every level
+    past the eighth in the missing-value colour. With ``n`` unset, the palette
+    here is asked for as many colours as the plot has levels, as in the R twin's
+    ``function(k) depictr_palette(n %||% k)``. A ninth group is then
+    interpolated, and :func:`depictr.palette.depictr_palette` warns. Up to eight
+    levels, and whenever ``n`` is given, plotnine's own palette is kept, so
+    those figures are drawn exactly as before.
+    """
+    if n is not None:
+        return scale
+    manual = scale.palette
+
+    def palette(k):
+        if k > len(OKABE_ITO):
+            return depictr_palette(k)
+        return manual(k)
+
+    scale.palette = palette
+    return scale
+
+
 def scale_colour_depictr(n: int | None = None, **kwargs):
     """A discrete colour scale drawn from :func:`depictr.palette.depictr_palette`.
 
     Parameters
     ----------
     n : int, optional
-        Number of colours to draw. Defaults to the full qualitative palette;
-        pass ``n`` when a plot has more groups than the eight base colours so the
-        palette is interpolated to fit. Interpolation loses the
-        colourblind-safety guarantee, which covers the eight base colours only,
-        so :func:`depictr.palette.depictr_palette` warns past eight; facet the
-        groups, or use the sequential ramp, when there are more.
+        Number of colours to draw. By default, the scale takes as many colours
+        as the plot has groups: the Okabe-Ito colours in order up to eight,
+        and past eight a palette interpolated through them. Interpolation loses
+        the colourblind-safety guarantee, which covers the eight base colours
+        only, so :func:`depictr.palette.depictr_palette` warns past eight; facet
+        the groups, or use the sequential ramp, when there are more. Pass ``n``
+        to fix the palette's length whatever the number of groups.
     **kwargs
         Passed to :func:`plotnine.scale_color_manual` (for example ``name``).
 
@@ -99,7 +124,8 @@ def scale_colour_depictr(n: int | None = None, **kwargs):
     ...      + geom_point() + dp.scale_colour_depictr())
     """
     kwargs.setdefault("na_value", NA_VALUE)
-    return scale_color_manual(values=depictr_palette(n), **kwargs)
+    return _sized_to_the_data(
+        scale_color_manual(values=depictr_palette(n), **kwargs), n)
 
 
 def scale_fill_depictr(n: int | None = None, **kwargs):
@@ -116,7 +142,8 @@ def scale_fill_depictr(n: int | None = None, **kwargs):
     ...      + geom_bar() + dp.scale_fill_depictr())
     """
     kwargs.setdefault("na_value", NA_VALUE)
-    return scale_fill_manual(values=depictr_palette(n), **kwargs)
+    return _sized_to_the_data(
+        scale_fill_manual(values=depictr_palette(n), **kwargs), n)
 
 
 # American-spelling alias, matching the convention plotnine and matplotlib use.
