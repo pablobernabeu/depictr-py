@@ -118,12 +118,21 @@ def _rgb_to_lab(colours: list[str]) -> np.ndarray:
     return np.stack([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)], axis=1)
 
 
-def _min_pairwise_delta_e(colours: list[str]) -> tuple[float, tuple[int, int]]:
-    """Smallest CIE76 colour difference among all pairs, and that pair's indices."""
+def _min_pairwise_delta_e(colours: list[str],
+                          groups=None) -> tuple[float, tuple[int, int]]:
+    """Smallest CIE76 colour difference among all pairs, and that pair's indices.
+
+    ``groups``, when given, labels each colour, and a pair whose labels are
+    equal is skipped: ``check_figure`` labels each drawn colour with the colour
+    it was declared as, so that one group drawn in two ways is not set against
+    itself.
+    """
     lab = _rgb_to_lab(colours)
     best, pair = np.inf, (0, 0)
     for i in range(len(lab)):
         for j in range(i + 1, len(lab)):
+            if groups is not None and groups[i] == groups[j]:
+                continue
             d = float(np.linalg.norm(lab[i] - lab[j]))
             if d < best:
                 best, pair = d, (i, j)

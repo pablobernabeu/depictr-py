@@ -124,9 +124,10 @@ p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
 print(table(dp.check_figure(p)))
 ```
 
-Two rows are worth dwelling on. `geometry_contrast` measures each encoding colour
-against the panel background, and the palette's orange sits at 2.25 against white,
-below the 3:1 that WCAG asks of a graphical object. `redundant_encoding` is zero
+Two rows are worth dwelling on. `geometry_contrast` measures each encoding colour,
+as it is drawn, against the panel background. The palette's orange falls below the
+3:1 that WCAG asks of a graphical object even when opaque, at 2.25:1, and further
+when drawn translucent, as the histogram's bars are. `redundant_encoding` is zero
 because nothing but colour tells the two conditions apart. The audit also takes a
 stated output width, which is where most figure text quietly fails: text is drawn
 in points, so a figure saved seven inches wide and then printed in an 8.9 cm
@@ -137,8 +138,9 @@ column = dp.check_figure(p, width_cm=8.9)
 print(table(column[column["check"] == "text_size"]))
 ```
 
-A figure built with two well-separated colours, a redundant shape and no
-shrinking clears every row, so the audit returns a pass as readily as a failure.
+A figure built with two well-separated colours drawn opaque, a redundant shape
+and no shrinking clears every row, so the audit returns a pass as readily as a
+failure.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 from plotnine import aes, geom_point, ggplot, scale_colour_manual
@@ -146,7 +148,7 @@ from plotnine import aes, geom_point, ggplot, scale_colour_manual
 cy = dp.crop_yield()
 mended = (ggplot(cy, aes("rainfall", "yield", colour="treatment",
                          shape="treatment"))
-          + geom_point(alpha=0.7)
+          + geom_point()
           + scale_colour_manual(values=["#005b96", "#d55e00"])
           + dp.theme_depictr())
 print(table(dp.check_figure(mended)[["check", "measured", "threshold",

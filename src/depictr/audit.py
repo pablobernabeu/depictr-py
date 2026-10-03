@@ -70,13 +70,29 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     that encodes nothing by colour, reports ``NaN`` and a verdict of
     ``"not applicable"`` instead of a free pass.
 
+    Colours and text are measured as drawn. A translucent colour is composited
+    over the background it is drawn on with the alpha it is drawn with, so it
+    is measured as the paler colour the reader sees. As plotnine draws them,
+    bars, tiles, areas, densities, ribbons, polygons, violins, boxplots,
+    crossbars and smooths apply a layer's alpha to their fill and leave the
+    outline opaque. Lines, paths, segments, error bars and reference lines
+    apply it to their colour, and points apply it to both. Any other geom is
+    taken to apply it to both, the cautious assumption. A colour that carries
+    its own alpha keeps it, as plotnine draws it. A colour drawn at several
+    alphas within one layer is measured at the smallest. Where marks overlap
+    one another, the colour that shows depends on what lies beneath it, and
+    that is not measured.
+
     ``colour_separability`` is the smallest CIE76 colour difference (Delta-E)
-    between any two of the figure's encoding colours, and the three
+    between two of the figure's encoding colours, and the three
     ``colour_separability_*`` rows repeat that measurement after simulating each
     dichromacy at full severity with :func:`depictr.simulate_cvd`. Encoding
     colours are the distinct colour and fill values a layer uses to tell groups
     apart; a continuous colour or fill scale is a smooth ramp rather than a set
-    of codes, so it is excluded.
+    of codes, so it is excluded. The outline colours, across every layer, are
+    compared among themselves, and so are the fill colours, and the row reports
+    the closest pair from either set. An outline is therefore never compared
+    with its own fill, nor a group with itself as another layer draws it.
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
     between those same colours, which is what survives printing in black and
@@ -96,14 +112,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     background it is drawn on: a facet strip's fill for strip text, the legend
     box's fill for legend text, and the plot background for the rest. A
     translucent fill is measured as the colour it shows over what lies beneath
-    it. Text that is large at its printed size, 18 pt or 14 pt in bold, is held
-    to 3:1, and other text to 4.5:1, as success criterion 1.4.3 asks. The row's
-    ``threshold`` is the one that applies to the text it reports, and its
-    ``detail`` names that text's colour, background, printed size and weight.
+    it, and so is text drawn with an alpha. Text that is large at its printed
+    size, 18 pt or 14 pt in bold, is held to 3:1, and other text to 4.5:1, as
+    success criterion 1.4.3 asks. The row's ``threshold`` is the one that
+    applies to the text it reports, and its ``detail`` names that text's
+    colour, background, printed size and weight.
 
     ``geometry_contrast`` is the smallest WCAG 2.2 contrast ratio of any
-    encoding colour against the panel background, or against the plot
-    background where the panel paints none.
+    encoded group's drawn colour against the panel background, or against the
+    plot background where the panel paints none. Where a layer maps its outline
+    colour to the same groups as its fill, each group counts the better of the
+    two, since WCAG lets a border carry a graphical object's contrast. For a
+    translucent colour, the ``detail`` names the colour, its alpha and the
+    colour it is drawn as.
 
     ``redundant_encoding`` counts how many of shape and line type also vary in a
     layer whose colour varies. Zero means the distinction between groups is
@@ -206,16 +227,18 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         # invisible but white, so it is read only when it is drawn.
         panel_bg = (_painted(built.axs[0].patch, plot_bg) if built.axs
                     else None) or plot_bg
-        colours, redundant = _figure_colour_encoding(built)
+        # Marks are drawn on the panel, so a translucent one shows the panel
+        # through.
+        encoding = _figure_colour_encoding(built, panel_bg)
         text = _figure_text(figure, plot_bg)
     finally:
         plt.close(figure)
 
-    rows = _separability_rows(colours, min_delta_e)
+    rows = _separability_rows(encoding.sets, min_delta_e)
     rows.append(_text_size_row(text, width_cm, render_width_cm, min_text_pt))
     rows.append(_text_contrast_row(text, width_cm, render_width_cm))
-    rows.append(_geometry_contrast_row(colours, panel_bg))
-    rows.append(_redundant_encoding_row(colours, redundant))
+    rows.append(_geometry_contrast_row(encoding.marks, panel_bg))
+    rows.append(_redundant_encoding_row(encoding.sets, encoding.redundant))
     return pd.DataFrame(
         rows, columns=["check", "measured", "threshold", "verdict", "detail"]
     )
@@ -234,39 +257,38 @@ def _positive_scalar(value, name: str) -> None:
 # --- colour bookkeeping -----------------------------------------------------
 
 
-def _as_hex(colours) -> list[str]:
-    """Normalise colours to lower-case six-digit hex, dropping the invisible.
+def _parse_colour(colour) -> tuple[str, float] | None:
+    """A colour's canonical hex and its own alpha, or None if it draws nothing.
 
-    Anything missing, unparseable or fully transparent is removed rather than
-    carried through as a colour, since it encodes nothing. The result is the
-    same canonical form the R twin produces, so the two can be compared
-    directly.
+    Anything missing or unparseable is None, and so is ``"none"``, which
+    plotnine draws as nothing. The hex is lower-case and six-digit, the same
+    canonical form the R twin produces, so the two can be compared directly.
+    The colour's own alpha, in [0, 1], is left for the caller to apply.
     """
-    out = []
-    for colour in np.atleast_1d(np.asarray(colours, dtype=object)):
-        if colour is None or (isinstance(colour, float) and np.isnan(colour)):
-            continue
-        try:
-            r, g, b, a = mcolors.to_rgba(colour)
-        except (ValueError, TypeError):
-            continue
-        if a == 0:
-            continue
-        out.append(mcolors.to_hex((r, g, b)))
-    return out
+    if colour is None or (isinstance(colour, float) and np.isnan(colour)):
+        return None
+    if isinstance(colour, str) and colour.strip().lower() in ("", "none"):
+        return None
+    try:
+        r, g, b, a = mcolors.to_rgba(colour)
+    except (ValueError, TypeError):
+        return None
+    return mcolors.to_hex((r, g, b)), a
 
 
-def _composite(colour, background: str) -> str:
-    """A colour as drawn over a background, given its own alpha.
+def _composite(colour, background: str, alpha: float = 1.0) -> str:
+    """A colour as drawn over a background, given its alpha.
 
     Each channel, scaled to run from 0 to 1, is
     ``alpha * colour + (1 - alpha) * background``,
     then scaled to 8 bits with ``floor(255 * drawn + 0.5)``. The R twin does
     the same arithmetic in the same order, so the two agree to the last bit.
     matplotlib's ``to_hex`` rounds half to even and would disagree with R at
-    some alphas.
+    some alphas, 0.3 and 0.7 among them. ``alpha`` multiplies the colour's own
+    alpha.
     """
-    r, g, b, a = mcolors.to_rgba(colour)
+    r, g, b, own = mcolors.to_rgba(colour)
+    a = own * alpha
     fg = np.array([r, g, b])
     bg = np.array(mcolors.to_rgb(background))
     drawn = a * fg + (1 - a) * bg
@@ -337,7 +359,164 @@ def _varies(data, column: str) -> bool:
     return data[column].dropna().nunique() >= 2
 
 
-def _figure_colour_encoding(plot) -> tuple[list[str], list[str]]:
+class _Drawn(NamedTuple):
+    """A declared colour, the alpha it is drawn with and the colour it shows."""
+
+    declared: str
+    alpha: float
+    drawn: str
+
+
+class _Encoding(NamedTuple):
+    """What a figure tells apart by colour, as drawn.
+
+    ``sets`` holds the drawn colours of the colour and of the fill aesthetic
+    across all layers, each a sorted list of ``(drawn, declared)`` pairs, and
+    leaves out an aesthetic that encodes nothing. ``marks`` holds one drawn
+    colour per encoded group, for the geometry check, and ``redundant`` the
+    non-colour channels that vary alongside the colours.
+    """
+
+    sets: dict[str, list[tuple[str, str]]]
+    marks: list[_Drawn]
+    redundant: list[str]
+
+
+def _alpha_targets(geom) -> set[str]:
+    """Which of a layer's colour and fill take its alpha, as plotnine draws it.
+
+    Read from the geoms' drawing code. Rectangles (bars, columns, tiles,
+    histograms), ribbons (areas, densities), polygons, violins, boxplots,
+    crossbars and smooths pass the layer's alpha to the fill alone and draw the
+    outline, the whiskers and the median or fitted line opaque. Paths (lines,
+    steps), segments, error bars, line ranges and the reference lines pass it
+    to the colour. Points and point ranges pass it to both, and so does any
+    geom not named here, the cautious assumption for a geom whose drawing has
+    not been read. The R twin keeps the same table for ggplot2's geoms.
+    """
+    from plotnine import (
+        geom_abline,
+        geom_boxplot,
+        geom_crossbar,
+        geom_errorbar,
+        geom_errorbarh,
+        geom_hline,
+        geom_linerange,
+        geom_path,
+        geom_polygon,
+        geom_rect,
+        geom_ribbon,
+        geom_segment,
+        geom_smooth,
+        geom_violin,
+        geom_vline,
+    )
+
+    if isinstance(geom, (geom_rect, geom_ribbon, geom_polygon, geom_violin,
+                         geom_boxplot, geom_crossbar, geom_smooth)):
+        return {"fill"}
+    if isinstance(geom, (geom_path, geom_segment, geom_errorbar,
+                         geom_errorbarh, geom_linerange, geom_hline,
+                         geom_vline, geom_abline)):
+        return {"color"}
+    return {"color", "fill"}
+
+
+def _keeps_own_alpha(colour) -> bool:
+    """Whether plotnine draws a colour in its own alpha, whatever the layer's.
+
+    mizani's ``to_rgba``, which plotnine's geoms call, leaves a colour that
+    already carries an alpha untouched: a nine-character hex string or an RGBA
+    tuple. Any other colour takes the layer's alpha.
+    """
+    if isinstance(colour, str):
+        return colour.startswith("#") and len(colour) == 9
+    return isinstance(colour, tuple) and len(colour) == 4
+
+
+def _layer_ink(data, aesthetic: str,
+               applies: bool) -> list[tuple[int, str, float]]:
+    """The colour one aesthetic of a layer draws on each row, and its alpha.
+
+    Returns ``(row, declared, alpha)`` for each row of the layer data that
+    draws something, with ``declared`` in canonical hex. Where the geom does
+    not pass its alpha to this aesthetic, the colour's own alpha is all there
+    is. A row drawn fully transparent is left out, since it shows nothing.
+    """
+    values = data[aesthetic].to_numpy()
+    if "alpha" in data:
+        layer_alpha = pd.to_numeric(data["alpha"], errors="coerce").to_numpy()
+    else:
+        layer_alpha = np.ones(len(values))
+    out = []
+    for row, (value, layer_a) in enumerate(zip(values, layer_alpha,
+                                               strict=True)):
+        parsed = _parse_colour(value)
+        if parsed is None:
+            continue
+        declared, own = parsed
+        if applies and not _keeps_own_alpha(value):
+            alpha = 1.0 if np.isnan(layer_a) else float(layer_a)
+        else:
+            alpha = own
+        if alpha > 0:
+            out.append((row, declared, alpha))
+    return out
+
+
+def _drawn_by_value(ink, background: str) -> dict[str, _Drawn]:
+    """Each declared colour of a layer as drawn, at the smallest alpha it takes."""
+    smallest: dict[str, float] = {}
+    for _, declared, alpha in ink:
+        smallest[declared] = min(alpha, smallest.get(declared, alpha))
+    return {declared: _Drawn(declared, alpha,
+                             _composite(declared, background, alpha))
+            for declared, alpha in smallest.items()}
+
+
+def _shared_groups(colour, fill) -> list[tuple[str, str]] | None:
+    """The groups a layer's colour and fill share, when they mark the same ones.
+
+    The two mark the same groups when each colour goes with exactly one fill on
+    the rows that draw both, and the other way round, and every colour and fill
+    the layer draws is among those pairs. Returns the ``(colour, fill)`` pairs,
+    one per group, or None when the two mark different groups.
+    """
+    colour_of = {row: declared for row, declared, _ in colour}
+    fill_of = {row: declared for row, declared, _ in fill}
+    pairs = {(colour_of[row], fill_of[row])
+             for row in colour_of.keys() & fill_of.keys()}
+    colours = {c for c, _ in pairs}
+    fills = {f for _, f in pairs}
+    one_to_one = len(colours) == len(pairs) == len(fills)
+    covers = (colours == set(colour_of.values())
+              and fills == set(fill_of.values()))
+    return sorted(pairs) if pairs and one_to_one and covers else None
+
+
+def _layer_marks(ink, drawn, background: str) -> list[_Drawn]:
+    """One drawn colour per group of a layer, for the geometry check.
+
+    A group whose outline colour and fill are both mapped to it counts the one
+    of the two that contrasts better with the background. WCAG's Understanding
+    document for success criterion 1.4.11 lets a border supply a graphical
+    object's contrast, and an area geom draws its outline opaque however pale
+    its fill. Otherwise, each encoding colour stands for its own group.
+    """
+    if "color" in ink and "fill" in ink:
+        groups = _shared_groups(ink["color"], ink["fill"])
+        if groups is not None:
+            marks = []
+            for colour, fill in groups:
+                outline, face = drawn["color"][colour], drawn["fill"][fill]
+                ratios = _contrast_ratio([outline.drawn, face.drawn],
+                                         background)
+                marks.append(outline if ratios[0] > ratios[1] else face)
+            return marks
+    return [mark for by_value in drawn.values() for mark in by_value.values()]
+
+
+def _figure_colour_encoding(plot, background: str) -> _Encoding:
     """The colours a figure uses to tell groups apart, and what varies with them.
 
     A colour or fill counts as encoding when a single layer draws more than one
@@ -345,8 +524,9 @@ def _figure_colour_encoding(plot) -> tuple[list[str], list[str]]:
     ramp, where neighbouring colours are meant to be close, so measuring the
     distance between them would only ever say that a gradient is a gradient.
 
-    The colours are returned sorted, so that a tie between two equally close
-    pairs resolves the same way in both engines.
+    Every colour is taken as drawn over ``background``, the panel, at the alpha
+    its geom applies to it. The sets are sorted, so that a tie between two
+    equally close pairs resolves the same way in both engines.
     """
     from plotnine import geom_label, geom_text
     from plotnine.scales.scale_continuous import scale_continuous
@@ -356,7 +536,8 @@ def _figure_colour_encoding(plot) -> tuple[list[str], list[str]]:
         if isinstance(scale, scale_continuous):
             continuous.update(scale.aesthetics)
 
-    colours: list[str] = []
+    sets: dict[str, set[tuple[str, str]]] = {"color": set(), "fill": set()}
+    marks: list[_Drawn] = []
     redundant: list[str] = []
     for layer in plot.layers:
         # A text layer's colour is chosen for legibility against whatever it
@@ -366,33 +547,52 @@ def _figure_colour_encoding(plot) -> tuple[list[str], list[str]]:
         if isinstance(layer.geom, (geom_text, geom_label)):
             continue
         data = layer.data
-        encodes = False
+        targets = _alpha_targets(layer.geom)
+        ink = {}
         for aesthetic in ("color", "fill"):
             if aesthetic in continuous or not _varies(data, aesthetic):
                 continue
-            hex_colours = _as_hex(data[aesthetic].dropna().unique())
-            if len(set(hex_colours)) < 2:
+            rows = _layer_ink(data, aesthetic, aesthetic in targets)
+            # Distinct after normalisation: two spellings of one colour are one
+            # colour, and a layer that draws only that encodes nothing.
+            if len({declared for _, declared, _ in rows}) < 2:
                 continue
-            colours += [c for c in hex_colours if c not in colours]
-            encodes = True
-        if not encodes:
+            ink[aesthetic] = rows
+        if not ink:
             continue
+        drawn = {aesthetic: _drawn_by_value(rows, background)
+                 for aesthetic, rows in ink.items()}
+        for aesthetic, by_value in drawn.items():
+            sets[aesthetic].update((mark.drawn, mark.declared)
+                                   for mark in by_value.values())
+        marks.extend(_layer_marks(ink, drawn, background))
         also = [a for a in ("shape", "linetype") if _varies(data, a)]
         if len(also) > len(redundant):
             redundant = also
-    return sorted(set(colours)), redundant
+    return _Encoding(
+        sets={aesthetic: sorted(pairs) for aesthetic, pairs in sets.items()
+              if pairs},
+        marks=marks,
+        redundant=redundant,
+    )
 
 
 # --- text bookkeeping -------------------------------------------------------
 
 
 class _Text(NamedTuple):
-    """One drawn text: point size, colour, weight and its own background."""
+    """One drawn text: point size, colour, weight and its own background.
+
+    ``colour`` is the colour drawn, after compositing, and ``declared`` and
+    ``alpha`` are the colour and alpha it was drawn from.
+    """
 
     size: float
     colour: str
     bold: bool
     background: str
+    declared: str
+    alpha: float
 
 
 def _is_bold(weight) -> bool:
@@ -419,6 +619,11 @@ def _figure_text(figure, plot_bg: str) -> list[_Text]:
     and legend text sits inside an anchored box whose patch is the legend
     background. Either counts only when it is drawn, and everything else is on
     the plot background.
+
+    A text drawn with an alpha is composited over its background, as a mark is
+    over the panel. When the artist has an alpha of its own, matplotlib draws
+    the text in it and ignores the colour's alpha, which counts only when the
+    artist has none.
     """
     # matplotlib's findobj lists an artist's children before the artist, so an
     # inner box is met before the box around it and the innermost one wins.
@@ -439,20 +644,22 @@ def _figure_text(figure, plot_bg: str) -> list[_Text]:
         seen.add(id(artist))
         if not artist.get_visible() or not artist.get_text().strip():
             continue
-        alpha = artist.get_alpha()
-        if alpha is not None and alpha == 0:
-            continue
-        colour = _as_hex([artist.get_color()])
+        parsed = _parse_colour(artist.get_color())
         size = float(artist.get_fontsize())
-        if not colour or not np.isfinite(size):
+        if parsed is None or not np.isfinite(size):
+            continue
+        declared, own = parsed
+        alpha = own if artist.get_alpha() is None else float(artist.get_alpha())
+        if alpha <= 0:
             continue
         strip = getattr(artist, "patch", None)
         if isinstance(strip, mpatches.Patch):
             background = _painted(strip, plot_bg) or plot_bg
         else:
             background = boxed.get(id(artist), plot_bg)
-        out.append(_Text(size, colour[0], _is_bold(artist.get_fontweight()),
-                         background))
+        out.append(_Text(size, _composite(declared, background, alpha),
+                         _is_bold(artist.get_fontweight()), background,
+                         declared, alpha))
     return out
 
 
@@ -477,40 +684,74 @@ def _row(check: str, measured, threshold: float, detail: str) -> dict:
     }
 
 
-def _min_pairwise_gap(values: np.ndarray) -> tuple[float, tuple[int, int]]:
-    """Smallest pairwise gap in one dimension, walked in the twin's order."""
+def _min_pairwise_gap(values: np.ndarray,
+                      groups=None) -> tuple[float, tuple[int, int]]:
+    """Smallest pairwise gap in one dimension, walked in the twin's order.
+
+    A pair whose ``groups`` are equal is skipped, as in
+    ``_min_pairwise_delta_e``.
+    """
     best, pair = np.inf, (0, 0)
     for i in range(len(values)):
         for j in range(i + 1, len(values)):
+            if groups is not None and groups[i] == groups[j]:
+                continue
             gap = abs(float(values[i] - values[j]))
             if gap < best:
                 best, pair = gap, (i, j)
     return best, pair
 
 
-def _separability_rows(colours: list[str], min_delta_e: float) -> list[dict]:
-    """The four colour rows plus the greyscale row."""
+# How a detail names the colours of each aesthetic's set.
+_SET_NOUNS = {"color": "colours", "fill": "fill colours"}
+
+
+def _separability_rows(sets: dict[str, list[tuple[str, str]]],
+                       min_delta_e: float) -> list[dict]:
+    """The four colour rows plus the greyscale row.
+
+    Each set holds the drawn colours of one aesthetic, and only colours
+    declared differently are paired, so a group is never compared with itself.
+    The rows report the closest pair over the sets, the first set winning a
+    tie.
+    """
     names = ["colour_separability"] + [
         f"colour_separability_{d}" for d in DEFICIENCIES
     ]
-    if len(colours) < 2:
+    if not sets:
         return [_row(name, np.nan, min_delta_e, _NO_COLOUR_DETAIL)
                 for name in names + ["greyscale_separability"]]
 
+    def closest_over_sets(measure):
+        best = None
+        for aesthetic, pairs in sets.items():
+            drawn = [d for d, _ in pairs]
+            declared = [g for _, g in pairs]
+            distance, (i, j) = measure(drawn, declared)
+            if best is None or distance < best[0]:
+                best = (distance, drawn[i], drawn[j], len(pairs),
+                        _SET_NOUNS[aesthetic])
+        return best
+
     rows = []
     for name, condition in zip(names, ["normal", *DEFICIENCIES], strict=True):
-        seen = colours if condition == "normal" else simulate_cvd(colours, condition)
-        distance, (i, j) = _min_pairwise_delta_e(seen)
+        def measure(drawn, declared, condition=condition):
+            seen = (drawn if condition == "normal"
+                    else simulate_cvd(drawn, condition))
+            return _min_pairwise_delta_e(seen, declared)
+
+        distance, a, b, size, noun = closest_over_sets(measure)
         rows.append(_row(name, distance, min_delta_e,
-                         f"Closest pair {colours[i]} and {colours[j]} of "
-                         f"{len(colours)} encoding colours."))
+                         f"Closest pair {a} and {b} of {size} encoding "
+                         f"{noun}."))
     # Lightness is what a black-and-white printer keeps, and CIE L* is a
     # function of luminance alone, so the greyscale difference between two
     # colours is the CIE76 distance between their lightnesses.
-    distance, (i, j) = _min_pairwise_gap(_rgb_to_lab(colours)[:, 0])
+    distance, a, b, _, _ = closest_over_sets(
+        lambda drawn, declared: _min_pairwise_gap(_rgb_to_lab(drawn)[:, 0],
+                                                  declared))
     rows.append(_row("greyscale_separability", distance, min_delta_e,
-                     f"Closest pair {colours[i]} and {colours[j]} in CIE "
-                     f"lightness."))
+                     f"Closest pair {a} and {b} in CIE lightness."))
     return rows
 
 
@@ -552,23 +793,44 @@ def _text_contrast_row(text: list[_Text], width_cm: float,
         text[i].background))
     chosen = text[worst]
     weight = " bold" if chosen.bold else ""
+    ink = _ink_as_drawn(chosen.declared, chosen.alpha, chosen.colour)
     return _row("text_contrast", ratios[worst], thresholds[worst],
-                f"Lowest-contrast text {chosen.colour} on {chosen.background} "
+                f"Lowest-contrast text {ink} on {chosen.background} "
                 f"at {printed[worst]:.2f} pt{weight}.")
 
 
-def _geometry_contrast_row(colours: list[str], background: str) -> dict:
-    if not colours:
+def _ink_as_drawn(declared: str, alpha: float, drawn: str) -> str:
+    """How a detail names a colour.
+
+    As declared when it is opaque, and with its alpha and the colour it is
+    drawn as when it is not.
+    """
+    if alpha >= 1:
+        return drawn
+    return f"{declared} at alpha {alpha:.2f}, drawn as {drawn},"
+
+
+def _geometry_contrast_row(marks: list[_Drawn], background: str) -> dict:
+    """The encoded group whose drawn colour contrasts least with the background.
+
+    Ties go to the drawn colour, then the declared one, in byte order, which is
+    the order the R twin breaks them in.
+    """
+    if not marks:
         return _row("geometry_contrast", np.nan, _WCAG_OBJECT_CONTRAST,
                     _NO_COLOUR_DETAIL)
-    ratios = _contrast_ratio(colours, background)
-    worst = int(np.argmin(ratios))
+    ratios = _contrast_ratio([mark.drawn for mark in marks], background)
+    worst = min(range(len(marks)), key=lambda i: (
+        ratios[i], marks[i].drawn, marks[i].declared))
+    mark = marks[worst]
+    ink = _ink_as_drawn(mark.declared, mark.alpha, mark.drawn)
     return _row("geometry_contrast", ratios[worst], _WCAG_OBJECT_CONTRAST,
-                f"Lowest-contrast colour {colours[worst]} on {background}.")
+                f"Lowest-contrast colour {ink} on {background}.")
 
 
-def _redundant_encoding_row(colours: list[str], redundant: list[str]) -> dict:
-    if len(colours) < 2:
+def _redundant_encoding_row(sets: dict[str, list[tuple[str, str]]],
+                            redundant: list[str]) -> dict:
+    if not sets:
         return _row("redundant_encoding", np.nan, 1, _NO_COLOUR_DETAIL)
     if redundant:
         detail = f"Colour is joined by {' and '.join(redundant)}."

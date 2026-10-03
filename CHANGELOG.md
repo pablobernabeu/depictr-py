@@ -133,6 +133,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   geometry against the invisible white axes patch in place of the plot
   background, so a figure on a dark background passed in Python and failed in R.
   Both twins now report the same numbers for it.
+- `check_figure()` measured translucent marks and text as if they were opaque,
+  so a figure could pass contrast, colour-vision and greyscale checks that its
+  drawn colours fail. The accessibility page's 'mended' example was one: its
+  points, drawn at alpha 0.7, passed the geometry check at 3.87:1, and the
+  vermillion a reader sees reaches 2.56:1. Colours are now composited over
+  their background with the alpha each geom applies, outlines drawn opaque are
+  credited, and the colours of each aesthetic are compared among themselves. A
+  translucent colour or text is named in the detail with its alpha and the
+  colour it is drawn as, and the separability rows say whether their closest
+  pair are colours or fill colours. Verdicts on translucent figures can change
+  in either direction. The page's example now draws its points opaque.
 - `pca_plot()` stretched the loading arrows by a different factor on each axis,
   so the drawn directions were wrong, by up to 22 degrees on the
   `wellbeing_survey()` of 0.3.0. Both axes now share one factor, as in the R

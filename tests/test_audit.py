@@ -11,6 +11,8 @@ from plotnine import (
     element_rect,
     element_text,
     facet_wrap,
+    geom_col,
+    geom_density,
     geom_line,
     geom_point,
     ggplot,
@@ -92,6 +94,48 @@ def wcag_contrast(a, b):
     return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
 
 
+def mix(colour, background, alpha):
+    """A colour as it shows over a background at a given alpha, by hand.
+
+    Each channel in [0, 1] is alpha * colour + (1 - alpha) * background, then
+    floor(255 * x + 0.5) gives the 8-bit value.
+    """
+    import matplotlib.colors as mcolors
+
+    fg = np.array(mcolors.to_rgb(colour))
+    bg = np.array(mcolors.to_rgb(background))
+    channels = np.floor(255 * (alpha * fg + (1 - alpha) * bg) + 0.5)
+    return "#" + "".join(f"{int(c):02x}" for c in channels)
+
+
+# Translucent versions of the good figure's colours, built the same way in both
+# twins. `alpha=None` leaves the layer's alpha unset.
+def bars_figure(alpha, values=("#005b96", "#d55e00")):
+    two = pd.DataFrame({"g": ["a", "b"], "y": [1, 2]})
+    bars = geom_col() if alpha is None else geom_col(alpha=alpha)
+    return (ggplot(two, aes("g", "y", fill="g")) + bars
+            + scale_fill_manual(values=list(values))
+            + dp.theme_depictr())
+
+
+def points_figure(alpha):
+    return (ggplot(CY, aes("rainfall", "yield", colour="treatment",
+                           shape="treatment"))
+            + geom_point(alpha=alpha)
+            + scale_colour_manual(values=["#005b96", "#d55e00"])
+            + dp.theme_depictr())
+
+
+def density_figure(alpha=0.2):
+    # Densities whose fill is translucent and whose outline, mapped to the same
+    # groups, is drawn opaque.
+    return (ggplot(CY, aes("yield", colour="treatment", fill="treatment"))
+            + geom_density(alpha=alpha)
+            + scale_colour_manual(values=["#005b96", "#d55e00"])
+            + scale_fill_manual(values=["#005b96", "#d55e00"])
+            + dp.theme_depictr())
+
+
 # --- shape of the result -----------------------------------------------------
 
 
@@ -169,6 +213,31 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 1.49, 1.77, 1]
     assert (detail_for(dark, "geometry_contrast")
             == "Lowest-contrast colour #005b96 on #333333.")
+
+    # Translucent bars, measured as drawn: #005b96 and #d55e00 at alpha 0.3
+    # show as #b3cee0 and #f2cfb3. Read at full opacity, the figure passed
+    # geometry at 3.87 and greyscale at 16.92.
+    bars = dp.check_figure(bars_figure(alpha=0.3))
+    assert bars["measured"].tolist() == [
+        33.44, 27.98, 33.13, 35.37, 4.03, 8.8, 8.45, 1.46, 0]
+    assert bars["detail"].tolist() == [
+        *["Closest pair #b3cee0 and #f2cfb3 of 2 encoding fill colours."] * 4,
+        "Closest pair #b3cee0 and #f2cfb3 in CIE lightness.",
+        "Smallest text 8.80 pt, drawn at 17.78 cm and printed at 17.78 cm.",
+        "Lowest-contrast text #4d4d4d on #ffffff at 8.80 pt.",
+        "Lowest-contrast colour #d55e00 at alpha 0.30, drawn as #f2cfb3, "
+        "on #ffffff.",
+        "Colour alone distinguishes the groups.",
+    ]
+
+    # The good figure's points at alpha 0.7, which the accessibility page used
+    # to show as mended. Its vermillion is drawn as #e28e4d, at 2.56:1.
+    points = dp.check_figure(points_figure(alpha=0.7))
+    assert points["measured"].tolist() == [
+        83.25, 69.5, 80.89, 85.03, 10.77, 8.8, 8.45, 2.56, 1]
+    assert (detail_for(points, "geometry_contrast")
+            == "Lowest-contrast colour #d55e00 at alpha 0.70, drawn as "
+               "#e28e4d, on #ffffff.")
 
 
 # --- the measurements themselves ---------------------------------------------
@@ -380,6 +449,187 @@ def test_relative_luminance_follows_the_current_wcag_definition():
                                _srgb_to_linear(channels))
 
 
+# --- translucent marks and text, measured as drawn ---------------------------
+
+
+def test_translucent_fills_are_measured_as_the_colours_they_show():
+    bars = dp.check_figure(bars_figure(alpha=0.3))
+    assert mix("#005b96", "#ffffff", 0.3) == "#b3cee0"
+    assert mix("#d55e00", "#ffffff", 0.3) == "#f2cfb3"
+    assert (measured_for(bars, "geometry_contrast")
+            == round(wcag_contrast("#f2cfb3", "#ffffff"), 2))
+    assert verdict_for(bars, "geometry_contrast") == "fail"
+    assert verdict_for(bars, "greyscale_separability") == "fail"
+    # The colour rows are palette_safety() on the drawn colours.
+    reference = dp.palette_safety(["#b3cee0", "#f2cfb3"])["by_condition"]
+    assert measured_for(bars, "colour_separability") == reference["normal"]
+    for deficiency in ("protan", "deutan", "tritan"):
+        assert (measured_for(bars, f"colour_separability_{deficiency}")
+                == reference[deficiency])
+    # A fill is mixed with the panel it is drawn on, here a dark one.
+    dark = dp.check_figure(bars_figure(alpha=0.3) + theme(
+        panel_background=element_rect(fill="#333333")))
+    blue = mix("#005b96", "#333333", 0.3)
+    assert (measured_for(dark, "geometry_contrast")
+            == round(wcag_contrast(blue, "#333333"), 2))
+    assert detail_for(dark, "geometry_contrast") == (
+        f"Lowest-contrast colour #005b96 at alpha 0.30, drawn as {blue}, "
+        "on #333333.")
+    # Opaque bars keep the detail they always had.
+    assert (detail_for(dp.check_figure(bars_figure(alpha=1)),
+                       "geometry_contrast")
+            == "Lowest-contrast colour #d55e00 on #ffffff.")
+
+
+def test_translucent_points_are_measured_as_drawn():
+    points = dp.check_figure(points_figure(alpha=0.7))
+    assert mix("#d55e00", "#ffffff", 0.7) == "#e28e4d"
+    assert (measured_for(points, "geometry_contrast")
+            == round(wcag_contrast("#e28e4d", "#ffffff"), 2))
+    assert verdict_for(points, "geometry_contrast") == "fail"
+
+
+def test_translucent_text_is_measured_as_drawn():
+    # "#00000040" is black at 64/255, as R's alpha("black", 0.25) writes it.
+    veiled = dp.check_figure(good_figure() + theme(
+        axis_text=element_text(color="#00000040")))
+    grey = mix("#000000", "#ffffff", 64 / 255)
+    assert grey == "#bfbfbf"
+    assert measured_for(veiled, "text_contrast") == 1.84
+    assert (measured_for(veiled, "text_contrast")
+            == round(wcag_contrast(grey, "#ffffff"), 2))
+    assert verdict_for(veiled, "text_contrast") == "fail"
+    assert detail_for(veiled, "text_contrast") == (
+        "Lowest-contrast text #000000 at alpha 0.25, drawn as #bfbfbf, "
+        "on #ffffff at 8.80 pt.")
+    # When the artist has an alpha of its own, matplotlib draws the text in it
+    # and ignores the colour's alpha, so this black is drawn at 0.5.
+    faded = dp.check_figure(good_figure() + theme(
+        axis_text=element_text(color="#00000040", alpha=0.5)))
+    half = mix("#000000", "#ffffff", 0.5)
+    assert (measured_for(faded, "text_contrast")
+            == round(wcag_contrast(half, "#ffffff"), 2))
+    assert detail_for(faded, "text_contrast") == (
+        f"Lowest-contrast text #000000 at alpha 0.50, drawn as {half}, "
+        "on #ffffff at 8.80 pt.")
+
+
+def test_an_opaque_outline_mapped_to_the_same_groups_carries_the_contrast():
+    # WCAG lets a border carry a graphical object's contrast. The fills at
+    # alpha 0.2 are pale, and the outlines, drawn opaque, are what is measured.
+    outlined = dp.check_figure(density_figure())
+    assert (measured_for(outlined, "geometry_contrast")
+            == round(wcag_contrast("#d55e00", "#ffffff"), 2))
+    assert (detail_for(outlined, "geometry_contrast")
+            == "Lowest-contrast colour #d55e00 on #ffffff.")
+    # A constant black outline says nothing about which group a shape belongs
+    # to, so it carries no credit and the pale fill is measured.
+    plain = dp.check_figure(
+        ggplot(CY, aes("yield", fill="treatment"))
+        + geom_density(alpha=0.2, color="black")
+        + scale_fill_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    pale = mix("#d55e00", "#ffffff", 0.2)
+    assert (measured_for(plain, "geometry_contrast")
+            == round(wcag_contrast(pale, "#ffffff"), 2))
+    assert detail_for(plain, "geometry_contrast") == (
+        f"Lowest-contrast colour #d55e00 at alpha 0.20, drawn as {pale}, "
+        "on #ffffff.")
+
+
+def test_each_aesthetics_colours_are_compared_among_themselves():
+    white = "#ffffff"
+    # The outlines and the pale fills of the densities form two sets, and the
+    # row reports the closer of their two pairs, the fills.
+    outlined = dp.check_figure(density_figure())
+    fills = [mix("#005b96", white, 0.2), mix("#d55e00", white, 0.2)]
+    assert (measured_for(outlined, "colour_separability")
+            == dp.palette_safety(fills)["by_condition"]["normal"])
+    assert detail_for(outlined, "colour_separability") == (
+        f"Closest pair {fills[0]} and {fills[1]} of 2 encoding fill colours.")
+    # A fill at alpha 0.9 is a hair from its own opaque outline. Pooled, that
+    # pair failed the figure. It is one group, so it is never compared.
+    near = dp.check_figure(density_figure(alpha=0.9))
+    fills = [mix("#005b96", white, 0.9), mix("#d55e00", white, 0.9)]
+    assert (measured_for(near, "colour_separability")
+            == dp.palette_safety(fills)["by_condition"]["normal"])
+    assert verdict_for(near, "colour_separability") == "pass"
+    # Nor across layers: translucent points beside opaque lines in the same two
+    # colours are compared group against group, never a group with itself.
+    layered = dp.check_figure(
+        ggplot(CY, aes("rainfall", "yield", colour="treatment"))
+        + geom_point(alpha=0.95) + geom_line()
+        + scale_colour_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    blue = ["#005b96", mix("#005b96", white, 0.95)]
+    vermillion = ["#d55e00", mix("#d55e00", white, 0.95)]
+    across = min(dp.palette_safety([b, v])["by_condition"]["normal"]
+                 for b in blue for v in vermillion)
+    assert measured_for(layered, "colour_separability") == across
+    assert verdict_for(layered, "colour_separability") == "pass"
+
+
+def test_verdicts_on_translucent_fills_can_move_in_either_direction():
+    # Red and green fills at alpha 0.6 are lighter by different amounts, so a
+    # deuteranope tells them apart by lightness. Read at full opacity, they
+    # failed at 0.37.
+    red_green = ("#d62728", "#309208")
+    opaque = dp.check_figure(bars_figure(alpha=1, values=red_green))
+    translucent = dp.check_figure(bars_figure(alpha=0.6, values=red_green))
+    assert measured_for(opaque, "colour_separability_deutan") == 0.37
+    assert verdict_for(opaque, "colour_separability_deutan") == "fail"
+    assert measured_for(translucent, "colour_separability_deutan") == 11.58
+    assert verdict_for(translucent, "colour_separability_deutan") == "pass"
+    # The good figure's colours, which pass at full opacity, fall below 3:1 as
+    # fills at alpha 0.3.
+    assert verdict_for(dp.check_figure(bars_figure(alpha=1)),
+                       "geometry_contrast") == "pass"
+    assert verdict_for(dp.check_figure(bars_figure(alpha=0.3)),
+                       "geometry_contrast") == "fail"
+
+
+def test_a_colours_own_alpha_is_kept_as_plotnine_draws_it():
+    # plotnine keeps a colour's own alpha whether or not the layer sets one.
+    # The R twin follows ggplot2, which replaces it with the layer's alpha when
+    # there is one, so only the first case is shared.
+    own = ("#005b964d", "#d55e004d")
+    drawn = mix("#d55e00", "#ffffff", 77 / 255)
+    unset = dp.check_figure(bars_figure(alpha=None, values=own))
+    assert detail_for(unset, "geometry_contrast") == (
+        f"Lowest-contrast colour #d55e00 at alpha 0.30, drawn as {drawn}, "
+        "on #ffffff.")
+    layered = dp.check_figure(bars_figure(alpha=0.6, values=own))
+    assert detail_for(layered, "geometry_contrast") == (
+        detail_for(unset, "geometry_contrast"))
+
+
+def test_the_layer_alpha_reaches_the_parts_each_geom_applies_it_to():
+    # As plotnine draws them: area geoms take it on the fill and leave the
+    # outline opaque, lines take it on the colour, and points on both. A geom
+    # not listed takes it on both, the cautious assumption.
+    import plotnine as p9
+
+    from depictr.audit import _alpha_targets
+
+    fill_only = [p9.geom_col(), p9.geom_bar(), p9.geom_histogram(),
+                 p9.geom_tile(), p9.geom_rect(), p9.geom_area(),
+                 p9.geom_ribbon(), p9.geom_density(), p9.geom_polygon(),
+                 p9.geom_violin(), p9.geom_boxplot(), p9.geom_crossbar(),
+                 p9.geom_smooth()]
+    colour_only = [p9.geom_path(), p9.geom_line(), p9.geom_step(),
+                   p9.geom_segment(), p9.geom_errorbar(), p9.geom_linerange(),
+                   p9.geom_hline(yintercept=0), p9.geom_vline(xintercept=0),
+                   p9.geom_abline()]
+    both = [p9.geom_point(), p9.geom_jitter(), p9.geom_pointrange(),
+            p9.geom_dotplot()]
+    for geom in fill_only:
+        assert _alpha_targets(geom) == {"fill"}, type(geom).__name__
+    for geom in colour_only:
+        assert _alpha_targets(geom) == {"color"}, type(geom).__name__
+    for geom in both:
+        assert _alpha_targets(geom) == {"color", "fill"}, type(geom).__name__
+
+
 def test_redundant_encoding_counts_the_channels_that_vary_with_colour():
     colour_only = (ggplot(CY, aes("rainfall", "yield", colour="treatment"))
                    + geom_point() + dp.scale_colour_depictr()
@@ -508,16 +758,17 @@ def test_check_figure_refuses_non_positive_settings(argument, value):
 
 def test_check_figure_reads_the_extended_plot():
     # The whole point of introspecting the build: a user's replacement scale is
-    # what the figure ships with, so it is what gets audited.
-    base = dp.explore_distribution(LD, "RT", group="condition")
-    assert verdict_for(dp.check_figure(base), "colour_separability") == "pass"
+    # what the figure ships with, so it is what gets audited. The dumbbell's
+    # points are opaque, so the verdicts turn on the scale alone.
+    base = dp.dumbbell_plot(LD, "participant", "RT", "condition")
+    assert verdict_for(dp.check_figure(base),
+                       "colour_separability_deutan") == "pass"
     # Replacing a scale that is already there is the ordinary way a user
     # overrides depictr's colours, and plotnine says so every time; the warning
     # is not the subject of this test.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        broken = (base + scale_fill_manual(values=["#d62728", "#309208"])
-                  + scale_colour_manual(values=["#d62728", "#309208"]))
+        broken = base + scale_colour_manual(values=["#d62728", "#309208"])
     assert verdict_for(dp.check_figure(broken),
                        "colour_separability_deutan") == "fail"
 
