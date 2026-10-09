@@ -14,6 +14,16 @@ def _selectbox(at, label):
     return next(box for box in at.selectbox if box.label.startswith(label))
 
 
+def _images(at):
+    """The images the app has drawn.
+
+    Streamlit 1.59 gave AppTest a typed image element, of type "image". Before
+    it, an image was an unknown element named after its proto field, "imgs",
+    so asking for one name alone finds no image under the other releases.
+    """
+    return [*at.get("image"), *at.get("imgs")]
+
+
 def _survival_pane(dataset):
     """The app with ``dataset`` loaded and the Kaplan-Meier pane open."""
     # The timeout is an upper limit, so a generous one costs nothing when the
@@ -38,7 +48,7 @@ def test_kaplan_meier_pane_opens_on_the_event_column():
     assert event.value == "event"
     assert "time" not in event.options
     assert not at.error
-    assert len(at.get("imgs")) == 1
+    assert len(_images(at)) == 1
 
 
 def test_kaplan_meier_pane_explains_a_dataset_with_no_event_column():
@@ -48,4 +58,4 @@ def test_kaplan_meier_pane_explains_a_dataset_with_no_event_column():
     assert not [box for box in at.selectbox if box.label.startswith("Event")]
     assert "event column" in at.info[0].value
     assert not at.error
-    assert not at.get("imgs")
+    assert not _images(at)

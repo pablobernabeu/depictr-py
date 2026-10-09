@@ -123,8 +123,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A formula term computed from statistics of its rows, such as
   `I(x - x.mean())`, shifted the predicted line, since `get_prediction()`
   computed it afresh over the grid. Such a term is now refused with
-  `ValueError`, as in the R twin. patsy's `center()` and `standardize()` keep
-  the values of the fit and are unaffected.
+  `ValueError`, as in the R twin, whether statsmodels builds the formula with
+  patsy or with formulaic, the engine statsmodels 0.15 added. patsy's
+  `center()` and `standardize()` keep the values of the fit and are unaffected.
 - `estimation_plot()` drew the differences out of line with the groups they
   belong to. Its difference panel had one column fewer than there are groups
   and spread its columns across the full width, so with two groups the single

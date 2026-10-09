@@ -189,13 +189,43 @@ def test_a_repeated_index_label_still_picks_the_estimation_rows():
     assert p.data["fertiliser"].max() == est["fertiliser"].max()
 
 
-def test_a_term_computed_from_statistics_of_its_rows_is_refused():
+@pytest.fixture(params=["patsy", "formulaic"])
+def formula_engine(request):
+    """Fit under each formula engine that the installed statsmodels offers.
+
+    statsmodels 0.15 added formulaic beside patsy, chosen through
+    ``statsmodels.formula.options``, and keeps either engine's spec as
+    ``data.model_spec``, where 0.14 kept patsy's as ``data.design_info``.
+    Before 0.15, patsy was the only engine.
+    """
+    formula = pytest.importorskip("statsmodels.formula")
+    options = getattr(formula, "options", None)
+    if options is None:
+        if request.param != "patsy":
+            pytest.skip("statsmodels before 0.15 has no formulaic engine")
+        yield request.param
+        return
+    pytest.importorskip(request.param)
+    previous = options.formula_engine
+    options.formula_engine = request.param
+    try:
+        yield request.param
+    finally:
+        options.formula_engine = previous
+
+
+def test_a_term_computed_from_statistics_of_its_rows_is_refused(formula_engine):
     smf = pytest.importorskip("statsmodels.formula.api")
     cy = crop_yield()
     # get_prediction() rebuilt I(rainfall - rainfall.mean()) from the grid's
-    # rows, so the centring moved with the grid and the line shifted.
+    # rows, so the centring moved with the grid and the line shifted. Under
+    # statsmodels 0.15 the refusal went missing too, and the shifted line was
+    # drawn, since the check looked for the formula's spec where 0.14 keeps it.
     centred = smf.ols('Q("yield") ~ I(rainfall - rainfall.mean()) + fertiliser',
                       cy).fit()
+    data = centred.model.data
+    spec = getattr(data, "model_spec", None) or data.design_info
+    assert type(spec).__module__.split(".")[0] == formula_engine
     with pytest.raises(ValueError,
                        match=r"`I\(rainfall - rainfall\.mean\(\)\)` depends on statistics"):
         effects_plot(centred, "rainfall")
@@ -205,7 +235,7 @@ def test_a_term_computed_from_statistics_of_its_rows_is_refused():
                      cy).fit()
     with pytest.raises(ValueError, match="depends on statistics"):
         interaction_plot(scaled, "fertiliser", "treatment")
-    # patsy's stateful transforms keep the values of the fit, so they stay.
+    # Stateful transforms keep the values of the fit, so they stay.
     stateful = smf.ols('Q("yield") ~ center(rainfall) + standardize(fertiliser)',
                        cy).fit()
     p = effects_plot(stateful, "rainfall")

@@ -1,5 +1,6 @@
 """Tests for save_plot(): files that pass journals' technical checks."""
 
+import re
 import warnings
 
 import matplotlib
@@ -34,6 +35,21 @@ def opaque_figure():
             + dp.theme_depictr())
 
 
+def declared_font_types(eps):
+    """The FontType that each font embedded in a PostScript file is defined as.
+
+    A font's first FontType entry declares its type. matplotlib before 3.10
+    writes Type 42 through ttconv, which follows that entry with a fallback for
+    an interpreter that cannot rasterise Type 42: guarded by
+    ``42 /FontType resourcestatus``, it sets FontType 3 and draws through Apple's
+    TrueType rasteriser. Every PostScript 3 interpreter supports Type 42 and
+    skips the fallback, so the bytes "/FontType 3" alone do not make a Type 3
+    font.
+    """
+    definitions = eps.split(b"definefont")[:-1]
+    return [int(re.search(rb"/FontType (\d+)", font)[1]) for font in definitions]
+
+
 def test_pdf_embeds_truetype_fonts(tmp_path):
     path = tmp_path / "figure.pdf"
     dp.save_plot(translucent_figure(), str(path))
@@ -49,8 +65,8 @@ def test_eps_embeds_type42_fonts(tmp_path):
     dp.save_plot(opaque_figure(), str(path))
     data = path.read_bytes()
     assert data.startswith(b"%!PS-Adobe-3.0 EPSF-3.0")
-    assert b"/FontType 42" in data
-    assert b"/FontType 3" not in data
+    types = declared_font_types(data)
+    assert types and set(types) == {42}
 
 
 def test_a_theme_with_its_own_font_type_still_embeds_truetype(tmp_path):
@@ -63,8 +79,8 @@ def test_a_theme_with_its_own_font_type_still_embeds_truetype(tmp_path):
     assert b"/Type3" not in pdf.read_bytes()
     eps = tmp_path / "figure.eps"
     dp.save_plot(plot, str(eps))
-    assert b"/FontType 42" in eps.read_bytes()
-    assert b"/FontType 3" not in eps.read_bytes()
+    types = declared_font_types(eps.read_bytes())
+    assert types and set(types) == {42}
 
 
 def test_eps_warns_about_translucent_layers(tmp_path):

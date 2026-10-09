@@ -133,26 +133,57 @@ def _predictor_columns(model, frame: pd.DataFrame) -> list[str]:
     return [c for c in dict.fromkeys(named) if c in columns and c != response]
 
 
+def _formula_design(model):
+    """How a formula fit rebuilds its design for new rows, or None without one.
+
+    Returns a function from rows to their design matrix, with the columns each
+    term fills, keyed by the term's name. statsmodels up to 0.14 keeps the
+    formula's patsy DesignInfo as ``data.design_info``. From 0.15 it keeps it as
+    ``data.model_spec``, which holds a formulaic ModelSpec instead when the
+    formula engine is set to formulaic. Looking for ``design_info`` alone
+    skipped the grid check under 0.15 without a word. A statistic of one row
+    can be NaN, as x.std() is, and either engine would drop such a row as
+    missing, so nothing counts as missing here.
+    """
+    data = model.model.data
+    spec = getattr(data, "model_spec", None)
+    if spec is None:
+        spec = getattr(data, "design_info", None)
+    if spec is None:
+        return None
+    if hasattr(spec, "get_model_matrix"):  # formulaic's ModelSpec
+        def build(rows):
+            return spec.get_model_matrix(rows, na_action="ignore", output="numpy")
+
+        terms = {str(term): columns for term, columns in spec.term_slices.items()}
+    else:  # patsy's DesignInfo
+        from patsy import NAAction, build_design_matrices
+
+        keep_nan = NAAction(NA_types=[])
+
+        def build(rows):
+            return build_design_matrices([spec], rows, NA_action=keep_nan)[0]
+
+        terms = {term.name(): columns for term, columns in spec.term_slices.items()}
+    return build, terms
+
+
 def _check_grid_terms(model, frame: pd.DataFrame, predictors: list[str]) -> None:
     """Refuse a formula term that a prediction grid would change.
 
-    get_prediction() rebuilds every term from the grid's rows alone. patsy's
-    stateful transforms, such as ``center()``, ``standardize()`` and ``bs()``,
-    keep what they learnt from the fit. An expression such as
+    get_prediction() rebuilds every term from the grid's rows alone. The
+    stateful transforms of patsy and formulaic, such as ``center()`` and
+    ``bs()``, keep what they learnt from the fit. An expression such as
     ``I(x - x.mean())`` takes a statistic of whatever rows it is given, so over
     a grid it shifts. As in the R twin, each estimation row at a numeric
     predictor's minimum or maximum is rebuilt on its own and compared with the
     fit's design matrix, since such a statistic lies furthest from the row's own
     value there.
     """
-    design_info = getattr(model.model.data, "design_info", None)
-    if design_info is None:
+    design = _formula_design(model)
+    if design is None:
         return
-    from patsy import NAAction, build_design_matrices
-
-    # A statistic of one row can be NaN, as x.std() is. patsy would drop such a
-    # row as missing, so nothing counts as missing here.
-    keep_nan = NAAction(NA_types=[])
+    build, terms = design
     exog = np.asarray(model.model.exog, dtype=float)
     rows = {0}
     for col in predictors:
@@ -163,18 +194,16 @@ def _check_grid_terms(model, frame: pd.DataFrame, predictors: list[str]) -> None
     unsafe = []
     for i in sorted(rows):
         try:
-            rebuilt = np.asarray(
-                build_design_matrices([design_info], frame.iloc[[i]],
-                                      NA_action=keep_nan)[0], dtype=float)
-        except Exception:  # patsy raises PatsyError and others on a bad rebuild
+            rebuilt = np.asarray(build(frame.iloc[[i]]), dtype=float)
+        except Exception:  # each engine raises its own errors, and others, on a bad rebuild
             rebuilt = np.empty((0, exog.shape[1]))
         if rebuilt.shape != (1, exog.shape[1]):
             unsafe = None
             break
         same = np.isclose(rebuilt[0], exog[i], rtol=1e-9, atol=1e-12, equal_nan=True)
-        for term, columns in design_info.term_slices.items():
-            if not same[columns].all() and term.name() not in unsafe:
-                unsafe.append(term.name())
+        for name, columns in terms.items():
+            if not same[columns].all() and name not in unsafe:
+                unsafe.append(name)
     if unsafe is None:
         what = "A term of this model cannot be computed from a single row of its data"
     elif len(unsafe) == 1:
