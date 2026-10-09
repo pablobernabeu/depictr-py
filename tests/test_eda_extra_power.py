@@ -110,7 +110,7 @@ def _pilotr_power_rows():
     hi = [0.44, 0.21, 0.67, 0.33, 0.85, 0.44, 0.94, 0.55]
     return [
         {"n_subject": n, "effect": e, "power": pw, "power_lo": a, "power_hi": b}
-        for n, e, pw, a, b in zip(ns, effects, power, lo, hi)
+        for n, e, pw, a, b in zip(ns, effects, power, lo, hi, strict=True)
     ]
 
 
