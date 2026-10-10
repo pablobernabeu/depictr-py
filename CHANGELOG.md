@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `CITATION.cff` names PyPI as the package's repository artifact, as the R
+  twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
+  repository, which holds the Python package alone, since PyPI assigns no DOI.
+  Its release date, and the date of the 0.3.0 section below, are now
+  2026-09-24, the day PyPI published 0.3.0 and the GitHub release appeared. Both
+  gave 2026-08-21, the day the release was prepared.
 - The bundled datasets are now the R package's own data, shipped as CSV files,
   so an example gives the same numbers in both twins and every column an R
   example uses exists here. Their shapes, columns and values change. `crop_yield` gains its
@@ -207,7 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only, with a warning in the R twin's words, where plotnine used to drop its
   interval with a generic message about missing values.
 
-## [0.3.0] - 2026-08-21
+## [0.3.0] - 2026-09-24
 
 ### Added
 
