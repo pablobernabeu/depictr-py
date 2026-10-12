@@ -1,12 +1,12 @@
 # depictr (Python)
 
 <!-- badges: start -->
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)
 [![CI](https://github.com/pablobernabeu/depictr-py/actions/workflows/ci.yml/badge.svg)](https://github.com/pablobernabeu/depictr-py/actions/workflows/ci.yml)
 [![docs](https://github.com/pablobernabeu/depictr-py/actions/workflows/docs.yml/badge.svg)](https://pablobernabeu.github.io/depictr-py/)
 [![PyPI](https://img.shields.io/pypi/v/depictr)](https://pypi.org/project/depictr/)
 [![Python versions](https://img.shields.io/pypi/pyversions/depictr)](https://pypi.org/project/depictr/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/MIT)
+[![DOI 10.5281/zenodo.21266311](https://zenodo.org/badge/DOI/10.5281/zenodo.21266311.svg)](https://doi.org/10.5281/zenodo.21266311)
 <!-- badges: end -->
 
 Documentation and example gallery:
@@ -223,7 +223,9 @@ The [About page](https://pablobernabeu.github.io/depictr-py/about/) carries the
 preferred citation with a BibTeX entry and a short note on the developer, and
 the repository ships
 [`CITATION.cff`](https://github.com/pablobernabeu/depictr-py/blob/main/CITATION.cff)
-for the *Cite this repository* button on GitHub.
+for the *Cite this repository* button on GitHub. The citation gives the concept
+DOI of the Zenodo archive, <https://doi.org/10.5281/zenodo.21266311>, since
+PyPI assigns no DOI.
 
 ## Licence
 

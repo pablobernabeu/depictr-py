@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Its release date, and the date of the 0.3.0 section below, are now
   2026-09-24, the day PyPI published 0.3.0 and the GitHub release appeared. Both
   gave 2026-08-21, the day the release was prepared.
+- The home page gives the Zenodo concept DOI as a full link,
+  <https://doi.org/10.5281/zenodo.21266311>, where it showed the Zenodo badge,
+  and the About page links every DOI the same way. The BibTeX entry's `url`
+  gives the PyPI page, so a style that prints both fields no longer shows the
+  DOI twice. The README's DOI badge now ends the badge row and names the DOI in
+  its text alternative, and the README's citation section gives the DOI.
 - The bundled datasets are now the R package's own data, shipped as CSV files,
   so an example gives the same numbers in both twins and every column an R
   example uses exists here. Their shapes, columns and values change. `crop_yield` gains its

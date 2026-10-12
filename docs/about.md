@@ -26,7 +26,7 @@ entry = f"""@Manual{{depictr-py,
   year   = {{2026}},
   note   = {{Python package version {__version__}}},
   doi    = {{10.5281/zenodo.21266311}},
-  url    = {{https://doi.org/10.5281/zenodo.21266311}},
+  url    = {{https://pypi.org/project/depictr/}},
 }}"""
 
 print("> Bernabeu, P. (2026). *depictr: A unified, colourblind-safe toolkit for")
@@ -81,7 +81,7 @@ provided the copyright and permission notice travel with the code.
 Releases are tagged on
 [GitHub](https://github.com/pablobernabeu/depictr-py/releases) and archived on
 Zenodo. The concept DOI,
-[10.5281/zenodo.21266311](https://doi.org/10.5281/zenodo.21266311), always
+<https://doi.org/10.5281/zenodo.21266311>, always
 resolves to the latest archived version, so a citation that uses it does not go
 stale. The [changelog](changelog.md) records what changed in each release.
 
