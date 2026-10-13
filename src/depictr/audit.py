@@ -87,12 +87,21 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     between two of the figure's encoding colours, and the three
     ``colour_separability_*`` rows repeat that measurement after simulating each
     dichromacy at full severity with :func:`depictr.simulate_cvd`. Encoding
-    colours are the distinct colour and fill values a layer uses to tell groups
-    apart; a continuous colour or fill scale is a smooth ramp rather than a set
-    of codes, so it is excluded. The outline colours, across every layer, are
-    compared among themselves, and so are the fill colours, and the row reports
-    the closest pair from either set. An outline is therefore never compared
-    with its own fill, nor a group with itself as another layer draws it.
+    colours are the distinct colour and fill values that tell groups apart. A
+    layer contributes its colours when it maps colour or fill to a discrete
+    scale, even if it draws a single colour, or when it draws two or more.
+    Groups drawn one per layer are therefore audited as they would be in one
+    layer. A colour set as a constant, as in ``geom_point(colour="red")``, is
+    left out, even when another layer sets a different one, and so is a lone
+    colour passed through ``scale_colour_identity()``. The audit cannot tell
+    such a colour from decoration, so a colour meant to tell groups apart
+    should be mapped, as ``aes(colour="'treated'")`` maps a constant, with
+    ``scale_colour_manual()`` to fix its values. A continuous colour or fill
+    scale is a smooth ramp rather than a set of codes, so it is excluded. The
+    outline colours, across every layer, are compared among themselves, and so
+    are the fill colours, and the row reports the closest pair from either set.
+    An outline is therefore never compared with its own fill, nor a group with
+    itself as another layer draws it.
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
     between those same colours, which is what survives printing in black and
@@ -126,10 +135,13 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     translucent colour, the ``detail`` names the colour, its alpha and the
     colour it is drawn as.
 
-    ``redundant_encoding`` counts how many of shape and line type also vary in a
-    layer whose colour varies. Zero means the distinction between groups is
-    carried by colour alone, the single most common way an otherwise careful
-    figure becomes unreadable.
+    ``redundant_encoding`` counts how many of shape and line type also vary
+    across the layers that draw the encoding colours. They are gathered as the
+    colours are. A layer contributes the values it maps to a discrete scale, or
+    the two or more it draws, and a shape or line type set as a constant is
+    left out. Zero means the distinction between groups is carried by colour
+    alone, the single most common way an otherwise careful figure becomes
+    unreadable.
 
     **A limitation of the default palette.** The eight-colour qualitative
     palette clears the colour-separability checks comfortably and fails
@@ -353,12 +365,6 @@ def _contrast_ratio(colours, backgrounds) -> np.ndarray:
     return (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
 
 
-def _varies(data, column: str) -> bool:
-    if column not in data:
-        return False
-    return data[column].dropna().nunique() >= 2
-
-
 class _Drawn(NamedTuple):
     """A declared colour, the alpha it is drawn with and the colour it shows."""
 
@@ -432,6 +438,19 @@ def _keeps_own_alpha(colour) -> bool:
     if isinstance(colour, str):
         return colour.startswith("#") and len(colour) == 9
     return isinstance(colour, tuple) and len(colour) == 4
+
+
+def _layer_mapped(layer, plot) -> set[str]:
+    """The aesthetics a layer maps.
+
+    A layer maps what its own ``aes()`` names and, unless it was made with
+    ``inherit_aes=False``, what the plot's ``aes()`` names. An aesthetic also
+    set to a constant is drawn as the constant, so it does not count as mapped.
+    """
+    mapped = set(layer.mapping)
+    if layer.inherit_aes:
+        mapped |= set(plot.mapping or {})
+    return mapped - set(layer.geom.aes_params)
 
 
 def _layer_ink(data, aesthetic: str,
@@ -519,10 +538,21 @@ def _layer_marks(ink, drawn, background: str) -> list[_Drawn]:
 def _figure_colour_encoding(plot, background: str) -> _Encoding:
     """The colours a figure uses to tell groups apart, and what varies with them.
 
-    A colour or fill counts as encoding when a single layer draws more than one
-    of them and the scale behind it is discrete. A continuous scale is a smooth
-    ramp, where neighbouring colours are meant to be close, so measuring the
-    distance between them would only ever say that a gradient is a gradient.
+    A layer carries colour or fill when it maps the aesthetic to a discrete
+    scale that is not an identity scale, even if every row draws the same
+    colour. It also carries one in which it draws two or more distinct colours.
+    The figure encodes by the aesthetic when the layers that carry it draw two
+    or more distinct colours between them, so groups drawn one per layer count
+    as they would in a single layer. A constant set on a layer is not a
+    mapping, and a colour passed through an identity scale is drawn as given.
+    A layer that draws one such colour alone carries nothing, since the audit
+    cannot tell it from decoration. A continuous scale is a smooth ramp, where
+    neighbouring colours are meant to be close, so measuring the distance
+    between them would only ever say that a gradient is a gradient.
+
+    Shape and line type are gathered by the same rule from the layers that draw
+    the encoding colours. Either counts as varying alongside them when those
+    layers draw two or more distinct values of it between them.
 
     Every colour is taken as drawn over ``background``, the panel, at the alpha
     its geom applies to it. The sets are sorted, so that a tie between two
@@ -530,15 +560,24 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
     """
     from plotnine import geom_label, geom_text
     from plotnine.scales.scale_continuous import scale_continuous
+    from plotnine.scales.scale_discrete import scale_discrete
+    from plotnine.scales.scale_identity import MapTrainMixin
 
     continuous: set[str] = set()
+    coded: set[str] = set()
     for scale in plot.scales:
         if isinstance(scale, scale_continuous):
             continuous.update(scale.aesthetics)
+        elif (isinstance(scale, scale_discrete)
+              and not isinstance(scale, MapTrainMixin)):
+            # An identity scale (MapTrainMixin) draws each value as given, so a
+            # value mapped through it is chosen by hand, as a constant set on a
+            # layer is.
+            coded.update(scale.aesthetics)
 
-    sets: dict[str, set[tuple[str, str]]] = {"color": set(), "fill": set()}
-    marks: list[_Drawn] = []
-    redundant: list[str] = []
+    # What each layer carries in colour and fill, gathered before it is known
+    # whether the figure as a whole encodes by either.
+    carriers = []
     for layer in plot.layers:
         # A text layer's colour is chosen for legibility against whatever it
         # sits on, not to code a group, so counting it would report the distance
@@ -547,17 +586,33 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
         if isinstance(layer.geom, (geom_text, geom_label)):
             continue
         data = layer.data
+        mapped = _layer_mapped(layer, plot) & coded
         targets = _alpha_targets(layer.geom)
         ink = {}
         for aesthetic in ("color", "fill"):
-            if aesthetic in continuous or not _varies(data, aesthetic):
+            if aesthetic in continuous or aesthetic not in data:
                 continue
             rows = _layer_ink(data, aesthetic, aesthetic in targets)
             # Distinct after normalisation: two spellings of one colour are one
-            # colour, and a layer that draws only that encodes nothing.
-            if len({declared for _, declared, _ in rows}) < 2:
-                continue
-            ink[aesthetic] = rows
+            # colour, and an unmapped layer that draws only that carries
+            # nothing.
+            distinct = {declared for _, declared, _ in rows}
+            if distinct and (aesthetic in mapped or len(distinct) >= 2):
+                ink[aesthetic] = rows
+        if ink:
+            carriers.append((ink, data, mapped))
+    encodes = {
+        aesthetic for aesthetic in ("color", "fill")
+        if len({declared for ink, _, _ in carriers
+                for _, declared, _ in ink.get(aesthetic, [])}) >= 2
+    }
+
+    sets: dict[str, set[tuple[str, str]]] = {"color": set(), "fill": set()}
+    marks: list[_Drawn] = []
+    others: dict[str, set] = {"shape": set(), "linetype": set()}
+    for carried, data, mapped in carriers:
+        ink = {aesthetic: rows for aesthetic, rows in carried.items()
+               if aesthetic in encodes}
         if not ink:
             continue
         drawn = {aesthetic: _drawn_by_value(rows, background)
@@ -566,14 +621,18 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
             sets[aesthetic].update((mark.drawn, mark.declared)
                                    for mark in by_value.values())
         marks.extend(_layer_marks(ink, drawn, background))
-        also = [a for a in ("shape", "linetype") if _varies(data, a)]
-        if len(also) > len(redundant):
-            redundant = also
+        for aesthetic, seen in others.items():
+            if aesthetic not in data:
+                continue
+            values = set(data[aesthetic].dropna())
+            if aesthetic in mapped or len(values) >= 2:
+                seen.update(values)
     return _Encoding(
         sets={aesthetic: sorted(pairs) for aesthetic, pairs in sets.items()
               if pairs},
         marks=marks,
-        redundant=redundant,
+        redundant=[aesthetic for aesthetic, seen in others.items()
+                   if len(seen) >= 2],
     )
 
 

@@ -184,6 +184,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   colour it is drawn as, and the separability rows say whether their closest
   pair are colours or fill colours. Verdicts on translucent figures can change
   in either direction. The page's example now draws its points opaque.
+- `check_figure()` now treats a colour or fill mapped in several layers, one
+  value per layer, as the encoding it is. Such figures were reported as
+  encoding nothing by colour. With red and green drawn one group per layer,
+  every colour row read "not applicable", whereas the same figure drawn in one
+  layer fails the deuteranopia check at 0.37. Shape and line type split across
+  layers count towards `redundant_encoding` in the same way. A colour set as a
+  constant, as in `geom_point(colour="red")`, is still left out, as the
+  docstring now says.
 - `pca_plot()` stretched the loading arrows by a different factor on each axis,
   so the drawn directions were wrong, by up to 22 degrees on the
   `wellbeing_survey()` of 0.3.0. Both axes now share one factor, as in the R

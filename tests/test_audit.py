@@ -13,10 +13,12 @@ from plotnine import (
     facet_wrap,
     geom_col,
     geom_density,
+    geom_hline,
     geom_line,
     geom_point,
     ggplot,
     labs,
+    scale_colour_identity,
     scale_colour_manual,
     scale_fill_manual,
     theme,
@@ -136,6 +138,28 @@ def density_figure(alpha=0.2):
             + dp.theme_depictr())
 
 
+# The bad figure's red and green, drawn one group per layer. Each layer maps
+# colour to a constant, so neither varies in colour on its own. plotnine
+# evaluates a string in aes() as an expression, so a constant is quoted twice.
+STANDARD = CY[CY["treatment"] == "standard"]
+ENHANCED = CY[CY["treatment"] == "enhanced"]
+
+
+def split_figure():
+    return (ggplot(mapping=aes("rainfall", "yield"))
+            + geom_point(aes(colour="'a'"), data=STANDARD)
+            + geom_point(aes(colour="'b'"), data=ENHANCED)
+            + scale_colour_manual(values=["#d62728", "#309208"])
+            + dp.theme_depictr())
+
+
+def encoding_rows(report):
+    # The rows that depend on what a figure tells apart by colour, which is
+    # every row but the two text rows.
+    rows = report[~report["check"].isin(["text_size", "text_contrast"])]
+    return rows.reset_index(drop=True)
+
+
 # --- shape of the result -----------------------------------------------------
 
 
@@ -178,7 +202,7 @@ def test_a_deliberately_bad_figure_fails_the_checks_it_should():
 
 def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # Pinned so the two engines cannot drift apart unnoticed. Each figure below
-    # is constructible in both, and the R suite pins the same three vectors.
+    # is constructible in both, and the R suite pins the same vectors.
     assert dp.check_figure(good_figure())["measured"].tolist() == [
         111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1]
     assert dp.check_figure(bad_figure())["measured"].tolist() == [
@@ -238,6 +262,18 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     assert (detail_for(points, "geometry_contrast")
             == "Lowest-contrast colour #d55e00 at alpha 0.70, drawn as "
                "#e28e4d, on #ffffff.")
+
+    # The bad figure's red and green with one group per layer, each layer
+    # mapping colour to a constant. Every colour row used to read "not
+    # applicable".
+    split = dp.check_figure(split_figure())
+    assert split["measured"].tolist() == [
+        116.25, 35.04, 0.37, 119.38, 6.32, 8.8, 8.45, 4.01, 0]
+    assert [*split["detail"][:5], detail_for(split, "geometry_contrast")] == [
+        *["Closest pair #309208 and #d62728 of 2 encoding colours."] * 4,
+        "Closest pair #309208 and #d62728 in CIE lightness.",
+        "Lowest-contrast colour #309208 on #ffffff.",
+    ]
 
 
 # --- the measurements themselves ---------------------------------------------
@@ -647,6 +683,86 @@ def test_redundant_encoding_counts_the_channels_that_vary_with_colour():
             == "Colour is joined by shape and linetype.")
 
 
+# --- colours split across layers ---------------------------------------------
+
+
+def test_a_colour_mapped_in_several_layers_one_value_each_is_an_encoding():
+    # The same red and green in one layer fail deuteranopia at 0.37. Split one
+    # group per layer, every colour row read "not applicable".
+    one_layer = dp.check_figure(
+        ggplot(CY, aes("rainfall", "yield", colour="treatment"))
+        + geom_point()
+        + scale_colour_manual(values=["#d62728", "#309208"])
+        + dp.theme_depictr())
+    split = dp.check_figure(split_figure())
+    pd.testing.assert_frame_equal(encoding_rows(split),
+                                  encoding_rows(one_layer))
+    assert measured_for(split, "colour_separability_deutan") == 0.37
+    assert verdict_for(split, "colour_separability_deutan") == "fail"
+    # A layer inherits a constant the plot maps, as it inherits any mapping.
+    inherited = dp.check_figure(
+        ggplot(STANDARD, aes("rainfall", "yield", colour="'a'"))
+        + geom_point()
+        + geom_point(aes(colour="'b'"), data=ENHANCED)
+        + scale_colour_manual(values=["#d62728", "#309208"])
+        + dp.theme_depictr())
+    pd.testing.assert_frame_equal(encoding_rows(inherited),
+                                  encoding_rows(one_layer))
+    # Fills split across layers form one set, measured as drawn: translucent
+    # bars drawn one per layer read as the one-layer bars do.
+    two = pd.DataFrame({"g": ["a", "b"], "y": [1, 2]})
+    split_bars = dp.check_figure(
+        ggplot(mapping=aes("g", "y"))
+        + geom_col(aes(fill="'a'"), data=two.iloc[[0]], alpha=0.3)
+        + geom_col(aes(fill="'b'"), data=two.iloc[[1]], alpha=0.3)
+        + scale_fill_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    pd.testing.assert_frame_equal(
+        encoding_rows(split_bars),
+        encoding_rows(dp.check_figure(bars_figure(alpha=0.3))))
+
+
+def test_shape_and_line_type_split_across_layers_count_as_redundant():
+    shapes = dp.check_figure(
+        ggplot(mapping=aes("rainfall", "yield"))
+        + geom_point(aes(colour="'a'", shape="'a'"), data=STANDARD)
+        + geom_point(aes(colour="'b'", shape="'b'"), data=ENHANCED)
+        + scale_colour_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    assert measured_for(shapes, "redundant_encoding") == 1
+    assert (detail_for(shapes, "redundant_encoding")
+            == "Colour is joined by shape.")
+    lines = dp.check_figure(
+        ggplot(mapping=aes("rainfall", "yield"))
+        + geom_line(aes(colour="'a'", linetype="'a'"), data=STANDARD)
+        + geom_line(aes(colour="'b'", linetype="'b'"), data=ENHANCED)
+        + scale_colour_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    assert (detail_for(lines, "redundant_encoding")
+            == "Colour is joined by linetype.")
+    # Points that vary in shape beside lines that vary in line type count both
+    # channels. Each layer varies in one, and the count used to stop at one.
+    points_and_lines = dp.check_figure(
+        ggplot(CY, aes("rainfall", "yield", colour="treatment"))
+        + geom_point(aes(shape="treatment"))
+        + geom_line(aes(linetype="treatment"))
+        + scale_colour_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    assert measured_for(points_and_lines, "redundant_encoding") == 2
+    assert (detail_for(points_and_lines, "redundant_encoding")
+            == "Colour is joined by shape and linetype.")
+    # A shape set on each layer is a constant, so it is not counted.
+    set_shapes = dp.check_figure(
+        ggplot(mapping=aes("rainfall", "yield"))
+        + geom_point(aes(colour="'a'"), data=STANDARD, shape="o")
+        + geom_point(aes(colour="'b'"), data=ENHANCED, shape="^")
+        + scale_colour_manual(values=["#005b96", "#d55e00"])
+        + dp.theme_depictr())
+    assert measured_for(set_shapes, "redundant_encoding") == 0
+    assert (detail_for(set_shapes, "redundant_encoding")
+            == "Colour alone distinguishes the groups.")
+
+
 # --- what the audit declines to measure --------------------------------------
 
 
@@ -676,6 +792,34 @@ def test_a_figure_with_no_colour_encoding_abstains_rather_than_passing():
         "No two encoding colours: nothing is distinguished by colour."}
     # Text is still there to measure.
     assert verdict_for(report, "text_size") == "pass"
+
+
+def test_colours_set_layer_by_layer_as_constants_abstain():
+    def abstains(plot):
+        rows = encoding_rows(dp.check_figure(plot))
+        assert set(rows["verdict"]) == {"not applicable"}
+        assert set(rows["detail"]) == {
+            "No two encoding colours: nothing is distinguished by colour."}
+
+    # A constant set on each layer is not a mapping. The audit cannot tell it
+    # from decoration, so it leaves it out, as the docstring says.
+    abstains(ggplot(mapping=aes("rainfall", "yield"))
+             + geom_point(data=STANDARD, color="#d62728")
+             + geom_point(data=ENHANCED, color="#309208")
+             + dp.theme_depictr())
+    # Nor is a colour passed through an identity scale.
+    abstains(ggplot(mapping=aes("rainfall", "yield"))
+             + geom_point(aes(colour="'#d62728'"), data=STANDARD)
+             + geom_point(aes(colour="'#309208'"), data=ENHANCED)
+             + scale_colour_identity()
+             + dp.theme_depictr())
+    # One mapped value is one colour, which is not a pair.
+    abstains(ggplot(CY, aes("rainfall", "yield", colour="'a'"))
+             + geom_point() + dp.theme_depictr())
+    # A reference line does not inherit the plot's mapping, so its black does
+    # not join the mapped colour.
+    abstains(ggplot(CY, aes("rainfall", "yield", colour="'a'"))
+             + geom_point() + geom_hline(yintercept=5) + dp.theme_depictr())
 
 
 def test_a_figure_that_draws_no_text_says_so():
