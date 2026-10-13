@@ -133,6 +133,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vif_plot()` gains `threshold`, placed before `title` as in the R twin, so a
   title passed by position must now be named. The reference line is drawn
   solid in the R twin's grey, `#666666`, where it was dashed in the accent.
+- The cycle lines of `seasonal_plot()` start from a colour that clears 3:1
+  against white. They took the sequential ramp, which starts at `#e6eff5`,
+  1.16:1 against white, so the earliest cycles were close to invisible. With
+  twelve cycles, four of the lines fell below the 3:1 that WCAG 2.2 asks of a
+  graphical object. The ramp now runs from `#4a8fc0`, at 3.51:1, through the
+  brand blue to `#08315a`, as in the R twin, and
+  `depictr_palette(kind="sequential")` keeps its pale end for fills. Past about
+  six cycles, neighbouring lines take colours too close to tell apart, as the
+  docstring now says.
 
 ### Deprecated
 
@@ -407,6 +416,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observation more than the window, so a series no longer than an even window
   has no overlay. The R twin drew the same average half an observation early,
   and the twins now draw the same values. An odd window is unchanged.
+- `seasonal_plot()` ignored the calendar that a period or datetime index
+  carries. It counted the positions from the first observation, so a monthly
+  series starting in April drew April at position 1, and its cycles ran from
+  April to March. When the frequency of the index implies the period, the
+  position is now the month, the quarter or the weekday (Monday first), and the
+  ticks are labelled Jan to Dec, Q1 to Q4 or Mon to Sun. Each cycle runs from
+  the first season to the last, January to December for months, as in the R
+  twin, and the cycles are numbered from 1, where they were numbered from 0. A
+  quarterly `PeriodIndex` with a fiscal year numbers its quarters from that
+  year's start. A bare array, or a period that the frequency of the index does
+  not imply, still counts from the first observation. The docstring and the
+  web app called the plot a seasonal subseries plot, the name of the R twin's
+  faceted `style = "subseries"`, and now call it a seasonal plot (one line per
+  cycle).
+- The seasonal period was read from the first letter of the index frequency,
+  so `seasonal_plot()` and `decompose_plot()` took minutes (`min`) and
+  milliseconds (`ms`) for months and used a period of 12. Only monthly,
+  quarterly and daily frequencies imply a period now, and any other index needs
+  `period`. `seasonal_plot()` also truncated a period that is not a whole
+  number, such as 365.25 / 7, without a word. It now rounds such a period down
+  with a `UserWarning`, as the R twin rounds a frequency down with a message,
+  and reads a period within 0.00001 of a whole number as that number, as R's
+  `ts()` reads a frequency. A period below 2, which drew every observation at
+  one position, is now refused, as the R twin refuses such a frequency.
 
 ## [0.3.0] - 2026-09-24
 

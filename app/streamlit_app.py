@@ -135,8 +135,8 @@ FAMILIES = {
     "Classification": ["ROC curve", "PR curve", "Gains", "Lift", "Calibration",
                        "Confusion matrix", "Threshold"],
     "Survival": ["Kaplan-Meier"],
-    "Time series": ["Series", "ACF / PACF", "Seasonal subseries",
-                    "Decomposition"],
+    "Time series": ["Series", "ACF / PACF",
+                    "Seasonal plot (one line per cycle)", "Decomposition"],
     "Models (fits an OLS)": ["Coefficients", "Residual diagnostics",
                              "Effect of a predictor"],
 }
@@ -285,7 +285,7 @@ try:
         pick = st.selectbox(
             "Series", [DEMO] + num_cols,
             help="Data columns are read in row order. The correlation, "
-                 "subseries and decomposition plots need a column with no "
+                 "seasonal and decomposition plots need a column with no "
                  "internal gaps, since closing a gap up would shift every "
                  "later observation.")
         if pick == DEMO:
@@ -329,7 +329,7 @@ try:
             # column has no such index, so the widget is always shown.
             period = int(st.number_input("Seasonal period", min_value=2,
                                          value=12))
-            fn = {"Seasonal subseries": "seasonal_plot",
+            fn = {"Seasonal plot (one line per cycle)": "seasonal_plot",
                   "Decomposition": "decompose_plot"}[stage]
             show(getattr(dp, fn)(series, period=period),
                  code_prefix + f"dp.{fn}({series_call}, period={period})",

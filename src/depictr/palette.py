@@ -42,6 +42,11 @@ OKABE_ITO: list[str] = [
 # Anchors for the perceptual ramps, interpolated on demand to any length.
 _SEQUENTIAL_ANCHORS = ["#e6eff5", "#4a8fc0", "#005b96", "#08315a"]
 _DIVERGING_ANCHORS = ["#b2182b", "#ef8a62", "#f7f7f7", "#67a9cf", "#005b96"]
+# The sequential anchors without the palest, for lines. #e6eff5 suits a fill,
+# but at 1.16:1 against white a line drawn in it is close to invisible.
+# #4a8fc0 is 3.51:1 and every colour after it darker, so each line clears the
+# 3:1 that WCAG 2.2 asks of a graphical object (success criterion 1.4.11).
+_CYCLE_ANCHORS = _SEQUENTIAL_ANCHORS[1:]
 
 #: The depictr brand colour (the lead of the qualitative palette).
 BRAND = "#005b96"
@@ -81,6 +86,14 @@ def _ramp(anchors: list[str], n: int) -> list[str]:
     cmap = mcolors.LinearSegmentedColormap.from_list("depictr", anchors)
     xs = np.linspace(0, 1, n) if n > 1 else np.array([0.5])
     return [mcolors.to_hex(cmap(x)) for x in xs]
+
+
+def _cycle_palette(n: int) -> list[str]:
+    """Colours for the ``n`` cycle lines of a seasonal plot, earliest first.
+
+    The R twin's internal ``cycle_palette()`` interpolates the same anchors.
+    """
+    return _ramp(_CYCLE_ANCHORS, n)
 
 
 def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str]:

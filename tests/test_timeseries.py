@@ -123,24 +123,202 @@ def test_seasonal_plot():
 
 def test_seasonal_cycles_are_ordered_numerically():
     # A plain categorical over strings sorts "10" between "1" and "2", which
-    # both scrambles the legend and misassigns the colour ramp.
+    # both scrambles the legend and misassigns the colour ramp. The cycles are
+    # numbered from 1, as in the R twin, where they were numbered from 0.
     p = ts.seasonal_plot(_monthly_series(144), period=12)
     categories = list(p.data["cycle"].cat.categories)
     assert p.data["cycle"].cat.ordered
-    assert categories == [str(c) for c in range(12)]
+    assert categories == [str(c) for c in range(1, 13)]
 
 
-def test_seasonal_cycles_use_the_sequential_ramp():
-    # Twelve cycles is past the eight colourblind-safe qualitative colours, so
-    # the cycle scale must be the sequential ramp rather than an interpolated
-    # qualitative palette (which would also warn).
+# The colour rows of check_figure() that a ramp of cycle colours can pass.
+# redundant_encoding is left out: colour alone tells the cycles apart.
+CYCLE_COLOUR_ROWS = [
+    "colour_separability", "colour_separability_protan",
+    "colour_separability_deutan", "colour_separability_tritan",
+    "greyscale_separability", "geometry_contrast",
+]
+
+
+def test_seasonal_cycle_lines_clear_3_to_1_against_white():
+    # The lines took the sequential ramp, which starts at #e6eff5, 1.16:1
+    # against white, so with twelve cycles four of the lines fell below the
+    # 3:1 that WCAG 2.2 asks of a graphical object. The ramp now runs from
+    # #4a8fc0, at 3.51:1, through the brand blue to #08315a, as in the R twin.
+    # Twelve cycles is past the eight qualitative colours, and the ramp takes
+    # them without the warning an interpolated qualitative palette gives.
     import depictr as dp
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         p = ts.seasonal_plot(_monthly_series(144), period=12)
     scale = next(s for s in p.scales if "color" in s.aesthetics)
-    assert list(scale.palette(12)) == dp.depictr_palette(12, kind="sequential")
+    ramp = list(scale.palette(12))
+    assert (ramp[0], ramp[-1]) == ("#4a8fc0", "#08315a")
+    # Fills keep the sequential palette, pale end and all.
+    assert dp.depictr_palette(3, kind="sequential")[0] == "#e6eff5"
+    for n_cycles in (3, 12):
+        report = dp.check_figure(ts.seasonal_plot(_monthly_series(12 * n_cycles)))
+        row = report.set_index("check").loc["geometry_contrast"]
+        assert (row["measured"], row["verdict"]) == (3.51, "pass")
+
+
+def test_seasonal_cycle_colours_pass_every_colour_check_up_to_six_cycles():
+    # Past about six cycles, a single-hue ramp shows the order of the cycles
+    # more than which is which. Greyscale separability fails from eight cycles
+    # and colour separability at twelve, so neither is asserted there.
+    import depictr as dp
+
+    for n_cycles in range(2, 7):
+        report = dp.check_figure(ts.seasonal_plot(_monthly_series(12 * n_cycles)))
+        verdicts = report.set_index("check").loc[CYCLE_COLOUR_ROWS, "verdict"]
+        assert (verdicts == "pass").all(), (n_cycles, verdicts.to_dict())
+
+
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
+          "Oct", "Nov", "Dec"]
+
+
+def _x_scale(p):
+    """The breaks and labels given to a plot's x scale."""
+    scale = next(s for s in p.scales if "x" in s.aesthetics)
+    return list(scale.breaks), scale.labels
+
+
+def test_seasonal_plot_takes_the_month_from_the_index():
+    # The position was counted from the first observation, so a series
+    # starting in April drew April at position 1. The R twin reads the month
+    # from the ts, as stats::cycle() does, and puts April at 4. An index whose
+    # frequency pandas infers counts as well as one that states it.
+    starts = [
+        pd.period_range("2016-04", periods=24, freq="M"),
+        pd.date_range("2016-04-01", periods=24, freq="MS"),
+        pd.date_range("2016-04-30", periods=24, freq="ME"),
+        pd.DatetimeIndex(list(pd.date_range("2016-04-01", periods=24, freq="MS"))),
+    ]
+    for idx in starts:
+        p = ts.seasonal_plot(pd.Series(np.arange(24.0), index=idx))
+        assert p.data["position"].tolist() == (
+            list(range(4, 13)) + list(range(1, 13)) + [1, 2, 3])
+        assert p.data["cycle"].astype(int).tolist() == [1] * 9 + [2] * 12 + [3] * 3
+        assert _x_scale(p) == (list(range(1, 13)), MONTHS)
+
+
+def test_seasonal_plot_breaks_cycles_at_the_turn_of_the_year():
+    # A series from March 2016 that peaks every July. The peak was drawn at
+    # position 5, and December 2016 and January 2017 shared a cycle. As in the
+    # R twin, the peak sits at Jul and each cycle runs from January to
+    # December, the first and last of them short.
+    idx = pd.period_range("2016-03", periods=36, freq="M")
+    series = pd.Series(np.where(idx.month == 7, 10.0, 1.0), index=idx)
+    data = ts.seasonal_plot(series).data
+    peak = data.loc[data["value"] == 10.0, "position"].unique().tolist()
+    assert [MONTHS[p - 1] for p in peak] == ["Jul"]
+    assert data["cycle"].astype(int).tolist() == (
+        [1] * 10 + [2] * 12 + [3] * 12 + [4] * 2)
+    assert list(data["cycle"].cat.categories) == ["1", "2", "3", "4"]
+
+
+def test_seasonal_plot_takes_quarters_and_weekdays_from_the_index():
+    # A quarterly series from the third quarter starts at Q3. A PeriodIndex
+    # with a fiscal year numbers its quarters from that year's start, as
+    # Period.quarter does: 2016Q3 of a year ending in March is October to
+    # December 2015. A daily index sets the weekday, Monday first, which a
+    # DatetimeIndex knows and the R twin's plain ts does not.
+    quarterly = pd.Series(np.arange(8.0),
+                          index=pd.period_range("2015Q3", periods=8, freq="Q"))
+    p = ts.seasonal_plot(quarterly)
+    assert p.data["position"].tolist() == [3, 4, 1, 2, 3, 4, 1, 2]
+    assert p.data["cycle"].astype(int).tolist() == [1, 1, 2, 2, 2, 2, 3, 3]
+    assert _x_scale(p) == ([1, 2, 3, 4], ["Q1", "Q2", "Q3", "Q4"])
+    fiscal = pd.Series(np.arange(6.0),
+                       index=pd.period_range("2016Q3", periods=6, freq="Q-MAR"))
+    assert ts.seasonal_plot(fiscal).data["position"].tolist() == [3, 4, 1, 2, 3, 4]
+    # 6 January 2016 was a Wednesday.
+    daily = pd.Series(np.arange(10.0),
+                      index=pd.date_range("2016-01-06", periods=10, freq="D"))
+    p = ts.seasonal_plot(daily)
+    assert p.data["position"].tolist() == [3, 4, 5, 6, 7, 1, 2, 3, 4, 5]
+    assert _x_scale(p) == (list(range(1, 8)),
+                           ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+
+
+def test_seasonal_plot_counts_from_the_first_observation_without_a_calendar():
+    # A bare array has no calendar to read, and nor has a monthly index read
+    # with a period its frequency does not imply. Both count the positions from
+    # the first observation and label them by number.
+    p = ts.seasonal_plot(np.arange(30.0), period=12)
+    assert p.data["position"].tolist() == list(range(1, 13)) * 2 + list(range(1, 7))
+    assert p.data["cycle"].astype(int).tolist() == [1] * 12 + [2] * 12 + [3] * 6
+    assert _x_scale(p) == (list(range(1, 13)), True)
+    monthly = pd.Series(np.arange(12.0),
+                        index=pd.period_range("2016-04", periods=12, freq="M"))
+    p = ts.seasonal_plot(monthly, period=6)
+    assert p.data["position"].tolist() == list(range(1, 7)) * 2
+    assert _x_scale(p) == (list(range(1, 7)), True)
+
+
+def test_minutes_and_milliseconds_are_not_read_as_months():
+    # The period was read from the first letter of the index frequency, upper
+    # cased, and pandas names minutes "min" and milliseconds "ms", so both were
+    # taken for monthly data with a period of 12. Hours, business days and
+    # two-monthly data imply no period either.
+    for freq in ("min", "ms", "h", "B", "2ME"):
+        s = pd.Series(np.arange(48.0),
+                      index=pd.date_range("2016-01-01", periods=48, freq=freq))
+        with pytest.raises(ValueError, match="Could not infer the seasonal period"):
+            ts.seasonal_plot(s)
+        # Given a period, the positions count from the first observation. Read
+        # from the calendar, every minute would be in January.
+        positions = ts.seasonal_plot(s, period=12).data["position"].tolist()
+        assert positions == list(range(1, 13)) * 4
+    pytest.importorskip("statsmodels")
+    with pytest.raises(ValueError, match="Could not infer the seasonal period"):
+        ts.decompose_plot(s)
+
+
+def test_month_and_quarter_aliases_still_infer_their_period():
+    # pandas names a month by its end or start and a quarter by its end or
+    # start with the month that ends or starts the year, as "QS-OCT".
+    for freq, period in (("ME", 12), ("MS", 12), ("QE", 4), ("QS", 4),
+                         ("QS-OCT", 4), ("QE-MAR", 4), ("D", 7)):
+        s = pd.Series(np.arange(30.0),
+                      index=pd.date_range("2016-01-01", periods=30, freq=freq))
+        assert ts._infer_period(s, None) == period, freq
+
+
+def test_a_period_that_is_not_whole_is_rounded_down_with_a_warning():
+    # int() truncated such a period without a word, and the R twin refused it
+    # with a message about season labels that no labels could satisfy. Both
+    # twins now use the whole seasons and say so.
+    message = "Period 52.17857 is not a whole number; using 52 seasons per cycle."
+    with pytest.warns(UserWarning, match=re.escape(message)):
+        p = ts.seasonal_plot(np.arange(130.0), period=365.25 / 7)
+    assert p.data["position"].tolist() == (
+        list(range(1, 53)) * 2 + list(range(1, 27)))
+    assert _builds(p)
+    # A period a rounding error away from a whole number is that number, as
+    # R's ts() takes a frequency within getOption("ts.eps") of one, and a
+    # calendar index still sets the seasons. The R suite pins the same April
+    # start for a frequency of 12.0000001.
+    april = pd.Series(np.arange(24.0),
+                      index=pd.period_range("2016-04", periods=24, freq="M"))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        p = ts.seasonal_plot(np.arange(36.0), period=0.1 * 3 * 40)
+        q = ts.seasonal_plot(april, period=12 + 1e-7)
+    assert p.data["position"].max() == 12
+    assert q.data["position"].tolist() == (
+        list(range(4, 13)) + list(range(1, 13)) + [1, 2, 3])
+
+
+def test_a_period_below_two_is_refused():
+    # The R twin refuses a frequency below 2. Here a period of 1, or one of 1.5
+    # truncated to 1, drew every observation at one position, each in a cycle
+    # of its own.
+    for period in (1, 1.5, 0, -12):
+        with pytest.raises(ValueError, match=re.escape("(period >= 2)")):
+            ts.seasonal_plot(np.arange(24.0), period=period)
 
 
 def test_annual_index_is_not_a_seasonal_period():

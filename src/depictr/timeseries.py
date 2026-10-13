@@ -3,14 +3,17 @@
 The correlation structure and the seasonal decomposition come from
 ``statsmodels`` (the de-facto standard for these); the figures are re-drawn under
 the depictr theme so an ACF stem plot or a decomposition sits in the same visual
-language as the rest of a report. The plain series and seasonal subseries plots
-need only the depictr stack.
+language as the rest of a report. The plain series and the seasonal plot (one
+line per cycle) need only the depictr stack.
 
 ``statsmodels`` arrives with the core install (plotnine itself requires it);
 the ``depictr[models]`` extra remains to pin the tested floor.
 """
 
 from __future__ import annotations
+
+import math
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -29,7 +32,7 @@ from plotnine import (
     scale_x_continuous,
 )
 
-from .palette import ACCENT, BRAND, depictr_palette
+from .palette import ACCENT, BRAND, _cycle_palette
 from .theme import theme_depictr
 
 
@@ -78,13 +81,13 @@ def _as_series(x):
 def _as_complete_series(x):
     """Coerce to a Series, trim missing ends, and refuse internal missing values.
 
-    The ACF, the decomposition and the seasonal subseries plot all read position
-    in the sequence as time. Dropping an internal missing value closes up the
-    gap: the ACF correlates values across it, the decomposition misaligns, and
-    every later observation lands on the wrong within-period position. Whether
-    to drop or impute is the analyst's call, not something to make silently on
-    their behalf. Missing values at either end only shorten the series, so they
-    are trimmed as before.
+    The ACF and the decomposition read position in the sequence as time, and so
+    does the seasonal plot of a series without a calendar index. Dropping an
+    internal missing value closes up the gap: the ACF correlates values across
+    it, the decomposition misaligns, and every later observation lands on the
+    wrong within-period position. Whether to drop or impute is the analyst's
+    call, not something to make silently on their behalf. Missing values at
+    either end only shorten the series, so they are trimmed as before.
     """
     series = _as_series(x)
     present = series.notna().to_numpy()
@@ -100,6 +103,29 @@ def _as_complete_series(x):
     return series
 
 
+# The index frequencies that imply a seasonal period, matched whole and with
+# their case. pandas names minutes "min" and milliseconds "ms", so a match on
+# the first letter read both as monthly. Months and quarters are named by their
+# start or end ("MS", "ME", "QS-OCT"), and a PeriodIndex names them "M" and
+# "Q-DEC".
+_SEASONAL_PERIODS = {
+    "M": 12, "ME": 12, "MS": 12,
+    "Q": 4, "QE": 4, "QS": 4,
+    "D": 7,
+}
+
+
+def _index_period(x):
+    """The seasonal period that the frequency of ``x``'s index implies, or None."""
+    idx = getattr(x, "index", None)
+    freq = getattr(idx, "freqstr", None) or getattr(idx, "inferred_freq", None)
+    if not freq:
+        return None
+    # The anchor after the hyphen, as in "Q-DEC", names the month that ends or
+    # starts the year and has no bearing on the length of the cycle.
+    return _SEASONAL_PERIODS.get(freq.split("-")[0])
+
+
 def _infer_period(x, period):
     """Return the seasonal period, inferred from a datetime/period index if absent.
 
@@ -112,17 +138,88 @@ def _infer_period(x, period):
     """
     if period is not None:
         return int(period)
-    idx = getattr(x, "index", None)
-    freq = getattr(idx, "freqstr", None) or getattr(idx, "inferred_freq", None)
-    if freq:
-        head = freq.upper()[0]
-        mapping = {"M": 12, "Q": 4, "D": 7}
-        if head in mapping:
-            return mapping[head]
+    inferred = _index_period(x)
+    if inferred is not None:
+        return inferred
     raise ValueError(
         "Could not infer the seasonal period from the index; pass `period` "
         "(for example period=12 for monthly data)."
     )
+
+
+# R's ts() takes a frequency within getOption("ts.eps") of a whole number for
+# that number. A period computed in floating point, such as 0.1 * 3 * 40, is
+# therefore read as the whole number it was meant to be.
+_TS_EPS = 1e-5
+
+
+def _whole_period(period):
+    """A seasonal period as whole seasons, rounded down with a warning if need be.
+
+    A period such as 365.25 / 7, the weeks in a year, has no whole number of
+    seasons, so it is rounded down and a ``UserWarning`` says so. The R twin
+    rounds such a frequency down with a message, as R's ``stl()`` does. A
+    period below 2 leaves no seasons to compare and is refused, as the R twin
+    refuses such a frequency.
+    """
+    if period is None:
+        return None
+    value = float(period)
+    nearest = round(value)
+    if abs(value - nearest) < _TS_EPS:
+        value = float(nearest)
+    if value < 2:
+        raise ValueError("A seasonal plot needs a seasonal series (period >= 2).")
+    whole = math.floor(value)
+    if whole != value:
+        warnings.warn(
+            f"Period {value:.7g} is not a whole number; using {whole} seasons "
+            f"per cycle.",
+            UserWarning,
+            stacklevel=3,
+        )
+    return whole
+
+
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+           "Nov", "Dec"]
+_WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _seasons(series, period):
+    """Each observation's season and cycle, and the names of the seasons.
+
+    Seasons run from 1 to ``period`` and cycles from 1. A calendar index sets
+    the season when its frequency implies ``period``, as the R twin's
+    ``stats::cycle()`` reads it from a ``ts``. The season is the month for 12,
+    the quarter for 4 and the weekday for 7, Monday first. A series starting in
+    April then starts at season 4, and its Aprils line up with every other
+    April. The quarter is the one pandas reports, so a ``PeriodIndex`` with a
+    fiscal year numbers its quarters from that year's start. The seasons are
+    then named by month, quarter or weekday, in English as R's ``month.abb``
+    names them.
+
+    Otherwise, as for a bare array, the seasons are counted from the first
+    observation and left unnamed (``None``).
+
+    A cycle starts wherever the season fails to advance, as in the R twin, so
+    the cycles of a calendar break at the turn of the year (or of the week)
+    and the first and last of them can be short.
+    """
+    idx = series.index
+    calendar = isinstance(idx, (pd.DatetimeIndex, pd.PeriodIndex))
+    if calendar and _index_period(series) == period:
+        if period == 12:
+            season, names = idx.month, _MONTHS
+        elif period == 4:
+            season, names = idx.quarter, [f"Q{q}" for q in range(1, 5)]
+        else:
+            season, names = idx.dayofweek + 1, _WEEKDAYS
+        season = np.asarray(season, dtype=int)
+        cycle = np.cumsum(np.r_[True, np.diff(season) <= 0])
+        return season, cycle, names
+    n = len(series)
+    return np.arange(n) % period + 1, np.arange(n) // period + 1, None
 
 
 def acf_plot(x, kind="acf", lags=None, title=None):
@@ -294,13 +391,30 @@ def decompose_plot(x, period=None, model="additive", title=None):
 
 
 def seasonal_plot(x, period=None, title=None):
-    """Seasonal subseries plot: value by position in the period, one line per cycle.
+    """Seasonal plot (one line per cycle): value by position in the period.
 
-    Each cycle (for example each year of monthly data) is one line, drawn across
-    the within-period position (month 1 to 12); a trailing incomplete cycle is
-    drawn as the short line it is. Overlaying the cycles makes the repeating
-    shape and any drift between cycles easy to read. The lines take a sequential
-    light-to-dark ramp so they read in time order.
+    Each cycle (for example each year of monthly data) is one line across the
+    positions in the period. A cycle that the series starts or ends partway
+    through is drawn as the short line it is. Overlaying the cycles makes the
+    repeating shape and any drift between cycles easy to read.
+
+    A monthly, quarterly or daily index carries the calendar. When its
+    frequency implies the period, the position is read from it: the month for
+    12, labelled Jan to Dec, the quarter for 4, labelled Q1 to Q4, and the
+    weekday for 7, labelled Mon to Sun. A series that starts in April then
+    draws April at position 4, and each cycle runs from January to December,
+    as in the R twin. A quarterly ``PeriodIndex`` with a fiscal year numbers
+    its quarters from that year's start, as pandas does. Without such an
+    index, as for a bare array, the positions are counted from the first
+    observation and labelled by number.
+
+    The lines run from a mid blue for the first cycle to a dark blue for the
+    last, so they read in time order. Even the palest has a contrast of 3.51:1
+    against white. Past about six cycles, neighbouring cycles take colours too
+    close to tell apart, and the colours then show the order of the cycles more
+    than which is which. When individual cycles must be told apart, plot fewer
+    cycles, or use the R twin's ``style = "subseries"``. It gives each season a
+    panel, in which every cycle keeps its own place on the axis.
 
     Parameters
     ----------
@@ -312,7 +426,10 @@ def seasonal_plot(x, period=None, title=None):
         refused.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
-        omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
+        omitted (12, 4 and 7 respectively; a daily index is assumed weekly). A
+        period that is not a whole number, such as 365.25 / 7 for weekly data,
+        is rounded down to whole seasons with a ``UserWarning``, as the R twin
+        rounds a frequency down. A period below 2 is refused, as in the R twin.
     title : str, optional
 
     Returns
@@ -333,15 +450,13 @@ def seasonal_plot(x, period=None, title=None):
     >>> p = dp.seasonal_plot(series, period=12)
     """
     series = _as_complete_series(x)
-    period = _infer_period(series, period)
+    period = _infer_period(series, _whole_period(period))
 
     values = series.to_numpy()
-    n = len(values)
-    if n == 0:
+    if len(values) == 0:
         raise ValueError("`x` has no non-missing values to plot.")
-    position = (np.arange(n) % period) + 1
-    cycle = np.arange(n) // period
-    n_cycles = int(cycle.max()) + 1
+    position, cycle, names = _seasons(series, period)
+    n_cycles = int(cycle.max())
     df = pd.DataFrame({
         "position": position,
         "value": values,
@@ -349,23 +464,29 @@ def seasonal_plot(x, period=None, title=None):
         # categorical over strings sorts lexicographically, which puts cycle 10
         # between 1 and 2 and hands it the third colour of a ramp meant to run
         # in time order.
-        "cycle": pd.Categorical(cycle.astype(str),
-                                categories=[str(c) for c in range(n_cycles)],
-                                ordered=True),
+        "cycle": pd.Categorical(
+            cycle.astype(str),
+            categories=[str(c) for c in range(1, n_cycles + 1)],
+            ordered=True,
+        ),
     })
+    breaks = list(range(1, period + 1))
+    x_scale = (scale_x_continuous(breaks=breaks) if names is None
+               else scale_x_continuous(breaks=breaks, labels=names))
 
     return (
         ggplot(df, aes("position", "value", color="cycle", group="cycle"))
         + geom_line(size=0.7)
         + geom_point(size=1.5)
-        + scale_x_continuous(breaks=list(range(1, period + 1)))
+        + x_scale
         # The cycles are a sequence, not unrelated categories, so they take a
-        # sequential (light-to-dark) ramp rather than the qualitative palette:
-        # it reads in time order and, unlike the eight Okabe-Ito colours, it
-        # stays legible however many cycles the series holds. The legend is
-        # reversed so the darkest, most recent cycle sits at the top of the key,
-        # matching the R twin.
-        + scale_color_manual(values=depictr_palette(n_cycles, kind="sequential"),
+        # single-hue ramp. It reads in time order and, unlike the eight
+        # Okabe-Ito colours of the qualitative palette, extends to any number
+        # of cycles, although past about six its neighbouring colours blur. It
+        # leaves out the palest colour of the sequential palette, which is
+        # close to invisible as a line. The legend is reversed so the darkest,
+        # most recent cycle sits at the top of the key, matching the R twin.
+        + scale_color_manual(values=_cycle_palette(n_cycles),
                              name="Cycle", guide=guide_legend(reverse=True))
         + labs(x="Position in period", y="Value", title=title)
         + theme_depictr()
