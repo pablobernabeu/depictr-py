@@ -70,6 +70,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   size with no such column raise `ValueError`. Each curve takes a line type as
   well as a colour. The y-axis title is "Power" for the usual power columns and
   the column's name otherwise.
+- `binned_residual_plot()` bins as the R twin does, so the twins draw the same
+  points for a model. It took `round(sqrt(n))` bins where R takes
+  `floor(sqrt(n))`, kept between 2 and `n // 2`, and it cut the ranks of the
+  fitted values elsewhere, so the first bin of the clinical-trial example held
+  18 rows to R's 17. Tied fitted values were left in whatever order numpy's
+  sort gave them and now follow row order, as in R. The plot gains `band=`. Its
+  default, `"model"`, keeps the band the plot drew, which the R twin now draws
+  too, and `"empirical"` draws the band of R's `arm::binnedplot()`, from the
+  spread of the residuals in each bin. The plot's data gain the R twin's `n`,
+  `se2` and `outside` columns. An `n_bins` below 2 raises `ValueError`, as in
+  R, and so does a model with fewer than four observations.
 
 ### Deprecated
 
@@ -213,6 +224,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `seed=` for a reproducible randomisation. `binned_residual_plot()` now takes
   a Logit or Probit fit. Such a result's `fittedvalues` holds the linear
   predictor, so the panels read its fitted probabilities from `predict()`.
+- `binned_residual_plot()` misdrew a grouped binomial model. With a two-column
+  (successes, failures) response, statsmodels' response residuals count
+  successes, so the points were drawn in counts against fitted probabilities,
+  and the band took every row as a single trial, wherever the trials came from.
+  The residuals are now proportions, as in the R twin, and each row's variance
+  is divided by its number of trials, whether these come from the two columns
+  or from `var_weights`. A GLM fitted with an estimated scale, as by
+  `fit(scale="X2")`, has the variances multiplied by it, as the R twin
+  multiplies them by a quasibinomial fit's dispersion. statsmodels' Pearson
+  estimate leaves out the trials of a two-column response, so for such a fit
+  the scale is recomputed over the trials, which gives R's dispersion.
 - `scale_colour_depictr()` and `scale_fill_depictr()` drew a ninth group in the
   missing-value grey, indistinguishable from missing data, with no warning of
   depictr's own, and so did every plot that adds them, such as `ecdf_plot()`

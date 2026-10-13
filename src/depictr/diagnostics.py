@@ -13,6 +13,9 @@ the ``depictr[models]`` extra remains to pin the tested floor.
 
 from __future__ import annotations
 
+import math
+import numbers
+
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -96,6 +99,31 @@ def _fitted_values(model) -> np.ndarray:
     if _is_binary(model):
         return np.asarray(model.predict(), dtype=float)
     return np.asarray(model.fittedvalues, dtype=float)
+
+
+def _binomial_scale(model, fitted) -> float:
+    """The scale of a binomial GLM, counting the trials of every row.
+
+    The scale is 1 unless the fit estimated one. statsmodels' Pearson
+    estimate, ``fit(scale="X2")``, leaves out the trials of a two-column
+    (successes, failures) response, although its ``pearson_chi2`` counts them,
+    so the estimate falls short by about the mean number of trials. Where the
+    fit's scale is that estimate, it is recomputed as ``pearson_chi2`` over
+    ``df_resid``, the dispersion R's quasibinomial family estimates.
+    """
+    scale = float(model.scale)
+    n_trials = np.asarray(getattr(model.model, "n_trials", 1.0), dtype=float)
+    if scale == 1.0 or np.all(n_trials == 1):
+        return scale
+    # statsmodels' own Pearson estimate, which sums over rows without their
+    # trials. A scale that matches it came from fit(scale="X2"), and one that
+    # does not (a deviance estimate or a fixed value) is kept as it is.
+    endog = np.asarray(model.model.endog, dtype=float)
+    without_trials = np.sum(model.model.iweights * (endog - fitted) ** 2
+                            / model.family.variance(fitted)) / model.df_resid
+    if np.isclose(scale, without_trials, rtol=1e-8, atol=0.0):
+        return float(model.pearson_chi2 / model.df_resid)
+    return scale
 
 
 def _raw_residuals(model):
@@ -384,15 +412,39 @@ def vif_plot(model, title=None):
     )
 
 
-def binned_residual_plot(model, n_bins=None, title=None):
+def binned_residual_plot(model, n_bins=None, title=None, band="model"):
     """Binned residual plot for a binomial model (Gelman & Hill, 2007).
 
     Raw residuals from a logistic model are uninformative point by point, so the
     fitted probabilities are split into equal-count bins and the mean residual is
-    plotted against the mean fitted value in each bin. The grey band is plus or
-    minus two standard errors of the bin mean; under a well-fitting model about
-    95% of the points fall inside it. A run of points outside the band, or a clear
+    plotted against the mean fitted value in each bin. The bins are the R
+    twin's. Rows are ranked by their fitted probability with ties in row order,
+    and the ranks are cut at multiples of n / n_bins. A row with zero weight
+    takes no part in the fit and is left out.
+
+    The grey band is plus or minus two standard errors of a bin's mean
+    residual. By default (``band="model"``), they are the standard errors the
+    fitted model implies. The model gives a row with fitted probability p_i
+    over m_i trials, taken as a proportion, the variance
+    scale * p_i * (1 - p_i) / m_i. Taking this as the variance of the row's
+    residual, the band gives the mean of the n_b residuals in a bin the
+    standard error sqrt(sum of their variances) / n_b. The fit absorbs a little
+    of each row's variance, so a residual varies slightly less than this and
+    the band errs on the wide side. Under a well-fitting model, about 95% of
+    the points fall inside the band. A run of points outside it, or a clear
     trend in them, points to a missing predictor or the wrong functional form.
+
+    The scale is 1 unless the GLM was fitted with an estimated one, the
+    counterpart of the dispersion of R's quasibinomial family. statsmodels'
+    Pearson estimate, ``fit(scale="X2")``, leaves out the trials of a
+    two-column (successes, failures) response, so for such a fit the scale is
+    recomputed as ``pearson_chi2 / df_resid``, which counts them, as R does.
+
+    ``band="empirical"`` takes the standard error from the residuals in the bin,
+    as their standard deviation over sqrt(n_b), the band of R's
+    ``arm::binnedplot()``. It collapses in a bin whose outcomes are all alike,
+    such as a bin without events, and so flags such bins even when the model is
+    right.
 
     Parameters
     ----------
@@ -400,14 +452,21 @@ def binned_residual_plot(model, n_bins=None, title=None):
         A fitted binomial GLM (logistic regression), or a Logit or Probit
         result, whose fitted probabilities are used.
     n_bins : int, optional
-        Number of bins. Defaults to the square root of the sample size, rounded,
-        the rule of thumb in Gelman & Hill.
+        Number of bins, at least 2. Defaults to the square root of the sample
+        size, rounded down and kept between 2 and half the sample size, the
+        rule of thumb in Gelman & Hill.
     title : str, optional
         Plot title.
+    band : {"model", "empirical"}, default "model"
+        Where the standard errors come from: the variance the fitted model
+        implies for each residual, or the spread of the residuals in each bin.
 
     Returns
     -------
     plotnine.ggplot
+        Its ``data`` hold one row per bin, with the columns ``fitted``,
+        ``resid``, ``n``, ``se2`` (the band's half-width), ``outside`` (whether
+        the point lies beyond the band), ``lower`` and ``upper``.
 
     References
     ----------
@@ -425,6 +484,8 @@ def binned_residual_plot(model, n_bins=None, title=None):
     >>> p = dp.binned_residual_plot(glm)
     """
     _require_statsmodels()
+    from scipy import stats
+
     if not _is_fitted_model(model):
         raise TypeError("binned_residual_plot needs a fitted statsmodels GLM.")
     # Only a binomial model is meaningful here: a binomial GLM, or a Logit or
@@ -434,33 +495,68 @@ def binned_residual_plot(model, n_bins=None, title=None):
             "binned_residual_plot expects a binomial GLM "
             "(family=sm.families.Binomial()) or a Logit or Probit fit."
         )
+    if band not in ("model", "empirical"):
+        raise ValueError("`band` must be 'model' or 'empirical'.")
 
     fitted = _fitted_values(model)
-    resid = np.asarray(model.resid_response)
+    # Residuals of the response as a proportion, as in the R twin. statsmodels
+    # holds a two-column (successes, failures) response as proportions, but
+    # its resid_response multiplies them back up to counts of successes.
+    resid = np.asarray(model.model.endog, dtype=float) - fitted
+    if _is_glm(model):
+        # Trials per row, from a two-column response or from var_weights on a
+        # proportion, as in _quantile_residuals().
+        trials = (np.asarray(getattr(model.model, "n_trials", 1.0), dtype=float)
+                  * np.asarray(model.model.var_weights, dtype=float))
+        scale = _binomial_scale(model, fitted)
+    else:
+        trials = np.ones_like(fitted)
+        scale = 1.0
+    trials = np.broadcast_to(trials, fitted.shape)
+    # A row with zero weight takes no part in the fit, and the model gives its
+    # residual no finite variance.
+    keep = np.isfinite(fitted) & np.isfinite(resid) & (trials > 0)
+    fitted, resid, trials = fitted[keep], resid[keep], trials[keep]
     n = len(fitted)
+    if n < 4:
+        raise ValueError("Too few observations for a binned-residual plot.")
     if n_bins is None:
-        n_bins = max(int(round(np.sqrt(n))), 1)
-    n_bins = min(n_bins, n)
+        # floor(sqrt(n)), kept between 2 and n // 2, as in the R twin.
+        n_bins = max(2, min(math.isqrt(n), n // 2))
+    elif (isinstance(n_bins, bool) or not isinstance(n_bins, numbers.Real)
+          or not n_bins >= 2):
+        raise ValueError("`n_bins` must be a single number >= 2.")
+    else:
+        n_bins = int(n_bins)
 
-    # Equal-count bins: rank the fitted values, then split into n_bins groups.
-    order = np.argsort(fitted)
-    bin_id = np.empty(n, dtype=int)
-    bin_id[order] = np.floor(np.arange(n) / n * n_bins).astype(int)
+    # Equal-count bins as in the R twin: rank the fitted values, breaking ties
+    # by row order as R's rank(ties.method = "first") does, and cut the ranks
+    # at multiples of n / n_bins.
+    rank = stats.rankdata(fitted, method="ordinal")
+    bin_id = np.minimum(np.ceil(rank / (n / n_bins)), n_bins)
+    # The variance of each residual under the model.
+    resid_var = scale * fitted * (1 - fitted) / trials
 
     rows = []
-    for b in range(n_bins):
+    # The bins are numbered by rank, so they come in order of mean fitted value.
+    for b in np.unique(bin_id):
         mask = bin_id == b
-        if not mask.any():
-            continue
+        nb = int(mask.sum())
         r = resid[mask]
-        mean_fitted = fitted[mask].mean()
-        mean_resid = r.mean()
-        # Two-SE band: the standard error of a binomial residual scales with the
-        # spread of the fitted probabilities in the bin (Gelman & Hill, 2007).
-        se = 2 * np.sqrt(np.mean(fitted[mask] * (1 - fitted[mask])) / mask.sum())
-        rows.append({"fitted": mean_fitted, "resid": mean_resid,
-                     "lower": -se, "upper": se})
-    df = pd.DataFrame(rows).sort_values("fitted")
+        if band == "model":
+            # The mean of independent residuals: the root of their summed
+            # variances over their count.
+            se = np.sqrt(resid_var[mask].sum()) / nb
+        elif nb > 1:
+            se = r.std(ddof=1) / np.sqrt(nb)
+        else:
+            se = np.nan
+        rows.append({"fitted": fitted[mask].mean(), "resid": r.mean(), "n": nb,
+                     "se2": 2 * se})
+    df = pd.DataFrame(rows)
+    df["outside"] = np.isfinite(df["se2"]) & (df["resid"].abs() > df["se2"])
+    df["lower"] = -df["se2"]
+    df["upper"] = df["se2"]
 
     return (
         ggplot(df, aes("fitted", "resid"))
