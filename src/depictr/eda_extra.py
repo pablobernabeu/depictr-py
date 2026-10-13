@@ -23,9 +23,10 @@ from plotnine import (
     theme,
 )
 
+from ._groups import _group_scales, _prepare_group
 from .compose import arrange_plots
 from .palette import BRAND
-from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
+from .theme import theme_depictr
 
 # Past this many panels the cells get too small to read, so the matrix is capped.
 _MAX_PAIRS_COLS = 5
@@ -49,7 +50,10 @@ def raincloud_plot(data, x, group=None, title=None):
     group : str, optional
         A categorical column. Each level gets its own raincloud along the
         horizontal axis, coloured by the depictr palette. With no group a single
-        raincloud is drawn.
+        raincloud is drawn. A numeric code counts as a group, but a numeric
+        column with more than 20 distinct values raises ``ValueError``. Rows
+        with a missing group are dropped with a warning, and categories without
+        rows are left out of the plot and its palette.
     title : str, optional
         Plot title.
 
@@ -89,6 +93,9 @@ def raincloud_plot(data, x, group=None, title=None):
         points = geom_point(position=position_jitter(width=0.06, height=0),
                             color=BRAND, size=0.9, alpha=0.35)
     else:
+        # Rows missing x are not drawn, so they are left out before the groups
+        # are formed, and the levels are those of the rows drawn.
+        data, _, palette = _prepare_group(data.dropna(subset=[x]), group)
         cat = group
         mapping = aes(x=cat, y=x, fill=group, color=group)
         # The half-violin sits on the left of each slot; the box and points are
@@ -102,7 +109,7 @@ def raincloud_plot(data, x, group=None, title=None):
 
     p = ggplot(data, mapping) + violin + box + points
     if group is not None:
-        p = p + scale_fill_depictr() + scale_colour_depictr()
+        p = p + _group_scales(palette)
     x_lab = None if group is None else group
     p = p + labs(x=x_lab, y=x, title=title) + theme_depictr(grid="y")
     if group is not None:

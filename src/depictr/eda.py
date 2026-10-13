@@ -31,12 +31,11 @@ from plotnine import (
     theme,
 )
 
+from ._groups import _group_scales, _prepare_group
 from .audit import _legible_text_colour
 from .palette import ACCENT, BRAND, depictr_palette
 from .theme import (
     _scale_fills,
-    scale_colour_depictr,
-    scale_fill_depictr,
     theme_depictr,
 )
 from .theme import (
@@ -66,7 +65,10 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     x : str
         Name of the numeric column to display.
     group : str, optional
-        A grouping column mapped to colour/fill.
+        A grouping column mapped to colour/fill. A numeric code counts as a
+        group, but a numeric column with more than 20 distinct values raises
+        ``ValueError``. Rows with a missing group are dropped with a warning,
+        and categories without rows are left out of the plot and its palette.
     kind : {"density", "histogram", "both"}
         What to draw.
     bins : int
@@ -92,6 +94,10 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
+    if group:
+        # Rows missing x are not drawn, so they are left out before the groups
+        # are formed, and the levels are those of the rows drawn.
+        data, _, palette = _prepare_group(data.dropna(subset=[x]), group)
     mapping = aes(x=x, fill=group, color=group) if group else aes(x=x)
     p = ggplot(data, mapping)
     if kind in {"histogram", "both"}:
@@ -118,7 +124,7 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
         # curves are flush with the x-axis, keeping a little headroom on top.
         p = p + scale_y_continuous(expand=(0, 0, 0.05, 0))
     if group:
-        p = p + scale_fill_depictr() + scale_colour_depictr()
+        p = p + _group_scales(palette)
         if kind in {"density", "both"}:
             # The density line is the keyed geom, so show a single legend keyed
             # by its colour: drop the redundant fill legend and make the key
@@ -143,7 +149,11 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     x : str
         The categorical column.
     group : str, optional
-        A second categorical column mapped to fill, drawn side by side.
+        A second categorical column mapped to fill, drawn side by side. A
+        numeric code counts as a group, but a numeric column with more than 20
+        distinct values raises ``ValueError``. Rows with a missing group are
+        dropped with a warning, and categories without rows are left out of
+        the plot and its palette.
     proportion : bool
         Show proportions within each group rather than raw counts.
     title : str, optional
@@ -159,6 +169,9 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     >>> p = dp.explore_categorical(wb, "education", group="region")
     """
     if group:
+        # Rows missing x are not counted, so they are left out before the
+        # groups are formed, and the levels are those of the rows counted.
+        data, _, palette = _prepare_group(data.dropna(subset=[x]), group)
         counts = (data.groupby([group, x], observed=True).size()
                   .rename("n").reset_index())
         if proportion:
@@ -168,7 +181,7 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
             counts["value"] = counts["n"]
         p = (ggplot(counts, aes(x=x, y="value", fill=group))
              + geom_bar(stat="identity", position="dodge")
-             + scale_fill_depictr())
+             + _group_scales(palette, ("fill",)))
         y_lab = "Proportion" if proportion else "Count"
     else:
         p = ggplot(data, aes(x=x)) + geom_bar(fill=BRAND)

@@ -71,10 +71,12 @@ def _groups(k, per_group=5):
 
 def test_a_ninth_group_is_interpolated_not_drawn_as_missing():
     # The scale used to hold eight fixed values, so plotnine drew a ninth group
-    # in the missing-value grey, with only its own generic warning.
-    p = ecdf_plot(_groups(9), "x", group="g")
+    # in the missing-value grey, with only its own generic warning. The plot
+    # names a colour for each group when it is made, so the interpolation
+    # warning comes then, not when the figure is drawn.
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
+        p = ecdf_plot(_groups(9), "x", group="g")
         colours = set(_drawn(p, "color"))
     messages = [str(w.message) for w in caught]
     assert any("9 colours interpolated" in m for m in messages)

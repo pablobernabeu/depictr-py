@@ -30,13 +30,13 @@ from plotnine import (
     theme,
 )
 
+from ._groups import _group_scales, _prepare_group
 from .palette import ACCENT, BRAND
 from .theme import (
     legend_inside as _legend_inside,
 )
 from .theme import (
     scale_colour_depictr,
-    scale_fill_depictr,
     theme_depictr,
 )
 
@@ -55,7 +55,11 @@ def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
     x : str
         Name of the numeric column.
     group : str, optional
-        A grouping column mapped to colour, drawn as one curve per level.
+        A grouping column mapped to colour, drawn as one curve per level. A
+        numeric code counts as a group, but a numeric column with more than 20
+        distinct values raises ``ValueError``. Rows with a missing group are
+        dropped with a warning, and categories without rows are left out of
+        the plot and its palette.
     legend_inside : bool
         When ``True`` and a ``group`` is given, place the legend in the
         bottom-right, which an ECDF leaves empty once it saturates.
@@ -75,9 +79,12 @@ def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
     if group:
+        # Rows missing x are not drawn, so they are left out before the groups
+        # are formed, and the levels are those of the rows drawn.
+        data, _, palette = _prepare_group(data.dropna(subset=[x]), group)
         p = (ggplot(data, aes(x=x, color=group))
              + stat_ecdf(size=0.9)
-             + scale_colour_depictr())
+             + _group_scales(palette, ("color",)))
     else:
         p = ggplot(data, aes(x=x)) + stat_ecdf(size=0.9, color=BRAND)
     p = p + labs(x=x, y="Cumulative proportion", title=title) + theme_depictr()
@@ -92,7 +99,8 @@ def ridgeline_plot(data, x, group, title=None):
     Each level gets its own filled density on a shared x-axis, stacked so the
     ridges overlap a little. Reading top to bottom gives a quick sense of how the
     distribution shifts across levels. Levels are ordered by their median so the
-    progression is easy to follow.
+    progression is easy to follow, and each keeps the colour of its place in
+    the group's own order, as in the R twin.
 
     The overlap is faked with :func:`plotnine.facet_grid`: one narrow row per
     level, panel spacing pulled negative so neighbouring ridges touch. It stays a
@@ -105,7 +113,11 @@ def ridgeline_plot(data, x, group, title=None):
     x : str
         Name of the numeric column.
     group : str
-        The grouping column; one ridge is drawn per level.
+        The grouping column; one ridge is drawn per level. A numeric code
+        counts as a group, but a numeric column with more than 20 distinct
+        values raises ``ValueError``. Rows with a missing group are dropped
+        with a warning, and categories without rows are left out of the plot
+        and its palette.
     title : str, optional
         Plot title.
 
@@ -123,7 +135,10 @@ def ridgeline_plot(data, x, group, title=None):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
 
-    df = data[[x, group]].dropna().copy()
+    # Rows missing x are not drawn, so they are left out before the groups are
+    # formed. The palette names each level's colour before the levels are
+    # reordered, so a ridge's colour follows its level, not its median.
+    df, _, palette = _prepare_group(data[[x, group]].dropna(subset=[x]), group)
     # Order levels by median so the ridges read as a smooth progression. The
     # facet rows go top to bottom, so reverse the order to put the largest on top.
     medians = df.groupby(group, observed=True)[x].median().sort_values()
@@ -134,7 +149,7 @@ def ridgeline_plot(data, x, group, title=None):
         ggplot(df, aes(x=x, fill=group))
         + geom_area(stat="density", alpha=0.8, color="white", size=0.3)
         + facet_grid(f"{group} ~ .", scales="free_y")
-        + scale_fill_depictr()
+        + _group_scales(palette, ("fill",))
         # Negative panel spacing makes neighbouring ridges overlap; the y-axis
         # within each strip carries no quantitative meaning, so drop it.
         + theme_depictr(grid="x")
@@ -300,7 +315,10 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     x : str
         Name of the numeric column being compared.
     group : str
-        The grouping column on the x-axis.
+        The grouping column on the x-axis. A numeric code counts as a group,
+        but a numeric column with more than 20 distinct values raises
+        ``ValueError``. Rows with a missing group are dropped with a warning,
+        and categories without rows are left out of the plot and its palette.
     title : str, optional
         Plot title.
     conf_level : float
@@ -337,7 +355,9 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
 
     from scipy.stats import t as t_dist
 
-    df = data[[x, group]].dropna()
+    # Rows missing x are not drawn, so they are left out before the groups are
+    # formed, and a group without observations is no group at all.
+    df, _, palette = _prepare_group(data[[x, group]].dropna(subset=[x]), group)
     stats = (df.groupby(group, observed=True)[x]
              .agg(["mean", "std", "count"]).reset_index())
     se = stats["std"] / np.sqrt(stats["count"])
@@ -364,7 +384,7 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
         + geom_errorbar(stats, aes(ymin="lower", ymax="upper"),
                         width=0.15, size=0.9, na_rm=True)
         + geom_point(stats, aes(y="mean"), size=3.5)
-        + scale_colour_depictr()
+        + _group_scales(palette, ("color",))
         + labs(x=group, y=x, title=title)
         + theme_depictr()
         + theme(legend_position="none")

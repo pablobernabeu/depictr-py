@@ -70,11 +70,16 @@ def test_explore_distribution_bad_column():
 
 
 def test_na_group_level_draws():
-    # A missing value in a mapped column takes the NA colour, which must be
-    # one matplotlib accepts (a hex value, not an R colour name).
+    # A missing group used to be drawn in the NA colour, which must be one
+    # matplotlib accepts (a hex value, not an R colour name). Grouped plots now
+    # drop those rows with a warning, as the R twin does. The NA colour itself
+    # is still drawn by the depictr scales, as test_data_theme_models checks.
     ld = LD.copy()
     ld.loc[ld.index[:20], "condition"] = np.nan
-    assert _builds(dp.explore_distribution(ld, "RT", group="condition"))
+    with pytest.warns(UserWarning, match=re.escape(
+            "20 observation(s) with a missing group were dropped.")):
+        p = dp.explore_distribution(ld, "RT", group="condition")
+    assert _builds(p)
 
 
 def test_explore_categorical():

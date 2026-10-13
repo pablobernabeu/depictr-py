@@ -22,8 +22,9 @@ from plotnine import (
     scale_fill_gradientn,
 )
 
+from ._groups import _group_scales, _prepare_group
 from .palette import BRAND, depictr_palette
-from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
+from .theme import scale_fill_depictr, theme_depictr
 
 
 def scatter_trend(data, x, y, group=None, method="lm", title=None):
@@ -37,7 +38,10 @@ def scatter_trend(data, x, y, group=None, method="lm", title=None):
         Names of the numeric columns for the horizontal and vertical axes.
     group : str, optional
         A grouping column. When given, points and a separate trend line are
-        coloured by group via :func:`depictr.theme.scale_colour_depictr`.
+        coloured by group in the depictr palette. A numeric code counts as a
+        group, but a numeric column with more than 20 distinct values raises
+        ``ValueError``. Rows with a missing group are dropped with a warning,
+        and categories without rows are left out of the plot and its palette.
     method : str
         Smoothing method passed to :func:`plotnine.geom_smooth`, for example
         ``"lm"`` for a straight line or ``"lowess"`` for a local fit.
@@ -59,14 +63,14 @@ def scatter_trend(data, x, y, group=None, method="lm", title=None):
             raise KeyError(f"{col!r} is not a column of `data`.")
 
     if group:
-        if group not in data.columns:
-            raise KeyError(f"{group!r} is not a column of `data`.")
+        # Rows missing x or y are not drawn, so they are left out before the
+        # groups are formed, and the levels are those of the points drawn.
+        data, _, palette = _prepare_group(data.dropna(subset=[x, y]), group)
         p = (
             ggplot(data, aes(x=x, y=y, color=group, fill=group))
             + geom_point(alpha=0.6)
             + geom_smooth(method=method, alpha=0.2)
-            + scale_colour_depictr()
-            + scale_fill_depictr()
+            + _group_scales(palette)
         )
     else:
         # One series: keep it on the brand colour so a lone scatter still reads

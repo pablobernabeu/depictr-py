@@ -357,6 +357,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `timeseries_plot()` drew no line at all, and `seasonal_plot()` spaced the
   values evenly up the axis, one tick per value. The values are now read as
   numbers.
+- The grouped plots each treated a grouping column in their own way. A numeric
+  code, such as a block numbered 1 and 2, raised `TypeError` in
+  `scatter_trend()`, `raincloud_plot()`, `group_comparison_plot()` and
+  `explore_categorical()`, and `explore_distribution()` and `ecdf_plot()` drew
+  it as one ungrouped curve. An unused category, as filtering a categorical
+  leaves it, kept its place in the palette, so the categories after it took
+  the next colour along and were drawn in other colours than in the R twin.
+  Missing groups were drawn as a grey group of their own by `scatter_trend()`,
+  `ecdf_plot()`, `explore_distribution()` and `raincloud_plot()`, and vanished
+  without a word elsewhere. These functions, with `ridgeline_plot()`, now share
+  the R twin's rule. The group becomes a categorical, so a numeric code is a
+  group, labelled 1 and 2 even when a missing value has made the codes floats,
+  but a numeric column with more than 20 distinct values raises `ValueError`.
+  Rows with a missing group are dropped with a warning, as `survival_plot()`
+  drops them, and unused categories take no colour or legend key. Colours are
+  matched to the levels by name, so `ridgeline_plot()` colours a ridge by its
+  level, as the R twin does, while still stacking the ridges by median. Rows
+  missing the plotted value are left out before the groups are formed, so
+  plotnine no longer warns that it removed them from a grouped plot. Past eight
+  groups, the warning that the palette is interpolated now comes once, when the
+  plot is made, where it came each time the figure was drawn. The R twin
+  applies the same rule in `outlier_plot()` and `explore_pairs()`, which take no
+  group here.
 
 ## [0.3.0] - 2026-09-24
 
