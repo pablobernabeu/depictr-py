@@ -81,6 +81,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spread of the residuals in each bin. The plot's data gain the R twin's `n`,
   `se2` and `outside` columns. An `n_bins` below 2 raises `ValueError`, as in
   R, and so does a model with fewer than four observations.
+- `calibration_plot()` cuts the scores at their quantiles into bins of nearly
+  equal count, as the R twin does, sizes each point by its bin's count and
+  draws a Wilson interval on its observed rate. Its equal-width bins left the
+  upper points of a rare outcome resting on one to four cases, with nothing on
+  the figure to say so. `strategy="uniform"` keeps the old bins, `conf_level`
+  sets the level of the intervals (`None` leaves them out), and `bins` is
+  accepted as the R twin's name for `n_bins`. The bins are computed with numpy,
+  so the function no longer needs scikit-learn. A missing score spoilt the top
+  bin under scikit-learn and now raises `ValueError`, as a score outside [0, 1]
+  does. An outcome coded -1/1, which scikit-learn accepted, now raises it too,
+  as in the R twin.
 
 ### Deprecated
 
@@ -256,6 +267,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now black or white, whichever has the higher contrast against its tile as
   the fill scale paints it, which is at least 4.58:1 on any colour. The `n/a` of
   an undefined correlation is chosen against the scale's grey in the same way.
+- `gain_plot()` and `lift_plot()` depended on the order of the rows when scores
+  were tied. They took the cases one at a time, so tied cases entered the curve
+  in the order of their rows. On 200 cases with four distinct scores, the share
+  of positives captured in the top 10% ranged from 0.20 to 0.30 with the row
+  order alone. Tied cases are now targeted together, as in the R twin, and the
+  gains curve runs straight across each run of ties, the expected curve when
+  tied cases are reached in random order (Fawcett, 2006). Curves on distinct
+  scores are unchanged. The bundled biomarker is recorded to two decimals, so
+  162 of the 300 patients share their value with another, and the gallery's
+  gains and lift charts change slightly. Outcomes and scores of different
+  lengths now raise a `ValueError` that names both arguments. A missing outcome
+  or score raises one too. A missing outcome used to cut the curve short at its
+  rank, and missing scores went last, in the order of their rows.
 
 ## [0.3.0] - 2026-09-24
 

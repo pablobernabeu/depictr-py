@@ -1,14 +1,17 @@
 """Classification-metric plots.
 
-The metrics are computed by ``scikit-learn`` (the de-facto standard) and the
-figures are re-drawn under the depictr theme, so a ROC curve sits in the same
-visual language as the rest of a report. Cumulative gains, which scikit-learn
-does not provide, is included for completeness.
+The ROC and precision-recall metrics and the confusion matrix are computed by
+``scikit-learn`` (the de-facto standard), and the figures are re-drawn under
+the depictr theme, so a ROC curve sits in the same visual language as the rest
+of a report. The cumulative gains, lift and calibration curves are computed
+here with numpy, as the R twin computes them, and need no optional dependency.
 
 Install the optional dependency with ``pip install depictr[classification]``.
 """
 
 from __future__ import annotations
+
+import numbers
 
 import numpy as np
 import pandas as pd
@@ -16,14 +19,17 @@ from plotnine import (
     aes,
     annotate,
     geom_abline,
+    geom_errorbar,
     geom_hline,
     geom_line,
+    geom_point,
     geom_text,
     geom_tile,
     ggplot,
     labs,
     scale_color_identity,
     scale_fill_gradientn,
+    scale_size_area,
 )
 
 from .audit import _legible_text_colour
@@ -67,6 +73,113 @@ def _positive_count(y_true, message) -> int:
     if n_pos == 0 or n_pos == len(y_true):
         raise ValueError(message)
     return n_pos
+
+
+def _outcome_and_score(y_true, y_score):
+    """The outcome and the score as flat arrays, refusing a length mismatch.
+
+    The curves pair each outcome with the score in the same position, so
+    vectors of different lengths have no pairing to plot.
+    """
+    y_true = np.asarray(y_true).ravel()
+    y_score = np.asarray(y_score, dtype=float).ravel()
+    if len(y_true) != len(y_score):
+        raise ValueError(
+            "`y_true` and `y_score` must have the same length "
+            f"({len(y_true)} and {len(y_score)})."
+        )
+    return y_true, y_score
+
+
+def _gain_table(y_true, y_score):
+    """Cumulative shares of the population targeted and of positives captured.
+
+    The twin of the R package's internal ``gain_table()``. Cases are ranked by
+    score, best first, and each run of tied scores is targeted all at once.
+    The cumulative counts are read at the last case of a run, once the whole
+    run is in, so no order of the tied rows can favour the positives or the
+    negatives. A line drawn through these points is straight across a run,
+    which is the share expected when the run's cases are reached in random
+    order (Fawcett, 2006). The first point is the origin.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        The population and captured shares, one point per distinct score after
+        the origin.
+    """
+    y_true, y_score = _outcome_and_score(y_true, y_score)
+    # A missing outcome would count as a negative, and each missing score would
+    # sort last as a run of its own, in the order of its row. The curves that
+    # scikit-learn computes and calibration_plot() refuse missing values too
+    # (the R twin drops such cases with a message).
+    for name, values in (("y_true", y_true), ("y_score", y_score)):
+        if pd.isna(values).any():
+            raise ValueError(
+                f"`{name}` holds a missing value. Gains/lift need an outcome and "
+                "a score for every case, so drop incomplete cases first."
+            )
+    n_pos = _positive_count(y_true,
+                            "Gains/lift need both positive and negative outcomes.")
+    order = np.argsort(-y_score, kind="stable")
+    ranked = y_score[order]
+    last_of_run = np.append(ranked[1:] != ranked[:-1], True)
+    targeted = np.arange(1, len(ranked) + 1)[last_of_run]
+    positives = np.cumsum(y_true[order] == 1)[last_of_run]
+    population = np.concatenate([[0.0], targeted / len(ranked)])
+    captured = np.concatenate([[0.0], positives / n_pos])
+    return population, captured
+
+
+def _wilson_interval(successes, n, conf_level):
+    """Wilson score interval for a binomial proportion, as the R twin computes it.
+
+    The interval stays within [0, 1]. In small samples its coverage stays close
+    to the nominal level where the Wald interval's is erratic, though it dips
+    for rates very close to 0 or 1 (Brown et al., 2001). The formula and its
+    order of operations are those of the R twin's ``wilson_interval()``.
+    """
+    from scipy.stats import norm
+
+    successes = np.asarray(successes, dtype=float)
+    n = np.asarray(n, dtype=float)
+    z = norm.ppf(1 - (1 - conf_level) / 2)
+    phat = successes / n
+    denom = 1 + z ** 2 / n
+    centre = (phat + z ** 2 / (2 * n)) / denom
+    half = z * np.sqrt(phat * (1 - phat) / n + z ** 2 / (4 * n ** 2)) / denom
+    return np.maximum(0, centre - half), np.minimum(1, centre + half)
+
+
+def _calibration_bins(y, score, n_bins, strategy):
+    """Per-bin mean score, observed rate, positives and count, empty bins dropped.
+
+    ``"quantile"`` cuts at the quantiles of the scores, where numpy's default
+    method is R's ``quantile()`` type 7, and merges repeated edges, as the R
+    twin does. ``"uniform"`` cuts [0, 1] into equal widths, the bins
+    scikit-learn's ``calibration_curve()`` gave depictr 0.3.0.
+    """
+    if strategy == "quantile":
+        edges = np.unique(np.quantile(score, np.linspace(0, 1, n_bins + 1)))
+        if len(edges) < 3:
+            raise ValueError("Too few distinct scores to form bins.")
+    else:
+        edges = np.linspace(0.0, 1.0, n_bins + 1)
+    # Searching the inner edges from the left puts a score equal to an edge in
+    # the bin below it. Each bin then includes its upper edge and the lowest
+    # its lower edge too, as R's cut(include.lowest = TRUE) assigns them.
+    bin_id = np.searchsorted(edges[1:-1], score, side="left")
+    k = len(edges) - 1
+    n = np.bincount(bin_id, minlength=k)
+    successes = np.bincount(bin_id, weights=y, minlength=k)
+    score_sum = np.bincount(bin_id, weights=score, minlength=k)
+    kept = n > 0
+    return pd.DataFrame({
+        "predicted": score_sum[kept] / n[kept],
+        "observed": successes[kept] / n[kept],
+        "successes": np.rint(successes[kept]).astype(int),
+        "n": n[kept],
+    })
 
 
 def roc_curve_plot(y_true, y_score, title=None):
@@ -213,27 +326,69 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
     )
 
 
-def calibration_plot(y_true, y_score, n_bins=10, title=None):
-    """Reliability (calibration) curve of predicted vs observed frequencies.
+def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
+                     strategy="quantile", bins=None):
+    """Reliability (calibration) curve of predicted against observed frequencies.
+
+    The cases are grouped into bins by their predicted probability, and each
+    bin is drawn at its mean predicted probability and its observed event rate,
+    with the dashed diagonal marking perfect calibration. By default the bins
+    hold equal numbers of cases, as in the R twin, so each point rests on about
+    the same evidence. Each point is sized by its number of cases and carries a
+    Wilson interval for its observed rate (Wilson, 1927), so a bin backed by
+    few cases is not over-read. Brown et al. (2001) recommend the Wilson
+    interval for small samples. Its coverage stays close to the nominal level
+    where the Wald interval's is erratic, though it dips for rates very close
+    to 0 or 1.
 
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1).
+        Binary outcomes coded 0/1 (booleans work too). Any other value, a
+        missing one included, raises ``ValueError``.
     y_score : array-like
         Predicted probabilities from a fitted model, on the probability scale.
         Unlike the ROC and gains charts, which only rank cases, a reliability
         curve compares the predicted probability with the observed frequency,
-        so an arbitrary monotone score would misstate the calibration.
+        so an arbitrary monotone score would misstate the calibration. A value
+        outside [0, 1], or a missing one, raises ``ValueError``.
     n_bins : int
-        Number of equal-width bins spanning 0 to 1. Empty bins are dropped, so
-        a rare outcome whose scores never approach 1 leaves fewer points than
-        bins requested.
+        Number of bins requested. Fewer points are drawn when bins merge or
+        come out empty (see ``strategy``).
     title : str, optional
+    conf_level : float or None
+        Confidence level of the Wilson intervals, strictly between 0 and 1.
+        ``None`` leaves the intervals out.
+    strategy : {"quantile", "uniform"}
+        How the bins are cut. ``"quantile"`` cuts at the quantiles of the
+        scores, computed as R's ``quantile()`` computes them by default, into
+        bins of nearly equal count. Each bin includes its upper edge and the
+        lowest its lower edge too, as R's ``cut(include.lowest = TRUE)``
+        assigns them. Tied scores can make edges coincide, and repeated edges
+        are merged, so fewer than ``n_bins`` bins may remain. Fewer than two
+        raise ``ValueError``. ``"uniform"`` cuts [0, 1] into ``n_bins`` bins
+        of equal width, the bins of depictr 0.3.0, and drops the empty ones.
+        A rare outcome whose scores never approach 1 then leaves fewer points
+        than bins, the highest of them often resting on a handful of cases.
+    bins : int, optional
+        The R twin's name for ``n_bins``, which it replaces when given.
 
     Returns
     -------
     plotnine.ggplot
+        Its data hold one row per bin, with the columns ``predicted``,
+        ``observed``, ``successes`` and ``n`` and, unless ``conf_level`` is
+        ``None``, ``conf_low`` and ``conf_high``.
+
+    References
+    ----------
+    Brown, L. D., Cai, T. T., & DasGupta, A. (2001). Interval estimation for a
+    binomial proportion. Statistical Science, 16(2), 101-133.
+    https://doi.org/10.1214/ss/1009213286
+
+    Wilson, E. B. (1927). Probable inference, the law of succession, and
+    statistical inference. Journal of the American Statistical Association,
+    22(158), 209-212. https://doi.org/10.1080/01621459.1927.10502953
 
     Examples
     --------
@@ -245,15 +400,53 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None):
     >>> p = dp.calibration_plot(ct["adverse_event"],
     ...                         fit.predict_proba(X)[:, 1], n_bins=5)
     """
-    _require_sklearn()
-    from sklearn.calibration import calibration_curve
+    if bins is not None:
+        if n_bins not in (10, bins):
+            raise TypeError(
+                "Give the number of bins as `n_bins` or as `bins`, not both.")
+        n_bins = bins
+    if (isinstance(n_bins, bool) or not isinstance(n_bins, numbers.Integral)
+            or n_bins < 1):
+        raise ValueError("`n_bins` must be a positive whole number.")
+    if strategy not in ("quantile", "uniform"):
+        raise ValueError('`strategy` must be "quantile" or "uniform".')
+    if conf_level is not None and not 0 < conf_level < 1:
+        raise ValueError("`conf_level` must lie strictly between 0 and 1.")
 
-    prob_true, prob_pred = calibration_curve(y_true, y_score, n_bins=n_bins)
-    df = pd.DataFrame({"predicted": prob_pred, "observed": prob_true})
-    return (
+    y_true, y_score = _outcome_and_score(y_true, y_score)
+    try:
+        y = y_true.astype(float)
+    except (TypeError, ValueError):
+        y = None
+    if y is None or not np.all((y == 0) | (y == 1)):
+        raise ValueError("`y_true` must hold outcomes coded 0/1.")
+    # A missing score fails this test too, since it is no probability at all.
+    if not np.all((y_score >= 0) & (y_score <= 1)):
+        raise ValueError("`y_score` must hold probabilities between 0 and 1.")
+    if len(y_score) == 0:
+        raise ValueError("Too few distinct scores to form bins.")
+
+    df = _calibration_bins(y, y_score, n_bins, strategy)
+    if conf_level is not None:
+        df["conf_low"], df["conf_high"] = _wilson_interval(
+            df["successes"], df["n"], conf_level)
+    p = (
         ggplot(df, aes("predicted", "observed"))
         + geom_abline(intercept=0, slope=1, linetype="dashed", color="#9e9e9e")
-        + geom_line(color=BRAND, size=0.9)
+    )
+    if conf_level is not None:
+        # The R twin draws its caps 0.02 wide on a unit-square axis, a fiftieth
+        # of its width. This axis spans the bins alone, so the caps take a
+        # fiftieth of that span, which keeps crowded bins from overlapping.
+        span = float(np.ptp(df["predicted"].to_numpy()))
+        p = p + geom_errorbar(aes(ymin="conf_low", ymax="conf_high"),
+                              width=0.02 * span if span > 0 else 0.02,
+                              size=0.5, color=BRAND, alpha=0.7)
+    return (
+        p
+        + geom_line(color=BRAND, size=0.7)
+        + geom_point(aes(size="n"), color=BRAND, alpha=0.7)
+        + scale_size_area(name="n", max_size=7)
         + labs(x="Mean predicted probability", y="Observed frequency", title=title)
         + theme_depictr()
     )
@@ -266,20 +459,33 @@ def gain_plot(y_true, y_score, title=None):
     the share of all positive cases captured by each depth. The dashed diagonal
     is random targeting.
 
+    Cases with tied scores are targeted together, as in the R twin. The curve
+    takes a point only once every case of a run of equal scores is in, and it
+    runs straight to that point, which is the share expected when tied cases
+    are reached in random order (Fawcett, 2006). The curve therefore does not
+    depend on the order of the rows. With every score distinct, each case is a
+    point of its own.
+
     Parameters
     ----------
     y_true : array-like
         Binary outcomes (0/1). Both classes must be present: with no positives
         the share captured has no denominator, and with no negatives every depth
-        captures everything.
+        captures everything. A missing outcome raises ``ValueError``.
     y_score : array-like
-        Predicted scores or probabilities for the positive class. Only the
-        ranking matters, so any monotone score works.
+        Predicted scores or probabilities for the positive class, one per
+        outcome. Only the ranking matters, so any monotone score works. A
+        missing score, which has no rank, raises ``ValueError``.
     title : str, optional
 
     Returns
     -------
     plotnine.ggplot
+
+    References
+    ----------
+    Fawcett, T. (2006). An introduction to ROC analysis. Pattern Recognition
+    Letters, 27(8), 861-874. https://doi.org/10.1016/j.patrec.2005.10.010
 
     Examples
     --------
@@ -289,16 +495,8 @@ def gain_plot(y_true, y_score, title=None):
     >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
     >>> p = dp.gain_plot(ct["adverse_event"], score)
     """
-    y_true = np.asarray(y_true)
-    n_pos = _positive_count(y_true,
-                            "Gains/lift need both positive and negative outcomes.")
-    order = np.argsort(-np.asarray(y_score))
-    captured = np.cumsum(y_true[order]) / n_pos
-    population = np.arange(1, len(y_true) + 1) / len(y_true)
-    df = pd.DataFrame({
-        "population": np.concatenate([[0], population]),
-        "captured": np.concatenate([[0], captured]),
-    })
+    population, captured = _gain_table(y_true, y_score)
+    df = pd.DataFrame({"population": population, "captured": captured})
     return (
         ggplot(df, aes("population", "captured"))
         + geom_abline(intercept=0, slope=1, linetype="dashed", color="#9e9e9e")
@@ -316,15 +514,22 @@ def lift_plot(y_true, y_score, title=None):
     means that decile holds three times the baseline positive rate. The dashed
     line at 1 is random targeting.
 
+    Cases with tied scores are targeted together, as in
+    :func:`depictr.gain_plot` and the R twin, so the curve has a point at the
+    end of each run of equal scores and does not depend on the order of the
+    rows. It starts at the first such point, since lift has no value at a depth
+    of zero.
+
     Parameters
     ----------
     y_true : array-like
         Binary outcomes (0/1). Both classes must be present: lift is a ratio to
         the baseline positive rate, which is zero with no positives and one at
-        every depth with no negatives.
+        every depth with no negatives. A missing outcome raises ``ValueError``.
     y_score : array-like
-        Predicted scores or probabilities for the positive class. Only the
-        ranking matters, so any monotone score works.
+        Predicted scores or probabilities for the positive class, one per
+        outcome. Only the ranking matters, so any monotone score works. A
+        missing score, which has no rank, raises ``ValueError``.
     title : str, optional
 
     Returns
@@ -339,13 +544,10 @@ def lift_plot(y_true, y_score, title=None):
     >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
     >>> p = dp.lift_plot(ct["adverse_event"], score)
     """
-    y_true = np.asarray(y_true)
-    n_pos = _positive_count(y_true,
-                            "Gains/lift need both positive and negative outcomes.")
-    order = np.argsort(-np.asarray(y_score))
-    population = np.arange(1, len(y_true) + 1) / len(y_true)
-    captured = np.cumsum(y_true[order]) / n_pos
-    df = pd.DataFrame({"population": population, "lift": captured / population})
+    population, captured = _gain_table(y_true, y_score)
+    # Drop the origin, where the ratio would be 0 / 0.
+    df = pd.DataFrame({"population": population[1:],
+                       "lift": captured[1:] / population[1:]})
     return (
         ggplot(df, aes("population", "lift"))
         + geom_hline(yintercept=1, linetype="dashed", color="#9e9e9e")

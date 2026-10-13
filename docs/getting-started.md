@@ -16,8 +16,9 @@ The exploratory, theme and accessibility tools work with the core install, and
 so do the model and time-series plots: they delegate to statsmodels, which
 plotnine itself requires. The classification and survival plots delegate to
 scikit-learn and lifelines, each an optional extra (`depictr[classification]`,
-`depictr[survival]`). The `depictr[models]` extra remains to pin the tested
-statsmodels floor.
+`depictr[survival]`). The gains, lift and calibration curves are computed by
+depictr itself and need neither. The `depictr[models]` extra remains to pin the
+tested statsmodels floor.
 
 ## The idea
 

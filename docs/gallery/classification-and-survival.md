@@ -1,7 +1,7 @@
 # Classification and survival
 
-The classification metrics come from scikit-learn and the survival estimate from
-lifelines, and depictr redraws both under the shared theme. The survival figure
+Most of the classification metrics come from scikit-learn and the survival
+estimate from lifelines, and depictr redraws both under the shared theme. The survival figure
 adds a number-at-risk table beneath the curves in one call.
 
 ```python exec="1" html="1" session="clf"
@@ -83,9 +83,12 @@ p = dp.calibration_plot(ct["adverse_event"], fit.predict_proba(X)[:, 1],
 print(show(p))
 ```
 
-The three populated bins predict 0.10, 0.27 and 0.45 against observed rates of
-0.09, 0.29 and 0.50, so the curve tracks the diagonal. Only the highest bin is
-thin, holding four patients out of 300.
+Each of the five bins holds 60 patients, and each point is sized by its count.
+The mean predicted risks run from 0.03 to 0.24 and the observed rates from 0.02
+to 0.28. Every 95% Wilson interval includes its bin's predicted risk, so the
+curve is consistent with a well-calibrated model. Equal-width bins
+(`strategy="uniform"`) would put 263 patients in the lowest bin and leave the
+highest with four, none of whom had an event.
 
 ## Confusion matrix
 

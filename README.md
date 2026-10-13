@@ -106,10 +106,11 @@ pip install depictr[all]       # plus the optional computation back-ends
 
 The classification and survival plots delegate to scikit-learn and lifelines,
 each an optional dependency installed only when your plots need it
-(`depictr[classification]`, `depictr[survival]`). The model and time-series
-plots delegate to statsmodels, which plotnine itself requires, so it arrives
-with the core install. The `depictr[models]` extra remains to pin the tested
-statsmodels floor.
+(`depictr[classification]`, `depictr[survival]`). The gains, lift and
+calibration curves are computed by depictr itself and need neither. The model
+and time-series plots delegate to statsmodels, which plotnine itself requires,
+so it arrives with the core install. The `depictr[models]` extra remains to pin
+the tested statsmodels floor.
 
 The development version comes from GitHub:
 
@@ -204,7 +205,11 @@ composites place the title on their top panel). `survival_plot` does not yet
 draw the confidence band or censor marks the R package draws, though its
 `conf_level` argument is accepted for future use. `power_curve_plot` reads the
 same tables as the R function, pilotr's included, but it has no `x_lab`,
-`x_breaks` or `x_expand`, and there is no simr object to read. Seven functions
+`x_breaks` or `x_expand`, and there is no simr object to read. Each
+classification curve shows a single model. The R package's ROC,
+precision-recall, calibration, gains and lift functions also overlay
+several models given as a named list, and its gains chart adds a
+perfect-model line. Seven functions
 from the R package have yet to be ported: `optimizer_fixef_plot` (there is no direct
 statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
 `model_fit_table`, `ts_forecast`, the label helper `format_terms` and the

@@ -2,6 +2,7 @@
 
 import copy
 import re
+import sys
 import warnings
 
 import matplotlib.pyplot as plt
@@ -214,6 +215,272 @@ def test_curve_plots_refuse_a_single_class_outcome():
         for fn, message in cases:
             with pytest.raises(ValueError, match=message):
                 fn(y, rng.random(20))
+
+
+# ---- gains, lift and calibration: parity with the R twin -------------------
+# The R values below are printed by dev/goldens/classification.R, run against
+# the R twin for change set CS29. Its gains and calibration code for vector
+# input is that of the 0.3.0 release. Both score vectors are built from integers
+# by the same few floating-point operations in the same order, so the script
+# and these tests build identical values.
+
+
+def _tied_scores():
+    """200 cases in four risk bands, as a banded or rounded score gives.
+
+    The bands hold 23, 41, 57 and 79 cases at scores 0.85, 0.55, 0.30 and
+    0.10, with 17, 22, 18 and 7 of the 64 positives. Row i is row
+    77 * i % 200 of the banded layout, which spreads each band through the
+    rows with its positives first.
+    """
+    sizes, positives = [23, 41, 57, 79], [17, 22, 18, 7]
+    score = np.repeat([0.85, 0.55, 0.30, 0.10], sizes)
+    y = np.concatenate([np.repeat([1, 0], [k, n - k])
+                        for n, k in zip(sizes, positives, strict=True)])
+    stride = (77 * np.arange(200)) % 200
+    return y[stride], score[stride]
+
+
+def _continuous_scores():
+    """300 distinct probabilities that crowd towards zero, with fixed outcomes.
+
+    Case i (from 1) has the score 0.9 * (i / 300)^2. It is an event when
+    (37 * i mod 101) / 101 falls below its score, a fixed sequence standing in
+    for random draws.
+    """
+    i = np.arange(1, 301)
+    x = i / 300
+    score = 0.9 * x * x
+    y = (((37 * i) % 101) / 101 < score).astype(int)
+    return y, score
+
+
+def test_gain_and_lift_collapse_tied_scores_as_the_r_twin_does():
+    # Regression: both curves accumulated row by row, so a run of tied scores
+    # was targeted in whatever order its rows came, one case at a time. The R
+    # twin targets a run all at once, giving one point per distinct score.
+    y, score = _tied_scores()
+    gain = dp.gain_plot(y, score).data
+    np.testing.assert_allclose(gain["population"], [0, 0.115, 0.32, 0.605, 1],
+                               atol=1e-10)
+    np.testing.assert_allclose(gain["captured"],
+                               [0, 0.265625, 0.609375, 0.890625, 1], atol=1e-10)
+    lift = dp.lift_plot(y, score).data
+    np.testing.assert_allclose(lift["population"], [0.115, 0.32, 0.605, 1],
+                               atol=1e-10)
+    np.testing.assert_allclose(
+        lift["lift"], [2.3097826087, 1.9042968750, 1.4721074380, 1], atol=1e-9)
+
+
+def test_gain_and_lift_do_not_depend_on_row_order():
+    # In the audit's example, 200 cases with four distinct scores, the share of
+    # positives captured at 10% depth ranged from 0.204 to 0.296 with the order
+    # of the rows alone.
+    y, score = _tied_scores()
+    rng = np.random.default_rng(29)
+    orders = {
+        "shuffled": rng.permutation(len(y)),
+        "positives first within ties": np.lexsort((-y, -score)),
+        "negatives first within ties": np.lexsort((y, -score)),
+    }
+    gain, lift = dp.gain_plot(y, score).data, dp.lift_plot(y, score).data
+    for label, o in orders.items():
+        pd.testing.assert_frame_equal(dp.gain_plot(y[o], score[o]).data, gain,
+                                      obj=label)
+        pd.testing.assert_frame_equal(dp.lift_plot(y[o], score[o]).data, lift,
+                                      obj=label)
+
+    # The bundled biomarker is recorded to two decimals, so 162 of the 300
+    # patients share their value with another.
+    ct = CT.sample(frac=1, random_state=3)
+    for fn in (dp.gain_plot, dp.lift_plot):
+        before = fn(CT["adverse_event"], CT["biomarker"]).data
+        after = fn(ct["adverse_event"], ct["biomarker"]).data
+        pd.testing.assert_frame_equal(after, before)
+
+
+def test_gain_and_lift_are_unchanged_when_no_scores_tie():
+    # With every score distinct, each run of ties is a single case, so the
+    # curves are the row-by-row curves depictr 0.3.0 drew.
+    y, score = _continuous_scores()
+    o = np.random.default_rng(4).permutation(len(y))
+    y, score = y[o], score[o]
+    population = np.arange(1, len(y) + 1) / len(y)
+    captured = np.cumsum(y[np.argsort(-score)]) / y.sum()
+    gain = dp.gain_plot(y, score).data
+    np.testing.assert_allclose(gain["population"], np.r_[0, population])
+    np.testing.assert_allclose(gain["captured"], np.r_[0, captured])
+    lift = dp.lift_plot(y, score).data
+    np.testing.assert_allclose(lift["population"], population)
+    np.testing.assert_allclose(lift["lift"], captured / population)
+
+
+_R_CALIBRATION = {
+    "continuous scores, 10 bins, 95%": (_continuous_scores, {}, {
+        "predicted": [0.0031516667, 0.0214516667, 0.0577516667, 0.1120516667,
+                      0.1843516667, 0.2746516667, 0.3829516667, 0.5092516667,
+                      0.6535516667, 0.8158516667],
+        "observed": [0, 0, 0.0666666667, 0.1666666667, 0.2, 0.3, 0.4, 0.5,
+                     0.6333333333, 0.8333333333],
+        "successes": [0, 0, 2, 5, 6, 9, 12, 15, 19, 25],
+        "n": [30] * 10,
+        "conf_low": [0, 0, 0.0184770238, 0.0733654237, 0.0950510718,
+                     0.1666474827, 0.2459062812, 0.3315412564, 0.4551356365,
+                     0.6643564949],
+        "conf_high": [0.1135133932, 0.1135133932, 0.2132345836, 0.3356435051,
+                      0.3730569641, 0.4787578746, 0.5767963975, 0.6684587436,
+                      0.7812607919, 0.9266345763],
+    }),
+    "continuous scores, 4 bins, 90%": (_continuous_scores,
+                                       {"n_bins": 4, "conf_level": 0.9}, {
+        "predicted": [0.0191266667, 0.1323766667, 0.3581266667, 0.6963766667],
+        "observed": [0.0133333333, 0.16, 0.3866666667, 0.68],
+        "successes": [1, 12, 29, 51],
+        "n": [75] * 4,
+        "conf_low": [0.0029802051, 0.1024142748, 0.2996576049, 0.5864650757],
+        "conf_high": [0.0575758794, 0.2412618938, 0.4815677846, 0.7610004821],
+    }),
+    # The quantiles of tied scores fall on the scores themselves, so the
+    # repeated edges merge. A bin includes its upper edge, so the cases at
+    # 0.30 join those at 0.10 in the lowest bin, and three bins remain.
+    "tied scores, 10 bins, 95%": (_tied_scores, {}, {
+        "predicted": [0.1838235294, 0.55, 0.85],
+        "observed": [0.1838235294, 0.5365853659, 0.7391304348],
+        "successes": [25, 22, 17],
+        "n": [136, 41, 23],
+        "conf_low": [0.1277258889, 0.3874647127, 0.5352999516],
+        "conf_high": [0.2572919683, 0.6794376602, 0.8745138396],
+    }),
+}
+
+
+@pytest.mark.parametrize("case", list(_R_CALIBRATION))
+def test_calibration_bins_and_intervals_match_the_r_twin(case):
+    # Regression: the bins were scikit-learn's equal-width ones, with no count
+    # and no interval, so the upper points of a rare outcome rested on one to
+    # four cases with nothing to say so. The R twin cuts the scores at their
+    # quantiles and draws a Wilson interval on each bin's observed rate.
+    data, kwargs, expected = _R_CALIBRATION[case]
+    y, score = data()
+    got = dp.calibration_plot(y, score, **kwargs).data
+    for column in ("predicted", "observed", "conf_low", "conf_high"):
+        np.testing.assert_allclose(got[column], expected[column], atol=1e-9,
+                                   err_msg=column)
+    for column in ("successes", "n"):
+        assert got[column].tolist() == expected[column], column
+
+
+def test_calibration_draws_counts_and_wilson_intervals():
+    y, score = _continuous_scores()
+    p = dp.calibration_plot(y, score)
+    geoms = [type(layer.geom).__name__ for layer in p.layers]
+    assert geoms == ["geom_abline", "geom_errorbar", "geom_line", "geom_point"]
+    assert p.layers[-1].mapping["size"] == "n"
+    assert _builds(p)
+
+    # conf_level=None draws the points alone, as the R twin's NA does.
+    q = dp.calibration_plot(y, score, conf_level=None)
+    assert "geom_errorbar" not in [type(layer.geom).__name__ for layer in q.layers]
+    assert not {"conf_low", "conf_high"} & set(q.data.columns)
+    assert _builds(q)
+
+
+def test_calibration_uniform_strategy_keeps_the_old_bins():
+    # strategy="uniform" keeps the equal-width bins of depictr 0.3.0, which
+    # scikit-learn computed. The top bin is empty here and is dropped.
+    calibration = pytest.importorskip("sklearn.calibration")
+    y, score = _continuous_scores()
+    p = dp.calibration_plot(y, score, strategy="uniform")
+    observed, predicted = calibration.calibration_curve(y, score, n_bins=10)
+    np.testing.assert_allclose(p.data["predicted"], predicted, rtol=1e-12)
+    np.testing.assert_allclose(p.data["observed"], observed, rtol=1e-12)
+    assert len(p.data) == 9
+    assert p.data["n"].sum() == len(y)
+
+
+def test_calibration_takes_the_r_twins_bins_argument():
+    y, score = _continuous_scores()
+    pd.testing.assert_frame_equal(dp.calibration_plot(y, score, bins=4).data,
+                                  dp.calibration_plot(y, score, n_bins=4).data)
+    with pytest.raises(TypeError, match="not both"):
+        dp.calibration_plot(y, score, n_bins=5, bins=4)
+
+
+def test_calibration_refuses_what_it_cannot_bin():
+    y, score = _continuous_scores()
+    # A score is compared with an observed frequency, so it must be a
+    # probability. A missing score is no probability either.
+    with_nan = score.copy()
+    with_nan[7] = np.nan
+    for bad in (score * 2, score - 0.5, with_nan):
+        with pytest.raises(ValueError,
+                           match="`y_score` must hold probabilities between 0 and 1"):
+            dp.calibration_plot(y, bad)
+    # The message is the R twin's, word for word.
+    with pytest.raises(ValueError,
+                       match=re.escape("Too few distinct scores to form bins.")):
+        dp.calibration_plot(y, np.full(len(y), 0.3))
+    with pytest.raises(ValueError, match="`y_true` must hold outcomes coded 0/1"):
+        dp.calibration_plot(np.where(y == 1, "yes", "no"), score)
+    with pytest.raises(ValueError, match="`y_true` must hold outcomes coded 0/1"):
+        dp.calibration_plot(np.where(y == 1, 1.0, np.nan), score)
+    # scikit-learn also took outcomes coded -1/1. The docstring never allowed
+    # them, and the R twin refuses them.
+    with pytest.raises(ValueError, match="`y_true` must hold outcomes coded 0/1"):
+        dp.calibration_plot(np.where(y == 1, 1, -1), score)
+    with pytest.raises(ValueError, match="must have the same length"):
+        dp.calibration_plot(y[:-1], score)
+    with pytest.raises(ValueError, match="strictly between 0 and 1"):
+        dp.calibration_plot(y, score, conf_level=95)
+    with pytest.raises(ValueError, match="`strategy` must be"):
+        dp.calibration_plot(y, score, strategy="kmeans")
+    for bad in (0, 2.5, True):
+        with pytest.raises(ValueError, match="`n_bins` must be a positive whole"):
+            dp.calibration_plot(y, score, n_bins=bad)
+    # Booleans are an outcome coded 0/1.
+    pd.testing.assert_frame_equal(dp.calibration_plot(y == 1, score).data,
+                                  dp.calibration_plot(y, score).data)
+
+
+def test_gain_and_lift_refuse_a_length_mismatch():
+    # A score vector one short used to fail inside pandas, in words that name
+    # neither argument. Ranked by runs of ties, it would pair outcomes with the
+    # wrong scores without a word, so the lengths are compared first.
+    y, score = _tied_scores()
+    for fn in (dp.gain_plot, dp.lift_plot):
+        with pytest.raises(ValueError, match="must have the same length"):
+            fn(y, score[:-1])
+
+
+def test_gain_and_lift_refuse_a_missing_outcome_or_score():
+    # Regression: a missing outcome cut the curve short at its rank, and each
+    # missing score sorted last on its own, so the end of the curve followed
+    # the order of the rows. Counting a missing outcome as a negative would
+    # hide the gap, so both are refused.
+    y, score = _tied_scores()
+    y_missing = y.astype(float)
+    y_missing[5] = np.nan
+    y_nullable = pd.Series(y, dtype="Int64")
+    y_nullable[5] = pd.NA
+    score_missing = score.copy()
+    score_missing[[5, 6]] = np.nan
+    for fn in (dp.gain_plot, dp.lift_plot):
+        for bad in (y_missing, y_nullable):
+            with pytest.raises(ValueError, match="`y_true` holds a missing value"):
+                fn(bad, score)
+        with pytest.raises(ValueError, match="`y_score` holds a missing value"):
+            fn(y, score_missing)
+
+
+def test_gains_lift_and_calibration_need_no_scikit_learn(monkeypatch):
+    # The three are computed in numpy, so they draw without the optional
+    # [classification] extra.
+    for name in ("sklearn", "sklearn.calibration", "sklearn.metrics"):
+        monkeypatch.setitem(sys.modules, name, None)
+    y, score = _continuous_scores()
+    for p in (dp.gain_plot(y, score), dp.lift_plot(y, score),
+              dp.calibration_plot(y, score)):
+        assert _builds(p)
 
 
 def test_survival_plot_rejects_non_finite_times():

@@ -10,7 +10,7 @@ The two indexes are cut slightly differently in the few places where the Python 
 families do not line up with the R one. Time series has no group of its own here, and those
 functions close the 'Multivariate, survival and time series' group, which is where the Python
 package has always documented them. The R index's 'Diagnostics and classification' is split in
-two, because the classification curves are all computed by scikit-learn and reached through a
+two, because the classification curves are mostly computed by scikit-learn and reached through a
 separate install extra. R's 'Uncertainty and power' has no counterpart either, and the posterior
 and power curves are documented with the other model estimates they are drawn from. What the R
 index calls 'Theming, accessibility and reporting' appears here as 'Theme, palette and
@@ -102,8 +102,9 @@ gallery.
 
 ## Classification
 
-The standard classification curves and tables, computed by scikit-learn and
-redrawn under the shared theme.
+The standard classification curves and tables, most of them computed by
+scikit-learn and all redrawn under the shared theme. The gains, lift and
+calibration curves are computed as the R twin computes them.
 
 These plots are shown, with the code that produced them, on the
 [classification and survival](gallery/classification-and-survival.md) page of
