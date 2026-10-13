@@ -22,11 +22,13 @@ from plotnine import (
     geom_tile,
     ggplot,
     labs,
+    scale_color_identity,
     scale_fill_gradientn,
 )
 
+from .audit import _legible_text_colour
 from .palette import BRAND, depictr_palette
-from .theme import scale_colour_depictr, theme_depictr
+from .theme import _scale_fills, scale_colour_depictr, theme_depictr
 
 
 def _require_sklearn():
@@ -158,6 +160,9 @@ def pr_curve_plot(y_true, y_score, title=None):
 def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
     """Confusion-matrix heatmap.
 
+    Each count is drawn in black or white, whichever has the higher contrast
+    against its cell.
+
     Parameters
     ----------
     y_true, y_pred : array-like
@@ -188,12 +193,21 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
     long["label"] = long["count"].map(lambda v: fmt.format(v))
     long["true"] = pd.Categorical(long["true"], categories=labels[::-1], ordered=True)
     long["predicted"] = pd.Categorical(long["predicted"], categories=labels, ordered=True)
+    fill_scale = scale_fill_gradientn(
+        colors=depictr_palette(7, kind="sequential"),
+        name=("Proportion" if normalise else "Count"),
+    )
+    # Each count is black or white, whichever contrasts more with its tile as
+    # the fill scale paints it. The busiest cell is the darkest, where the
+    # near-black every count used to be drawn in sat at 1.3:1.
+    long["label_colour"] = _legible_text_colour(
+        _scale_fills(fill_scale, long["count"]))
     return (
         ggplot(long, aes("predicted", "true", fill="count"))
         + geom_tile(color="white")
-        + geom_text(aes(label="label"), color="#1a1a1a", size=10)
-        + scale_fill_gradientn(colors=depictr_palette(7, kind="sequential"),
-                               name=("Proportion" if normalise else "Count"))
+        + geom_text(aes(label="label", color="label_colour"), size=10)
+        + scale_color_identity()
+        + fill_scale
         + labs(x="Predicted", y="Actual", title=title)
         + theme_depictr(grid="none")
     )

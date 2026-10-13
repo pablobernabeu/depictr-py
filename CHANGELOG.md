@@ -226,6 +226,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   groups widen accordingly. A group with a single observation shows its mean
   only, with a warning in the R twin's words, where plotnine used to drop its
   interval with a generic message about missing values.
+- `confusion_matrix_plot()` and `correlation_heatmap()` drew every cell label
+  in the near-black `#1a1a1a`, although both colour ramps end in a dark blue.
+  The labels were therefore least legible on the darkest cells. The largest
+  count in the docstring's confusion matrix sat at 1.3:1 and the r = 1 diagonal
+  of a correlation heatmap at 2.4:1, where WCAG asks 4.5:1 of text. Each label
+  is now black or white, whichever has the higher contrast against its tile as
+  the fill scale paints it, which is at least 4.58:1 on any colour. The `n/a` of
+  an undefined correlation is chosen against the scale's grey in the same way.
 
 ## [0.3.0] - 2026-09-24
 

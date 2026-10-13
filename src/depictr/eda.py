@@ -24,20 +24,23 @@ from plotnine import (
     guide_legend,
     guides,
     labs,
+    scale_color_identity,
     scale_fill_gradientn,
     scale_fill_manual,
     scale_y_continuous,
     theme,
 )
 
+from .audit import _legible_text_colour
 from .palette import ACCENT, BRAND, depictr_palette
 from .theme import (
-    legend_inside as _legend_inside,
-)
-from .theme import (
+    _scale_fills,
     scale_colour_depictr,
     scale_fill_depictr,
     theme_depictr,
+)
+from .theme import (
+    legend_inside as _legend_inside,
 )
 
 
@@ -176,6 +179,9 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
 def correlation_heatmap(data, cols=None, title=None):
     """Heatmap of pairwise Pearson correlations among numeric columns.
 
+    Each cell is labelled with its correlation, drawn in black or white,
+    whichever has the higher contrast against the cell.
+
     Parameters
     ----------
     data : pandas.DataFrame
@@ -217,14 +223,22 @@ def correlation_heatmap(data, cols=None, title=None):
     # Pairwise-complete overlap too small to correlate still leaves an NaN cell
     # after the constant columns have gone, so label it rather than print "nan".
     long["label"] = long["r"].map(lambda v: "n/a" if pd.isna(v) else f"{v:.2f}")
+    fill_scale = scale_fill_gradientn(
+        colors=depictr_palette(7, kind="diverging"), limits=(-1, 1),
+        name="Correlation",
+    )
+    # Each label is black or white, whichever contrasts more with its tile as
+    # the fill scale paints it, the scale's grey for an undefined correlation
+    # included. The r = 1 diagonal is the darkest tile on the ramp, where the
+    # near-black every label used to be drawn in sat at 2.4:1.
+    long["label_colour"] = _legible_text_colour(
+        _scale_fills(fill_scale, long["r"]))
     return (
         ggplot(long, aes(x="var1", y="var2", fill="r"))
         + geom_tile(color="white")
-        + geom_text(aes(label="label"), size=8, color="#1a1a1a")
-        + scale_fill_gradientn(
-            colors=depictr_palette(7, kind="diverging"), limits=(-1, 1),
-            name="Correlation",
-        )
+        + geom_text(aes(label="label", color="label_colour"), size=8)
+        + scale_color_identity()
+        + fill_scale
         + labs(x="", y="", title=title)
         + theme_depictr(grid="none")
         + theme(axis_text_x=element_text(rotation=45, ha="right"))

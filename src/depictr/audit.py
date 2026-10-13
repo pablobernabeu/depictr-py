@@ -365,6 +365,26 @@ def _contrast_ratio(colours, backgrounds) -> np.ndarray:
     return (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
 
 
+def _legible_text_colour(fills) -> list[str]:
+    """Black or white for text on each fill, whichever has the higher contrast.
+
+    Against a fill of relative luminance L, black reaches (L + 0.05) / 0.05 and
+    white 1.05 / (L + 0.05). The two tie at L = 0.179, where each reaches
+    4.58:1, so the better of the two clears the 4.5:1 that WCAG 2.2 asks of
+    text (success criterion 1.4.3) on any fill. A near-black cannot promise
+    that: against fills of luminance 0.18 to 0.22, neither ``#1a1a1a`` nor
+    white reaches 4.5:1. It colours the cell labels of
+    :func:`depictr.confusion_matrix_plot` and
+    :func:`depictr.correlation_heatmap`. The R twin's ``.legible_text_colour()``
+    makes the same choice, black on a tie.
+    """
+    fills = list(np.atleast_1d(fills))
+    black = _contrast_ratio("#000000", fills)
+    white = _contrast_ratio("#ffffff", fills)
+    return ["#000000" if b >= w else "#ffffff"
+            for b, w in zip(black, white, strict=True)]
+
+
 class _Drawn(NamedTuple):
     """A declared colour, the alpha it is drawn with and the colour it shows."""
 

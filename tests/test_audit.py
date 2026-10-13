@@ -353,6 +353,26 @@ def test_contrast_ratios_match_the_wcag_definition():
             == round(wcag_contrast("#4d4d4d", "#ffffff"), 2))
 
 
+def test_label_colour_is_black_or_white_whichever_contrasts_more():
+    # The heatmaps choose each cell label's colour by this rule. Black and white
+    # tie against a relative luminance of 0.179, which falls between the first
+    # two greys, and each reaches 4.58:1 there. The R twin's
+    # .legible_text_colour() pins the same vector.
+    from depictr.audit import _legible_text_colour
+
+    okabe_ito = ["#005b96", "#e69f00", "#009e73", "#d55e00", "#cc79a7",
+                 "#56b4e9", "#f0e442", "#999999"]
+    assert _legible_text_colour(["#757575", "#767676", *okabe_ito]) == (
+        ["#ffffff", "#000000", "#ffffff"] + ["#000000"] * 7)
+    # Every colour of a 16-level grid over the three channels.
+    levels = [f"{v:02x}" for v in range(0, 256, 17)]
+    fills = [f"#{r}{g}{b}" for r in levels for g in levels for b in levels]
+    for fill, chosen in zip(fills, _legible_text_colour(fills), strict=True):
+        other = "#ffffff" if chosen == "#000000" else "#000000"
+        assert wcag_contrast(chosen, fill) >= wcag_contrast(other, fill)
+        assert wcag_contrast(chosen, fill) >= 4.58
+
+
 # --- each text against its own background ------------------------------------
 
 

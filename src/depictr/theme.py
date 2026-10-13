@@ -9,6 +9,9 @@ bold titles (including legend titles).
 
 from __future__ import annotations
 
+import copy
+
+import numpy as np
 from plotnine import (
     element_blank,
     element_line,
@@ -97,6 +100,22 @@ def _sized_to_the_data(scale, n):
 
     scale.palette = palette
     return scale
+
+
+def _scale_fills(scale, values) -> list[str]:
+    """The colours a continuous fill scale paints ``values`` in.
+
+    A copy of the scale is trained on the values and maps them, as plotnine
+    does when it draws the figure. Each colour therefore comes from the scale's
+    own limits, rescaling, out-of-bounds rule and palette (mizani's
+    ``gradient_n_pal`` for ``scale_fill_gradientn``), with its ``na_value``
+    where a value cannot be mapped. A label colour chosen against these is
+    chosen against the tile the reader sees.
+    """
+    probe = copy.deepcopy(scale)
+    x = np.asarray(values, dtype=float)
+    probe.train(x)
+    return [str(c) for c in probe.map(x)]
 
 
 def scale_colour_depictr(n: int | None = None, **kwargs):

@@ -1,8 +1,10 @@
 """Smoke tests: every plotting function builds a figure without error."""
 
+import copy
 import re
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,6 +12,7 @@ from plotnine import ggplot
 from plotnine.exceptions import PlotnineWarning
 
 import depictr as dp
+from depictr.audit import _contrast_ratio
 
 CT = dp.clinical_trial()
 WB = dp.wellbeing_survey()
@@ -20,6 +23,39 @@ def _builds(p):
     assert isinstance(p, ggplot)
     p.draw(show=False)
     return True
+
+
+def _label_contrasts(p):
+    """Each label's colour and contrast against the tile drawn beneath it.
+
+    Read back from the drawn tile and text layers, with the contrast the other
+    of black and white would have had on the same tile.
+    """
+    built = copy.deepcopy(p)
+    figure = built.draw(show=False)
+    try:
+        tiles = built.layers[0].data[["x", "y", "fill"]]
+        texts = built.layers[1].data[["x", "y", "color", "label"]]
+    finally:
+        plt.close(figure)
+    cells = tiles.merge(texts, on=["x", "y"])
+    assert len(cells) == len(texts)
+    colours = [str(c).lower() for c in cells["color"]]
+    fills = [str(c) for c in cells["fill"]]
+    other = ["#ffffff" if c == "#000000" else "#000000" for c in colours]
+    return pd.DataFrame({
+        "label": [str(v) for v in cells["label"]],
+        "colour": colours,
+        "fill": fills,
+        "ratio": _contrast_ratio(colours, fills),
+        "other": _contrast_ratio(other, fills),
+    })
+
+
+def _assert_legible(cells):
+    assert set(cells["colour"]) <= {"#000000", "#ffffff"}
+    assert (cells["ratio"] >= 4.5).all()
+    assert (cells["ratio"] >= cells["other"]).all()
 
 
 def test_explore_distribution_kinds():
@@ -74,6 +110,20 @@ def test_correlation_heatmap_handles_an_undefined_correlation():
     assert "n/a" in set(q.data["label"])
 
 
+def test_correlation_heatmap_labels_are_legible_on_their_tiles():
+    # Every label was the near-black #1a1a1a, which left the r = 1 diagonal on
+    # the darkest blue of the ramp at 2.43:1. An undefined correlation's n/a
+    # sat on the scale's grey #7f7f7f at 4.35:1.
+    sparse = pd.DataFrame({"a": [1.0, 2, 3, np.nan, np.nan, np.nan],
+                           "b": [np.nan, np.nan, np.nan, 4.0, 5, 6],
+                           "c": [1.0, 2, 3, 4, 5, 6]})
+    for data in (WB, sparse):
+        _assert_legible(_label_contrasts(dp.correlation_heatmap(data)))
+    cells = _label_contrasts(dp.correlation_heatmap(sparse))
+    assert (cells["label"] == "n/a").any()
+    assert (cells.loc[cells["label"] == "1.00", "colour"] == "#ffffff").all()
+
+
 def test_legend_inside_variants_build():
     # The opt-in inside-legend path builds for every function that offers it.
     assert _builds(dp.explore_distribution(LD, "RT", group="condition",
@@ -108,6 +158,28 @@ def test_classification_family():
     assert _builds(dp.threshold_plot(y, 1 / (1 + np.exp(-s))))
     assert _builds(dp.confusion_matrix_plot(y, (s > 0).astype(int)))
     assert _builds(dp.calibration_plot(y, 1 / (1 + np.exp(-s))))
+
+
+def test_confusion_matrix_counts_are_legible_on_their_tiles():
+    # Every count was drawn in the near-black #1a1a1a on a ramp that ends in a
+    # dark blue, so the busiest cell was the least legible. In the docstring's
+    # own example it sat at 1.32:1.
+    pytest.importorskip("sklearn")
+    score = 1 / (1 + np.exp(-CT["biomarker"]))
+    y, pred = CT["adverse_event"], (score > 0.6).astype(int)
+    counts = [50, 12, 3, 9, 40, 15, 2, 18, 60]
+    actual = np.repeat(np.repeat(["a", "b", "c"], 3), counts)
+    predicted = np.repeat(np.tile(["a", "b", "c"], 3), counts)
+    for p in (dp.confusion_matrix_plot(y, pred),
+              dp.confusion_matrix_plot(y, pred, normalise="true"),
+              dp.confusion_matrix_plot(actual, predicted),
+              dp.confusion_matrix_plot(actual, predicted, normalise="pred")):
+        _assert_legible(_label_contrasts(p))
+    # The busiest cell is the darkest and takes white, the emptiest black.
+    cells = _label_contrasts(dp.confusion_matrix_plot(y, pred))
+    count = cells["label"].astype(float)
+    assert cells.loc[count.idxmax(), "colour"] == "#ffffff"
+    assert cells.loc[count.idxmin(), "colour"] == "#000000"
 
 
 def test_gain_and_lift_refuse_a_single_class_outcome():
