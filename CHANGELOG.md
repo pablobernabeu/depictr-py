@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows. The contrast of that text is not measured. When all of a figure's text
   is inside the panel, the two rows for the text around it no longer say that
   the figure draws no text.
+- `survival_plot()` draws the confidence limits and censor marks that the R
+  twin draws. The limits are dotted steps around each curve at `conf_level`,
+  which was accepted but unused and must now lie strictly between 0 and 1, and
+  `conf_level=None` leaves them out. The new
+  `conf_type` builds them on the log-log scale by default, which gives the
+  interval lifelines computes, or with `"log"` or `"plain"`. The formulas are
+  the R twin's, so the twins draw the same limits. The new `censor_marks`,
+  `True` by default, marks each censored observation with a "+", and the new
+  `logrank` says whether to print the log-rank test as a subtitle.
 
 ### Changed
 
@@ -121,6 +130,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `seed` argument of the dataset loaders, which no longer generate data.
   Passing a value raises a `FutureWarning` and has no effect.
+- The log-rank subtitle that `survival_plot()` prints by default when there
+  are groups. The new default, `logrank=None`, keeps it and raises a
+  `FutureWarning`, since a future release will make `logrank=False` the
+  default, as in the R twin. Pass `logrank=True` to keep the subtitle.
 
 ### Fixed
 

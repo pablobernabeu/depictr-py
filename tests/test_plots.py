@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
-from plotnine import ggplot
+from plotnine import geom_point, geom_step, ggplot
 from plotnine.exceptions import PlotnineWarning
 
 import depictr as dp
@@ -507,7 +507,7 @@ def test_survival_plot_drops_a_missing_group_rather_than_drawing_an_arm():
     g[[5, 20, 40]] = None
 
     with pytest.warns(UserWarning) as rec:
-        p = dp.survival_plot(t, e, group=pd.Series(g))
+        p = dp.survival_plot(t, e, group=pd.Series(g), logrank=True)
     assert str(rec[0].message) == (
         "3 observation(s) with a missing group were dropped."
     )
@@ -519,7 +519,7 @@ def test_survival_plot_drops_a_missing_group_rather_than_drawing_an_arm():
     order = sorted(arms, reverse=True)
     gc = pd.Series(pd.Categorical(g, categories=order, ordered=True))
     with pytest.warns(UserWarning):
-        q = dp.survival_plot(t, e, group=gc)
+        q = dp.survival_plot(t, e, group=gc, logrank=True)
     assert list(q.data["group"].cat.categories) == order
 
     # Nothing left to plot is an error, not an empty figure.
@@ -536,14 +536,14 @@ def test_survival_plot_reads_the_surv_coding_as_the_r_twin_does():
     # fell to zero, and the log-rank p was 0.0022 where the data give 7.2e-08.
     pytest.importorskip("lifelines")
     e = CT["event"].to_numpy()
-    p01 = dp.survival_plot(CT["time"], e, group=CT["arm"])
-    p12 = dp.survival_plot(CT["time"], e + 1, group=CT["arm"])
+    p01 = dp.survival_plot(CT["time"], e, group=CT["arm"], logrank=True)
+    p12 = dp.survival_plot(CT["time"], e + 1, group=CT["arm"], logrank=True)
     pd.testing.assert_frame_equal(p12.data, p01.data)
     pd.testing.assert_frame_equal(p12.at_risk, p01.at_risk)
     assert p12.logrank_p == p01.logrank_p
     assert p01.logrank_p < 1e-7
     # A boolean indicator reads as 0/1.
-    pb = dp.survival_plot(CT["time"], e == 1, group=CT["arm"])
+    pb = dp.survival_plot(CT["time"], e == 1, group=CT["arm"], logrank=True)
     pd.testing.assert_frame_equal(pb.data, p01.data)
 
     # The coding is read over all observations. An arm with censorings only is
@@ -551,8 +551,8 @@ def test_survival_plot_reads_the_surv_coding_as_the_r_twin_does():
     t = np.arange(1.0, 9.0)
     g = np.repeat(["a", "b"], 4)
     e12 = np.array([2, 1, 2, 2, 1, 1, 1, 1])
-    q12 = dp.survival_plot(t, e12, group=g)
-    q01 = dp.survival_plot(t, e12 - 1, group=g)
+    q12 = dp.survival_plot(t, e12, group=g, logrank=True)
+    q01 = dp.survival_plot(t, e12 - 1, group=g, logrank=True)
     pd.testing.assert_frame_equal(q12.data, q01.data)
     assert (q12.data.loc[q12.data["group"] == "b", "surv"] == 1).all()
 
@@ -585,7 +585,7 @@ def test_survival_plot_drops_a_missing_event_with_a_warning():
     e[[3, 50, 200]] = np.nan
 
     with pytest.warns(UserWarning) as rec:
-        p = dp.survival_plot(t, e, group=CT["arm"])
+        p = dp.survival_plot(t, e, group=CT["arm"], logrank=True)
     assert str(rec[0].message) == (
         "3 observation(s) with a missing status were dropped."
     )
@@ -593,7 +593,7 @@ def test_survival_plot_drops_a_missing_event_with_a_warning():
 
     # The figure is the one the complete rows alone give.
     keep = ~np.isnan(e)
-    q = dp.survival_plot(t[keep], e[keep], group=CT["arm"][keep])
+    q = dp.survival_plot(t[keep], e[keep], group=CT["arm"][keep], logrank=True)
     pd.testing.assert_frame_equal(p.data, q.data)
     pd.testing.assert_frame_equal(p.at_risk, q.at_risk)
     assert p.logrank_p == q.logrank_p
@@ -621,18 +621,19 @@ def test_survival_plot_drops_an_arm_whose_every_event_is_missing():
     e = np.array([1, 0, 1, 1, np.nan, np.nan, np.nan, np.nan, 1, 1, 0, 1])
     with pytest.warns(UserWarning, match=re.escape(
             "4 observation(s) with a missing status were dropped.")):
-        p = dp.survival_plot(t, e, group=g, risk_table=True)
+        p = dp.survival_plot(t, e, group=g, risk_table=True, logrank=True)
     assert list(p.data["group"].cat.categories) == ["c", "a"]
     assert set(p.at_risk["group"]) == {"a", "c"}
     keep = ~np.isnan(e)
-    q = dp.survival_plot(t[keep], e[keep], group=g[keep].astype(str).to_numpy())
+    q = dp.survival_plot(t[keep], e[keep], group=g[keep].astype(str).to_numpy(),
+                         logrank=True)
     assert p.logrank_p == q.logrank_p
     _builds(p)
 
 
 def test_survival_plot_carries_logrank_and_at_risk():
     pytest.importorskip("lifelines")
-    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"])
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=True)
     _builds(p)
     assert p.logrank_p is not None and 0 <= p.logrank_p <= 1
     assert len(p.at_risk) > 0
@@ -641,12 +642,12 @@ def test_survival_plot_carries_logrank_and_at_risk():
 def test_survival_risk_table_composes():
     pytest.importorskip("lifelines")
     p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
-                         risk_table=True)
+                         risk_table=True, logrank=True)
     p.draw(show=False)  # composition (curve + at-risk table) draws
     assert len(p.at_risk) > 0
     # The risk-table path also honours an inside (top-right) legend.
     q = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
-                         risk_table=True, legend_inside=True)
+                         risk_table=True, legend_inside=True, logrank=True)
     q.draw(show=False)
 
 
@@ -665,13 +666,14 @@ def test_survival_risk_table_keeps_its_times_exact(tmax, times, labels):
     pytest.importorskip("lifelines")
     t = CT["time"].to_numpy(dtype=float)
     scaled = t / t.max() * tmax
-    p = dp.survival_plot(scaled, CT["event"], group=CT["arm"], risk_table=True)
+    p = dp.survival_plot(scaled, CT["event"], group=CT["arm"], risk_table=True,
+                         logrank=True)
     for arm, rows in p.at_risk.groupby("group"):
         assert np.allclose(rows["time"], times)
         at_risk = [int(np.sum(scaled[CT["arm"] == arm] >= b)) for b in times]
         assert rows["n_at_risk"].tolist() == at_risk
     # The figure without the table reports the same times.
-    plain = dp.survival_plot(scaled, CT["event"], group=CT["arm"])
+    plain = dp.survival_plot(scaled, CT["event"], group=CT["arm"], logrank=True)
     pd.testing.assert_frame_equal(plain.at_risk, p.at_risk)
 
     ax = p.draw(show=False).axes[0]
@@ -686,8 +688,220 @@ def test_survival_risk_table_stops_at_the_last_follow_up():
     pytest.importorskip("lifelines")
     tmax = float(CT["time"].max())
     p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
-                         risk_table=True)
+                         risk_table=True, logrank=True)
     assert p.at_risk["time"].max() <= tmax
     with warnings.catch_warnings():
         warnings.simplefilter("error", PlotnineWarning)
         p.draw(show=False)
+
+
+# ---- Kaplan-Meier limits, censor marks and the log-rank default ------------
+# Printed by dev/goldens/survival.R from the R twin's survival_plot() at the
+# commit of change set CS37: each clinical_trial arm's lower and upper limits
+# at months 6, 12, 18, 24 and 30, which equal those of survival::survfit() with
+# the same conf.type and conf.int. R_KM_ENDS holds the 95% limits at times 0 to
+# 5 of a curve censored at time 1, before any event, whose last event, at time
+# 5, leaves nobody at risk.
+KM_TIMES = [6.0, 12.0, 18.0, 24.0, 30.0]
+R_KM_LIMITS = {
+    ("log-log", 0.95): {
+        "placebo": (
+            [0.7712299729, 0.5648376169, 0.4170688241, 0.3687404156, 0.2716541896],
+            [0.8935884265, 0.7226179279, 0.5866872996, 0.5414665877, 0.4514396441],
+        ),
+        "treatment": (
+            [0.8717106492, 0.7987283335, 0.7114414049, 0.6775615358, 0.6166316205],
+            [0.9566967907, 0.9072284414, 0.8408796632, 0.8148522342, 0.7687534135],
+        ),
+    },
+    ("log", 0.9): {
+        "placebo": (
+            [0.7937529656, 0.5869636374, 0.4383966022, 0.3898618524, 0.2925706683],
+            [0.8949990665, 0.7198060887, 0.5820773897, 0.5364957312, 0.4461512829],
+        ),
+        "treatment": (
+            [0.8913757114, 0.8188612253, 0.7321763835, 0.6987820007, 0.6391031526],
+            [0.9598926570, 0.9084643735, 0.8402275341, 0.8136662412, 0.7668458193],
+        ),
+    },
+    ("plain", 0.9): {
+        "placebo": (
+            [0.7922644790, 0.5836938305, 0.4335537752, 0.3843328059, 0.2850668510],
+            [0.8934498068, 0.7163061695, 0.5767545933, 0.5303457596, 0.4375140207],
+        ),
+        "treatment": (
+            [0.8907493543, 0.8177185485, 0.7303605740, 0.6966526324, 0.6362837875],
+            [0.9592506457, 0.9072814515, 0.8383264659, 0.8114260446, 0.7638498928],
+        ),
+    },
+}
+R_KM_ENDS = {
+    "log-log": (
+        [1.0, 1.0, 0.1279469176, 0.1279469176, 0.0109711216, 0.0109711216],
+        [1.0, 1.0, 0.9605486423, 0.9605486423, 0.8080010725, 0.8080010725],
+    ),
+    "log": (
+        [1.0, 1.0, 0.4259322685, 0.4259322685, 0.0839296381, 0.0839296381],
+        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    ),
+    "plain": (
+        [1.0, 1.0, 0.3256553497, 0.3256553497, 0.0, 0.0],
+        [1.0, 1.0, 1.0, 1.0, 0.9363552074, 0.9363552074],
+    ),
+}
+
+
+def _in_force(curve, times, column):
+    """The value of ``column`` that a step curve holds at each of ``times``."""
+    curve = curve.sort_values("time", kind="stable")
+    i = np.searchsorted(curve["time"].to_numpy(), np.asarray(times), side="right") - 1
+    return curve[column].to_numpy()[i]
+
+
+def _layers(p, geom):
+    """The plot's layers drawn with ``geom``."""
+    return [layer for layer in p.layers if isinstance(layer.geom, geom)]
+
+
+@pytest.mark.parametrize(("conf_type", "conf_level"), list(R_KM_LIMITS))
+def test_survival_limits_match_the_r_twin(conf_type, conf_level):
+    pytest.importorskip("lifelines")
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                         conf_level=conf_level, conf_type=conf_type, logrank=False)
+    for arm, (lower, upper) in R_KM_LIMITS[(conf_type, conf_level)].items():
+        curve = p.data[p.data["group"] == arm]
+        np.testing.assert_allclose(_in_force(curve, KM_TIMES, "lower"), lower,
+                                   rtol=0, atol=1e-6)
+        np.testing.assert_allclose(_in_force(curve, KM_TIMES, "upper"), upper,
+                                   rtol=0, atol=1e-6)
+
+
+def test_survival_limits_default_to_log_log_at_95_percent():
+    pytest.importorskip("lifelines")
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=False)
+    for arm, (lower, upper) in R_KM_LIMITS[("log-log", 0.95)].items():
+        curve = p.data[p.data["group"] == arm]
+        np.testing.assert_allclose(_in_force(curve, KM_TIMES, "lower"), lower,
+                                   rtol=0, atol=1e-6)
+        np.testing.assert_allclose(_in_force(curve, KM_TIMES, "upper"), upper,
+                                   rtol=0, atol=1e-6)
+
+
+def test_survival_log_log_limits_equal_lifelines_at_event_times():
+    # lifelines' own interval is the exponential Greenwood formula, which R's
+    # survfit calls "log-log", so the two must agree wherever 0 < S < 1.
+    lifelines = pytest.importorskip("lifelines")
+    for conf_level in (0.95, 0.8):
+        p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                             conf_level=conf_level, logrank=False)
+        for arm in ("placebo", "treatment"):
+            rows = (CT["arm"] == arm).to_numpy()
+            kmf = lifelines.KaplanMeierFitter(alpha=1 - conf_level).fit(
+                CT["time"][rows], CT["event"][rows])
+            surv = kmf.survival_function_.iloc[:, 0]
+            events = kmf.event_table.index[kmf.event_table["observed"] > 0]
+            events = events[((surv[events] > 0) & (surv[events] < 1)).to_numpy()]
+            ci = kmf.confidence_interval_.loc[events]
+            curve = p.data[p.data["group"] == arm]
+            np.testing.assert_allclose(_in_force(curve, events, "lower"),
+                                       ci.iloc[:, 0], rtol=0, atol=1e-12)
+            np.testing.assert_allclose(_in_force(curve, events, "upper"),
+                                       ci.iloc[:, 1], rtol=0, atol=1e-12)
+
+
+@pytest.mark.parametrize("conf_type", ["log-log", "log", "plain"])
+def test_survival_limits_hold_at_both_ends_of_a_curve(conf_type):
+    # Before the first event, survival is 1 and the log-log formula is 0/0, so
+    # the limits are 1. After the last event, nobody is at risk, survival is 0
+    # and every formula breaks down, so the limits hold the last step's. Both
+    # twins draw the same values.
+    pytest.importorskip("lifelines")
+    t = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    e = np.array([0, 1, 0, 1, 1])
+    p = dp.survival_plot(t, e, conf_type=conf_type)
+    assert not p.data[["lower", "upper"]].isna().any().any()
+    lower, upper = R_KM_ENDS[conf_type]
+    times = np.arange(6.0)
+    np.testing.assert_allclose(_in_force(p.data, times, "lower"), lower,
+                               rtol=0, atol=1e-9)
+    np.testing.assert_allclose(_in_force(p.data, times, "upper"), upper,
+                               rtol=0, atol=1e-9)
+
+
+def test_survival_band_is_drawn_as_dotted_steps_and_none_omits_it():
+    pytest.importorskip("lifelines")
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=False)
+    band = [layer for layer in _layers(p, geom_step)
+            if layer.mapping.get("y") in ("lower", "upper")]
+    assert sorted(layer.mapping["y"] for layer in band) == ["lower", "upper"]
+    for layer in band:
+        assert layer.geom.aes_params["linetype"] == "dotted"
+        assert layer.geom.aes_params["size"] == 0.4
+    single = dp.survival_plot(CT["time"], CT["event"])
+    assert len(_layers(single, geom_step)) == 3
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PlotnineWarning)
+        for q in (p, single, dp.survival_plot(CT["time"], CT["event"],
+                                               group=CT["arm"], risk_table=True,
+                                               logrank=False)):
+            _builds(q)
+
+    none = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                            conf_level=None, logrank=False)
+    assert len(_layers(none, geom_step)) == 1
+    assert not {"lower", "upper"} & set(none.data.columns)
+
+
+def test_survival_censor_marks_one_per_censored_observation():
+    pytest.importorskip("lifelines")
+    p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=False)
+    (marks,) = _layers(p, geom_point)
+    assert marks.geom.aes_params["shape"] == "+"
+    data = marks.geom.data
+    assert len(data) == int((CT["event"] == 0).sum())
+    for arm in ("placebo", "treatment"):
+        rows = data[data["group"] == arm]
+        censored = CT.loc[(CT["arm"] == arm) & (CT["event"] == 0), "time"]
+        np.testing.assert_array_equal(np.sort(rows["time"]), np.sort(censored))
+        # Each mark sits on the curve, at the survival current at its time.
+        curve = p.data[p.data["group"] == arm]
+        np.testing.assert_allclose(rows["surv"], _in_force(curve, rows["time"], "surv"))
+
+    off = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"],
+                           censor_marks=False, logrank=False)
+    assert not _layers(off, geom_point)
+
+
+def test_survival_logrank_default_warns_that_it_will_follow_the_r_twin():
+    pytest.importorskip("lifelines")
+    with pytest.warns(FutureWarning, match="logrank=False"):
+        p = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"])
+    assert p.labels.subtitle.startswith("Log-rank")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        on = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=True)
+        off = dp.survival_plot(CT["time"], CT["event"], group=CT["arm"], logrank=False)
+        # One curve has no group difference to test, so its default is silent.
+        single = dp.survival_plot(CT["time"], CT["event"])
+    assert on.labels.subtitle == p.labels.subtitle
+    assert off.labels.subtitle is None
+    assert single.labels.subtitle is None
+    # The test's result is attached whenever there are groups.
+    assert on.logrank_p is not None
+    assert off.logrank_p == on.logrank_p
+
+
+def test_survival_conf_type_must_be_one_of_three():
+    pytest.importorskip("lifelines")
+    with pytest.raises(ValueError, match=re.escape(
+            "`conf_type` must be one of 'log-log', 'log' or 'plain'.")):
+        dp.survival_plot(CT["time"], CT["event"], conf_type="logit")
+
+
+@pytest.mark.parametrize("conf_level", [95, 1.5, 1, 0, -0.2, np.inf, np.nan])
+def test_survival_conf_level_must_lie_strictly_between_0_and_1(conf_level):
+    # A level such as 95, meant as a percentage, has no normal quantile, and
+    # the band would be drawn at 1 throughout.
+    pytest.importorskip("lifelines")
+    with pytest.raises(ValueError, match="strictly between 0 and 1"):
+        dp.survival_plot(CT["time"], CT["event"], conf_level=conf_level)

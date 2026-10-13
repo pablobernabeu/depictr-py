@@ -269,10 +269,11 @@ try:
             rt = st.checkbox("Number-at-risk table", value=True)
             gv = None if g is None else data[g]
             show(dp.survival_plot(data[time], data[event], group=gv,
-                                  risk_table=rt, legend_inside=legend_in),
+                                  risk_table=rt, legend_inside=legend_in,
+                                  logrank=True),
                  f"dp.survival_plot({data_call}[{time!r}], "
                  f"{data_call}[{event!r}], group=..., risk_table={rt}, "
-                 f"legend_inside={legend_in})",
+                 f"legend_inside={legend_in}, logrank=True)",
                  deficiency)
     elif family == "Time series":
         # None of the datasets offered here is temporal (monthly_sales, which

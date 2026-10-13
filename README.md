@@ -156,8 +156,8 @@ dp.coefficient_plot(fit)
 ct = dp.clinical_trial()
 dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 
-# Survival: Kaplan-Meier with a log-rank test, in one call
-dp.survival_plot(ct["time"], ct["event"], group=ct["arm"])
+# Survival: Kaplan-Meier with confidence limits and a log-rank test, in one call
+dp.survival_plot(ct["time"], ct["event"], group=ct["arm"], logrank=True)
 ```
 
 Every function returns a plotnine object, so the usual grammar-of-graphics
@@ -215,9 +215,9 @@ frequentist-over-Bayesian overlay and the survival number-at-risk table.
 
 A few known limitations remain. Compositions in plotnine have no figure-level
 title, so a grid carries its titles on each panel (the survival and estimation
-composites place the title on their top panel). `survival_plot` does not yet
-draw the confidence band or censor marks the R package draws, though its
-`conf_level` argument is accepted for future use. `power_curve_plot` reads the
+composites place the title on their top panel). `survival_plot` prints the
+log-rank test by default, where the R package leaves it out, and warns that
+its default will change to match. `power_curve_plot` reads the
 same tables as the R function, pilotr's included, but it has no `x_lab`,
 `x_breaks` or `x_expand`, and there is no simr object to read. Each
 classification curve shows a single model. The R package's ROC,

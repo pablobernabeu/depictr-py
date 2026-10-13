@@ -88,12 +88,12 @@ dp.tidy_estimates(model)
 ## Survival and classification
 
 These families delegate to lifelines and scikit-learn. Kaplan-Meier curves with
-a log-rank test and a number-at-risk table are one call:
+confidence limits, a log-rank test and a number-at-risk table are one call:
 
 ```python
 ct = dp.clinical_trial()
 dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
-                 risk_table=True, legend_inside=True)
+                 risk_table=True, legend_inside=True, logrank=True)
 dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 ```
 

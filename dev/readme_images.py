@@ -37,7 +37,7 @@ def main() -> None:
     ct = dp.clinical_trial()
     survival = dp.survival_plot(
         ct["time"], ct["event"], group=ct["arm"], risk_table=True,
-        legend_inside=True, title="Survival by treatment arm",
+        legend_inside=True, logrank=True, title="Survival by treatment arm",
     )
     survival.save(OUT / "readme-survival.png", width=8, height=5, dpi=150,
                   verbose=False)

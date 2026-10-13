@@ -2,9 +2,11 @@
 
 The estimate and the log-rank test come from ``lifelines``; the figure is drawn
 under the depictr theme as a single call -- the survminer/ggsurvfit pattern that
-Python otherwise leaves to manual assembly. ``risk_table=True`` draws a
-number-at-risk table beneath the curves, and the counts are also returned on
-the plot (``plot.at_risk``) for composing a table of your own.
+Python otherwise leaves to manual assembly. The confidence limits and the
+censor marks are drawn as the R twin draws them, and the limits are computed
+with its formulas. ``risk_table=True`` draws a number-at-risk table beneath the
+curves, and the counts are also returned on the plot (``plot.at_risk``) for
+composing a table of your own.
 
 Install the optional dependency with ``pip install depictr[survival]``.
 """
@@ -19,6 +21,7 @@ from plotnine import (
     aes,
     annotate,
     geom_hline,
+    geom_point,
     geom_step,
     geom_text,
     ggplot,
@@ -33,6 +36,63 @@ from .theme import scale_colour_depictr, theme_depictr
 _CODING_MESSAGE = (
     "`event` must use the 0/1 (0 = censored) or 1/2 (1 = censored) coding."
 )
+_CONF_TYPES = ("log-log", "log", "plain")
+
+
+def _km_limits(surv, se_log, conf_level, conf_type):
+    """Pointwise confidence limits for a survival curve, as the R twin draws them.
+
+    ``se_log`` is the standard error of log S, the square root of Greenwood's
+    sum. The formulas are those of R's ``survival::survfit()``. On the log-log
+    scale, the limits are ``S ** exp(-z se / log S)`` and
+    ``S ** exp(z se / log S)``, the interval lifelines computes. On the log
+    scale, they are ``S exp(-z se)`` and ``S exp(z se)``, with the upper limit
+    capped at 1, and untransformed they are ``S - z S se`` and ``S + z S se``,
+    kept between 0 and 1. Where S is 1, the log-log formula is 0/0 and the
+    limits are 1, as survfit gives. Where S is 0, every formula breaks down,
+    and the limits keep the previous row's values, as in the R twin. The
+    lifelines interval is 0 at both ends there, and survfit gives missing
+    values, which would end a band drawn as steps at the previous event.
+    """
+    # Imported here, as elsewhere in the package, so that importing depictr
+    # does not load scipy.stats.
+    from scipy.stats import norm
+
+    surv = np.asarray(surv, dtype=float)
+    se_log = np.asarray(se_log, dtype=float)
+    z = norm.ppf(1 - (1 - conf_level) / 2)
+    lower = np.full(surv.shape, np.nan)
+    upper = np.full(surv.shape, np.nan)
+    inside = (surv > 0) & (surv < 1) & ~np.isnan(se_log)
+    s = surv[inside]
+    w = z * se_log[inside]
+    if conf_type == "log-log":
+        lower[inside] = s ** np.exp(-w / np.log(s))
+        upper[inside] = s ** np.exp(w / np.log(s))
+    elif conf_type == "log":
+        lower[inside] = s * np.exp(-w)
+        upper[inside] = np.minimum(1.0, s * np.exp(w))
+    else:
+        lower[inside] = np.maximum(0.0, s - w * s)
+        upper[inside] = np.minimum(1.0, s + w * s)
+    top = surv >= 1
+    lower[top] = 1.0
+    upper[top] = 1.0
+    return (pd.Series(lower).ffill().fillna(1.0).to_numpy(),
+            pd.Series(upper).ffill().fillna(1.0).to_numpy())
+
+
+def _greenwood_se(table):
+    """The standard error of log S at each row of a lifelines event table.
+
+    The square root of Greenwood's sum of d / (n (n - d)) over the event times
+    so far. It is infinite from a step to zero on, where every observation
+    still at risk has the event.
+    """
+    d = table["observed"].to_numpy(dtype=float)
+    n = table["at_risk"].to_numpy(dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.sqrt(np.cumsum(d / (n * (n - d))))
 
 
 def _nice_breaks(tmax, n=5):
@@ -116,8 +176,9 @@ def _apa_p(p):
 
 def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
                   legend_inside=False, title=None, x_lab="Time",
-                  y_lab="Survival probability"):
-    """Kaplan-Meier survival curves, optionally by group, with a log-rank test.
+                  y_lab="Survival probability", censor_marks=True, logrank=None,
+                  conf_type="log-log"):
+    """Kaplan-Meier survival curves, optionally by group, with confidence limits.
 
     Parameters
     ----------
@@ -136,9 +197,10 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         Group label per observation; one curve per group, plus a log-rank test
         of the difference. Observations with a missing group are dropped with a
         warning, since they belong to no arm.
-    conf_level : float
-        Accepted for future use; the Python twin does not yet draw the
-        confidence band or censor marks the R package draws.
+    conf_level : float or None
+        Confidence level of the pointwise limits drawn as dotted steps around
+        each curve, as the R twin draws them, strictly between 0 and 1.
+        ``None`` leaves them out.
     risk_table : bool
         Add a number-at-risk table as a thin strip beneath the curves.
     legend_inside : bool
@@ -149,6 +211,27 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     title : str, optional
     x_lab, y_lab : str
         Axis labels.
+    censor_marks : bool
+        Mark each censored observation with a "+" at the survival level
+        current at its time.
+    logrank : bool or None
+        Whether to print the log-rank test of the group difference as a
+        subtitle when there are groups. ``None``, the default, prints it and
+        raises a ``FutureWarning``, since a future release will make ``False``
+        the default, as in the R twin. The statistic and p-value are attached
+        to the plot whenever there are groups, whatever this argument says.
+    conf_type : {"log-log", "log", "plain"}
+        The scale on which the limits are built from se, the Greenwood
+        standard error of log S. ``"log-log"``, the default, gives
+        ``S ** exp(±z * se / log S)``, the interval lifelines computes. These
+        limits stay between 0 and 1, and in small samples they cover better
+        than the untransformed limits ``S ± z * S * se`` (Borgan & Liestøl,
+        1990). ``"plain"`` draws the untransformed limits, clipped to that
+        range, and ``"log"`` draws ``S * exp(±z * se)``, capped at 1, as R's
+        ``survival::survfit()`` does by default. The limits are 1 while the
+        estimate is 1, and where a curve falls to 0, they keep the values of
+        the step before. The formulas and these two rules are the R twin's, so
+        the twins draw the same limits.
 
     Returns
     -------
@@ -156,16 +239,38 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts at
         round times from 0 to at most the longest follow-up, which are the
         time-axis breaks when ``risk_table=True``) and, when grouped,
-        ``.logrank_p`` and ``.logrank_stat``.
+        ``.logrank_p`` and ``.logrank_stat``. Its data hold one row per time
+        in each group's event table, with the columns ``time``, ``surv`` and
+        ``group`` and, unless ``conf_level`` is ``None``, ``lower`` and
+        ``upper``.
+
+    References
+    ----------
+    Borgan, Ø., & Liestøl, K. (1990). A note on confidence intervals and bands
+    for the survival function based on transformations. Scandinavian Journal
+    of Statistics, 17(1), 35-41.
 
     Examples
     --------
     >>> import depictr as dp
     >>> ct = dp.clinical_trial()
-    >>> p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"])
+    >>> p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"], logrank=True)
     """
     _require_lifelines()
     from lifelines import KaplanMeierFitter
+
+    if conf_type not in _CONF_TYPES:
+        raise ValueError(
+            "`conf_type` must be one of 'log-log', 'log' or 'plain'."
+        )
+    # A level outside (0, 1), such as 95 meant as a percentage, has no normal
+    # quantile, and _km_limits() would carry the origin's limits of 1 through
+    # the whole curve.
+    if conf_level is not None and not 0 < conf_level < 1:
+        raise ValueError(
+            "`conf_level` must lie strictly between 0 and 1, or be None to "
+            "leave the limits out."
+        )
 
     time = np.asarray(time, dtype=float)
     # A missing or infinite follow-up time has no place on a time axis, and it
@@ -222,31 +327,58 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     else:
         levels = list(pd.unique(groups))
 
-    curves, at_risk_rows = [], []
+    band = conf_level is not None
+    curves, censors, at_risk_rows = [], [], []
     breaks = _nice_breaks(float(np.max(time)))
     for lvl in levels:
         mask = groups == lvl
         kmf = KaplanMeierFitter()
         kmf.fit(time[mask], event[mask], label=str(lvl))
+        # The survival function is reported at every time of the event table,
+        # censoring times included, so the two line up row by row.
+        table = kmf.event_table
         sf = kmf.survival_function_.reset_index()
         sf.columns = ["time", "surv"]
+        if band:
+            sf["lower"], sf["upper"] = _km_limits(
+                sf["surv"], _greenwood_se(table), conf_level, conf_type)
         sf["group"] = str(lvl)
         curves.append(sf)
+        # One mark per censored observation, at the survival level the curve
+        # holds at its time, as the R twin draws them.
+        n_censored = table["censored"].to_numpy(dtype=int)
+        censors.append(pd.DataFrame({
+            "time": np.repeat(sf["time"].to_numpy(), n_censored),
+            "surv": np.repeat(sf["surv"].to_numpy(), n_censored),
+            "group": str(lvl),
+        }))
         for b in breaks:
             at_risk_rows.append({"group": str(lvl), "time": float(b),
                                  "n_at_risk": int(np.sum(time[mask] >= b))})
+    order = [str(lvl) for lvl in levels]
     curve = pd.concat(curves, ignore_index=True)
-    curve["group"] = pd.Categorical(curve["group"],
-                                    categories=[str(lvl) for lvl in levels],
-                                    ordered=True)
+    curve["group"] = pd.Categorical(curve["group"], categories=order, ordered=True)
+    censor = pd.concat(censors, ignore_index=True)
+    censor["group"] = pd.Categorical(censor["group"], categories=order,
+                                     ordered=True)
 
     multi = len(levels) > 1
     if multi:
-        mapping = aes("time", "surv", color="group")
-        p = ggplot(curve, mapping) + geom_step(size=0.9) + scale_colour_depictr()
+        p = ggplot(curve, aes("time", "surv", color="group"))
+        colour = {}
     else:
         from .palette import BRAND
-        p = ggplot(curve, aes("time", "surv")) + geom_step(size=0.9, color=BRAND)
+        p = ggplot(curve, aes("time", "surv"))
+        colour = {"color": BRAND}
+    if band:
+        p = (p
+             + geom_step(aes(y="lower"), linetype="dotted", size=0.4, **colour)
+             + geom_step(aes(y="upper"), linetype="dotted", size=0.4, **colour))
+    p = p + geom_step(size=0.9, **colour)
+    if censor_marks and len(censor):
+        p = p + geom_point(data=censor, shape="+", size=2, **colour)
+    if multi:
+        p = p + scale_colour_depictr()
 
     subtitle = None
     logrank_p = logrank_stat = None
@@ -254,8 +386,18 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         from lifelines.statistics import multivariate_logrank_test
         res = multivariate_logrank_test(time, groups, event)
         logrank_p, logrank_stat = res.p_value, res.test_statistic
-        subtitle = (f"Log-rank χ²({len(levels) - 1}) = {logrank_stat:.1f}, "
-                    f"$p$ {_apa_p(logrank_p)}")
+        if logrank is None:
+            warnings.warn(
+                "survival_plot() adds the log-rank test as a subtitle when "
+                "`logrank` is not given. A future release will make "
+                "logrank=False the default, as in the R package, so pass "
+                "logrank=True to keep the subtitle or logrank=False to leave "
+                "it out.",
+                FutureWarning, stacklevel=2,
+            )
+        if logrank is None or logrank:
+            subtitle = (f"Log-rank χ²({len(levels) - 1}) = {logrank_stat:.1f}, "
+                        f"$p$ {_apa_p(logrank_p)}")
 
     at_risk_df = pd.DataFrame(at_risk_rows)
     tmax = float(np.max(time))
@@ -278,7 +420,6 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     # panel as the curves so it shares the time axis. The group names label the
     # rows on the y-axis -- so the curves keep the full width with no left-hand
     # gutter -- and the counts are coloured to match the curves.
-    order = [str(lvl) for lvl in levels]
     row_h, header = 0.05, 0.05
     y_of = {g: -(header + row_h * (i + 0.5)) for i, g in enumerate(order)}
     tbl = at_risk_df.copy()

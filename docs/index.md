@@ -56,7 +56,7 @@ thumbnails = [
     ("gallery/multivariate-and-time-series/", "Multivariate and time series",
      dp.pca_plot(wb, group="region")),
     ("gallery/classification-and-survival/", "Classification and survival",
-     dp.survival_plot(ct["time"], ct["event"], group=ct["arm"])),
+     dp.survival_plot(ct["time"], ct["event"], group=ct["arm"], logrank=True)),
 ]
 
 cards = "".join(

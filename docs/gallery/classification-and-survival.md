@@ -102,12 +102,14 @@ print(show(p, width=6))
 
 ## Survival
 
-Kaplan-Meier curves with a log-rank test and a number-at-risk table. The legend
-sits in the empty top-right the descending curves leave behind.
+Kaplan-Meier curves with a log-rank test and a number-at-risk table. The dotted
+steps are 95% confidence limits, built on the log-log scale as in the R
+package, and each + marks a censored patient. The legend sits in the empty
+top-right the descending curves leave behind.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
-                     risk_table=True, legend_inside=True,
+                     risk_table=True, legend_inside=True, logrank=True,
                      title="Survival by arm")
 print(show(p, width=8, height=6))
 ```
