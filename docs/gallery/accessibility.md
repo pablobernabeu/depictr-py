@@ -138,9 +138,23 @@ column = dp.check_figure(p, width_cm=8.9)
 print(table(column[column["check"] == "text_size"]))
 ```
 
+A figure saved at the size it will be printed is drawn at that size, so give
+the saved width as both `width_cm` and `render_width_cm`, or leave both at
+their defaults. Text drawn inside the panel, such as an annotation, a label or
+a cell value, has a row of its own, `annotation_text_size`, held to the same
+floor. That floor defaults to 6 pt, which is lenient. As their guidelines stood
+on 30 September 2026, [PLOS](https://journals.plos.org/plosone/s/figures) and
+[APA Style](https://apastyle.apa.org/style-grammar-guidelines/tables-figures/figures)
+asked for at least 8 pt,
+[Elsevier](https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-sizing)
+for 7 pt and
+[Nature](https://www.nature.com/documents/nature-final-artwork.pdf) for 5 to
+7 pt.
+
 A figure built with two well-separated colours drawn opaque, a redundant shape
-and no shrinking clears every row, so the audit returns a pass as readily as a
-failure.
+and no shrinking clears every row it can be held to, so the audit returns a
+pass as readily as a failure. It draws no text inside the panel, so that row
+is not applicable.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 from plotnine import aes, geom_point, ggplot, scale_colour_manual
@@ -153,6 +167,19 @@ mended = (ggplot(cy, aes("rainfall", "yield", colour="treatment",
           + dp.theme_depictr())
 print(table(dp.check_figure(mended)[["check", "measured", "threshold",
                                      "verdict"]]))
+```
+
+The audit does not measure a continuous colour or fill scale, such as a
+heatmap's: its colour rows abstain and say why, while the cell values are
+measured as text inside the panel. A ramp is read by its lightness, so prefer
+one whose lightness runs evenly from end to end, such as viridis or depictr's
+sequential and diverging ramps, over a rainbow
+([Crameri, Shephard and Heron, 2020](https://doi.org/10.1038/s41467-020-19160-7)).
+
+```python exec="1" html="1" source="material-block" session="a11y"
+heatmap = dp.check_figure(dp.correlation_heatmap(dp.wellbeing_survey()))
+print(table(heatmap[heatmap["check"].isin(
+    ["colour_separability", "text_size", "annotation_text_size"])]))
 ```
 
 ## Where the guarantee stops a second time: greyscale

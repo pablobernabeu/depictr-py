@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is how pilotr returns a power curve in Python, and recognises `n_subject` and
   `<power>_lo`/`<power>_hi` columns, so pilotr's output plots as it is, with
   its band.
+- `check_figure()` gains an `annotation_text_size` row for the text drawn
+  inside the panel: annotations, the labels of layers such as `geom_text()` and
+  `geom_label()`, and the cell values and labels of depictr's own plots, the
+  number-at-risk table of `survival_plot()` among them. The text-size check
+  never saw that text, so a 5.7 pt annotation passed a 6 pt floor while the
+  report gave 8.80 pt as the smallest text. The new row holds it to the same
+  floor at its printed size. It is appended last, so the report now has ten
+  rows. The contrast of that text is not measured. When all of a figure's text
+  is inside the panel, the two rows for the text around it no longer say that
+  the figure draws no text.
 
 ### Changed
 
@@ -92,6 +102,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bin under scikit-learn and now raises `ValueError`, as a score outside [0, 1]
   does. An outcome coded -1/1, which scikit-learn accepted, now raises it too,
   as in the R twin.
+- The colour rows of a figure coloured by a continuous scale, such as a
+  heatmap, said that nothing was distinguished by colour. They now say that
+  colour is a continuous scale, which these checks do not audit, and the
+  documentation recommends a perceptually ordered map such as viridis for one.
+  The docstring of `check_figure()` and the README now also give the default
+  palette's contrast limit, which the accessibility page already stated: four
+  of its eight colours fall below the 3:1 that WCAG asks of a graphical object
+  against white, the orange from the second group on. The documentation shows
+  how to audit a figure saved at its final width, with that width given as
+  both widths or neither, and the docstring gives four publishers' text floors,
+  dated and linked, where it called 6 pt a common publisher floor.
 
 ### Deprecated
 

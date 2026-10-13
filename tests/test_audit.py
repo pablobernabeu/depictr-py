@@ -7,20 +7,25 @@ import pandas as pd
 import pytest
 from plotnine import (
     aes,
+    annotate,
     element_blank,
     element_rect,
     element_text,
     facet_wrap,
+    geom_bin_2d,
     geom_col,
     geom_density,
     geom_hline,
     geom_line,
     geom_point,
+    geom_text,
     ggplot,
     labs,
+    scale_colour_gradient,
     scale_colour_identity,
     scale_colour_manual,
     scale_fill_manual,
+    scale_size_identity,
     theme,
     theme_dark,
     theme_void,
@@ -37,8 +42,12 @@ CHECKS = [
     "colour_separability", "colour_separability_protan",
     "colour_separability_deutan", "colour_separability_tritan",
     "greyscale_separability", "text_size", "text_contrast",
-    "geometry_contrast", "redundant_encoding",
+    "geometry_contrast", "redundant_encoding", "annotation_text_size",
 ]
+
+# Every colour row, which abstains with one shared detail when nothing discrete
+# encodes.
+COLOUR_CHECKS = CHECKS[:5] + ["geometry_contrast", "redundant_encoding"]
 
 
 # Two reference figures with known answers. The good one is separable under
@@ -153,10 +162,24 @@ def split_figure():
             + dp.theme_depictr())
 
 
+def annotated_figure(size=5.7):
+    # The good figure with a note drawn inside the panel at 5.7 pt. plotnine
+    # takes a layer's text size in points. The R suite draws the same note at
+    # 5.7 / .pt, since ggplot2 takes it in millimetres.
+    return good_figure() + annotate("text", x=800, y=5, label="note", size=size)
+
+
+def gradient_figure():
+    # Points coloured by a continuous variable, on the default gradient.
+    return (ggplot(CY, aes("rainfall", "yield", colour="yield")) + geom_point()
+            + dp.theme_depictr())
+
+
 def encoding_rows(report):
     # The rows that depend on what a figure tells apart by colour, which is
-    # every row but the two text rows.
-    rows = report[~report["check"].isin(["text_size", "text_contrast"])]
+    # every row but the three text rows.
+    rows = report[~report["check"].isin(
+        ["text_size", "text_contrast", "annotation_text_size"])]
     return rows.reset_index(drop=True)
 
 
@@ -169,6 +192,7 @@ def test_report_has_the_standard_table_shape():
     assert report.columns.tolist() == [
         "check", "measured", "threshold", "verdict", "detail"]
     assert report["check"].tolist() == CHECKS
+    assert len(report) == 10
     assert set(report["verdict"]) <= {"pass", "fail", "not applicable"}
     assert report["detail"].map(bool).all()
 
@@ -176,9 +200,12 @@ def test_report_has_the_standard_table_shape():
 # --- the two verdicts the audit must be capable of ---------------------------
 
 
-def test_a_deliberately_good_figure_passes_every_check():
+def test_a_deliberately_good_figure_passes_every_check_that_applies():
     report = dp.check_figure(good_figure())
-    assert set(report["verdict"]) == {"pass"}, report.to_string()
+    # It draws no text inside the panel, so that row has nothing to measure.
+    measured = report[report["check"] != "annotation_text_size"]
+    assert set(measured["verdict"]) == {"pass"}, report.to_string()
+    assert verdict_for(report, "annotation_text_size") == "not applicable"
 
 
 def test_a_deliberately_bad_figure_fails_the_checks_it_should():
@@ -202,18 +229,23 @@ def test_a_deliberately_bad_figure_fails_the_checks_it_should():
 
 def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # Pinned so the two engines cannot drift apart unnoticed. Each figure below
-    # is constructible in both, and the R suite pins the same vectors.
-    assert dp.check_figure(good_figure())["measured"].tolist() == [
-        111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1]
-    assert dp.check_figure(bad_figure())["measured"].tolist() == [
-        116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0]
+    # is constructible in both, and the R suite pins the same vectors. None of
+    # them draws text inside the panel, so each ends in NaN, which
+    # assert_array_equal, unlike ==, treats as equal to itself.
+    np.testing.assert_array_equal(
+        dp.check_figure(good_figure())["measured"],
+        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, np.nan])
+    np.testing.assert_array_equal(
+        dp.check_figure(bad_figure())["measured"],
+        [116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0, np.nan])
 
     eight = pd.DataFrame({"g": list("abcdefgh"), "x": range(8), "y": range(8)})
     p = (ggplot(eight, aes("x", "y", colour="g")) + geom_point()
          + dp.scale_colour_depictr() + dp.theme_depictr())
     report = dp.check_figure(p)
-    assert report["measured"].tolist() == [
-        33.43, 18.15, 7.4, 16.18, 0.79, 8.8, 8.45, 1.32, 0]
+    np.testing.assert_array_equal(
+        report["measured"],
+        [33.43, 18.15, 7.4, 16.18, 0.79, 8.8, 8.45, 1.32, 0, np.nan])
     # The detail strings are part of the contract too, since they carry the
     # colours the numbers came from.
     assert report["detail"].tolist() == [
@@ -226,6 +258,21 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         "Lowest-contrast text #4d4d4d on #ffffff at 8.80 pt.",
         "Lowest-contrast colour #f0e442 on #ffffff.",
         "Colour alone distinguishes the groups.",
+        "The figure draws no text inside the panel.",
+    ]
+
+    # A note drawn inside the panel at 5.7 pt, below the 6 pt floor. The
+    # text-size check never saw it, so the report used to read 8.80 pt as the
+    # smallest text.
+    annotated = dp.check_figure(annotated_figure())
+    np.testing.assert_array_equal(
+        annotated["measured"],
+        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, 5.7])
+    assert [detail_for(annotated, "text_size"),
+            detail_for(annotated, "annotation_text_size")] == [
+        "Smallest text 8.80 pt, drawn at 17.78 cm and printed at 17.78 cm.",
+        "Smallest in-panel text 5.70 pt, drawn at 17.78 cm and printed at "
+        "17.78 cm.",
     ]
 
     # A dark plot background behind a blank panel: the geometry is measured
@@ -233,8 +280,9 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # invisible axes patch here, which is white, and passed the figure at 3.87.
     dark = dp.check_figure(good_figure()
                            + theme(plot_background=element_rect(fill="#333333")))
-    assert dark["measured"].tolist() == [
-        111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 1.49, 1.77, 1]
+    np.testing.assert_array_equal(
+        dark["measured"],
+        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 1.49, 1.77, 1, np.nan])
     assert (detail_for(dark, "geometry_contrast")
             == "Lowest-contrast colour #005b96 on #333333.")
 
@@ -242,8 +290,9 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # show as #b3cee0 and #f2cfb3. Read at full opacity, the figure passed
     # geometry at 3.87 and greyscale at 16.92.
     bars = dp.check_figure(bars_figure(alpha=0.3))
-    assert bars["measured"].tolist() == [
-        33.44, 27.98, 33.13, 35.37, 4.03, 8.8, 8.45, 1.46, 0]
+    np.testing.assert_array_equal(
+        bars["measured"],
+        [33.44, 27.98, 33.13, 35.37, 4.03, 8.8, 8.45, 1.46, 0, np.nan])
     assert bars["detail"].tolist() == [
         *["Closest pair #b3cee0 and #f2cfb3 of 2 encoding fill colours."] * 4,
         "Closest pair #b3cee0 and #f2cfb3 in CIE lightness.",
@@ -252,13 +301,15 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         "Lowest-contrast colour #d55e00 at alpha 0.30, drawn as #f2cfb3, "
         "on #ffffff.",
         "Colour alone distinguishes the groups.",
+        "The figure draws no text inside the panel.",
     ]
 
     # The good figure's points at alpha 0.7, which the accessibility page used
     # to show as mended. Its vermillion is drawn as #e28e4d, at 2.56:1.
     points = dp.check_figure(points_figure(alpha=0.7))
-    assert points["measured"].tolist() == [
-        83.25, 69.5, 80.89, 85.03, 10.77, 8.8, 8.45, 2.56, 1]
+    np.testing.assert_array_equal(
+        points["measured"],
+        [83.25, 69.5, 80.89, 85.03, 10.77, 8.8, 8.45, 2.56, 1, np.nan])
     assert (detail_for(points, "geometry_contrast")
             == "Lowest-contrast colour #d55e00 at alpha 0.70, drawn as "
                "#e28e4d, on #ffffff.")
@@ -267,13 +318,24 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # mapping colour to a constant. Every colour row used to read "not
     # applicable".
     split = dp.check_figure(split_figure())
-    assert split["measured"].tolist() == [
-        116.25, 35.04, 0.37, 119.38, 6.32, 8.8, 8.45, 4.01, 0]
+    np.testing.assert_array_equal(
+        split["measured"],
+        [116.25, 35.04, 0.37, 119.38, 6.32, 8.8, 8.45, 4.01, 0, np.nan])
     assert [*split["detail"][:5], detail_for(split, "geometry_contrast")] == [
         *["Closest pair #309208 and #d62728 of 2 encoding colours."] * 4,
         "Closest pair #309208 and #d62728 in CIE lightness.",
         "Lowest-contrast colour #309208 on #ffffff.",
     ]
+
+    # A scatter coloured by a continuous variable. Every colour row abstains
+    # and says why, where it used to say that nothing is distinguished by
+    # colour.
+    gradient = dp.check_figure(gradient_figure())
+    np.testing.assert_array_equal(
+        gradient["measured"],
+        [np.nan] * 5 + [8.8, 8.45] + [np.nan] * 3)
+    assert set(gradient.loc[gradient["check"].isin(COLOUR_CHECKS), "detail"]) == {
+        "Colour is a continuous scale, which these checks do not audit."}
 
 
 # --- the measurements themselves ---------------------------------------------
@@ -783,6 +845,65 @@ def test_shape_and_line_type_split_across_layers_count_as_redundant():
             == "Colour alone distinguishes the groups.")
 
 
+# --- text drawn inside the panel ---------------------------------------------
+
+
+def test_text_inside_the_panel_is_held_to_the_size_floor_in_a_row_of_its_own():
+    # A 5.7 pt note fails the 6 pt floor. The theme's text keeps the row it
+    # always had, still 8.80 pt.
+    report = dp.check_figure(annotated_figure())
+    assert measured_for(report, "annotation_text_size") == 5.7
+    assert verdict_for(report, "annotation_text_size") == "fail"
+    assert threshold_for(report, "annotation_text_size") == 6
+    assert measured_for(report, "text_size") == 8.8
+    assert verdict_for(report, "text_size") == "pass"
+    # The note scales with the printed width as the theme's text does.
+    column = dp.check_figure(annotated_figure(), width_cm=8.89)
+    assert measured_for(column, "annotation_text_size") == 2.85
+    assert detail_for(column, "annotation_text_size") == (
+        "Smallest in-panel text 5.70 pt, drawn at 17.78 cm and printed at "
+        "8.89 cm.")
+    narrow = dp.check_figure(annotated_figure(), width_cm=8.89,
+                             render_width_cm=8.89)
+    assert measured_for(narrow, "annotation_text_size") == 5.7
+    # The smallest text across all the panels of a facetted figure: the note is
+    # drawn in both, and a smaller label in the first alone.
+    facetted = dp.check_figure(
+        good_figure() + facet_wrap("treatment")
+        + annotate("text", x=800, y=5, label="note", size=7)
+        + geom_text(aes("rainfall", "yield", label="'one'"),
+                    data=STANDARD.head(1), size=6.5, inherit_aes=False))
+    assert measured_for(facetted, "annotation_text_size") == 6.5
+    # A label's text is measured as text is: the box around it is not.
+    labelled = dp.check_figure(
+        good_figure() + annotate("label", x=800, y=5, label="boxed", size=5))
+    assert measured_for(labelled, "annotation_text_size") == 5
+
+
+def test_a_blank_label_draws_nothing_so_its_size_is_not_measured():
+    # One label is empty and set smaller than the other. matplotlib draws no
+    # text for it, and the R twin leaves it out of its measurement too.
+    labels = pd.DataFrame({"x": [1, 2], "y": [1, 2], "label": ["", "b"],
+                           "size": [4, 9]})
+    report = dp.check_figure(
+        ggplot(labels, aes("x", "y", label="label", size="size"))
+        + geom_text() + scale_size_identity() + dp.theme_depictr())
+    assert measured_for(report, "annotation_text_size") == 9
+
+
+def test_a_figure_whose_only_text_is_inside_the_panel_says_so():
+    # The theme draws no text, so the two rows that measure it abstain, and
+    # they no longer claim that the figure draws no text at all.
+    p = (ggplot(CY.head(3), aes("rainfall", "yield", label="field"))
+         + geom_text(size=8) + theme_void())
+    report = dp.check_figure(p)
+    for check in ("text_size", "text_contrast"):
+        assert verdict_for(report, check) == "not applicable"
+        assert (detail_for(report, check)
+                == "The figure draws no text outside the panel.")
+    assert measured_for(report, "annotation_text_size") == 8
+
+
 # --- what the audit declines to measure --------------------------------------
 
 
@@ -790,22 +911,55 @@ def test_a_continuous_scale_is_not_treated_as_a_set_of_category_codes():
     # A gradient's neighbouring colours are meant to be close, so measuring the
     # distance between them would only ever report that a gradient is a
     # gradient.
-    report = dp.check_figure(dp.correlation_heatmap(WB))
-    for check in ("colour_separability", "greyscale_separability",
-                  "geometry_contrast", "redundant_encoding"):
+    heatmap = dp.correlation_heatmap(WB)
+    report = dp.check_figure(heatmap)
+    for check in COLOUR_CHECKS:
         assert verdict_for(report, check) == "not applicable"
         assert np.isnan(measured_for(report, check))
+        # The detail says why. It used to say that nothing is distinguished
+        # by colour, which is false of a heatmap.
+        assert detail_for(report, check) == (
+            "Colour is a continuous scale, which these checks do not audit.")
     # The heatmap's cell labels are a text layer, so they neither count as
     # encoding colours nor drag the text-size measurement down to their size.
     assert measured_for(report, "text_size") == 8.8
+    # They are measured in the row for text inside the panel instead. The R
+    # twin draws them at another size, so the value is read from this plot's
+    # own text layer and is not pinned across the twins.
+    labels = next(layer for layer in heatmap.layers
+                  if isinstance(layer.geom, geom_text))
+    assert (measured_for(report, "annotation_text_size")
+            == round(float(labels.geom.aes_params["size"]), 2))
+
+
+def test_a_continuous_scale_counts_when_the_figure_draws_from_it():
+    def continuous_detail(plot):
+        report = dp.check_figure(plot)
+        return set(report.loc[report["check"].isin(COLOUR_CHECKS), "detail"])
+
+    # A fill that a stat computes comes from a continuous scale, though no
+    # layer maps it by name. The R suite pins the same two cases.
+    assert continuous_detail(
+        ggplot(CY, aes("rainfall", "yield")) + geom_bin_2d(bins=10)
+        + dp.theme_depictr()) == {
+        "Colour is a continuous scale, which these checks do not audit."}
+    # A continuous scale added to a plot that maps nothing to it draws nothing.
+    # plotnine warns that such a scale has no legend to draw, a warning this
+    # case expects and does not test.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        unused = continuous_detail(
+            ggplot(CY, aes("rainfall", "yield")) + geom_point()
+            + scale_colour_gradient() + dp.theme_depictr())
+    assert unused == {
+        "No two encoding colours: nothing is distinguished by colour."}
 
 
 def test_a_figure_with_no_colour_encoding_abstains_rather_than_passing():
     p = (ggplot(CY, aes("rainfall", "yield")) + geom_point()
          + dp.theme_depictr())
     report = dp.check_figure(p)
-    colour_checks = CHECKS[:5] + ["geometry_contrast", "redundant_encoding"]
-    abstained = report[report["check"].isin(colour_checks)]
+    abstained = report[report["check"].isin(COLOUR_CHECKS)]
     assert set(abstained["verdict"]) == {"not applicable"}
     assert abstained["measured"].isna().all()
     assert set(abstained["detail"]) == {
@@ -850,6 +1004,9 @@ def test_a_figure_that_draws_no_text_says_so():
     assert verdict_for(report, "text_contrast") == "not applicable"
     assert (report.loc[report["check"] == "text_size", "detail"].item()
             == "The figure draws no text.")
+    assert verdict_for(report, "annotation_text_size") == "not applicable"
+    assert (detail_for(report, "annotation_text_size")
+            == "The figure draws no text inside the panel.")
 
 
 # --- degenerate inputs -------------------------------------------------------
@@ -859,7 +1016,7 @@ def test_a_single_row_and_a_zero_variance_grouping_still_audit():
     one = CY.head(1)
     report = dp.check_figure(ggplot(one, aes("rainfall", "yield"))
                              + geom_point() + dp.theme_depictr())
-    assert len(report) == 9
+    assert len(report) == 10
     assert verdict_for(report, "colour_separability") == "not applicable"
 
     # One group means one colour, which is not a pair, so the colour checks
@@ -873,7 +1030,7 @@ def test_a_single_row_and_a_zero_variance_grouping_still_audit():
 
 
 def test_an_empty_plot_audits_without_error():
-    assert len(dp.check_figure(ggplot() + dp.theme_depictr())) == 9
+    assert len(dp.check_figure(ggplot() + dp.theme_depictr())) == 10
 
 
 def test_a_measurement_exactly_on_the_threshold_passes():
@@ -945,5 +1102,9 @@ def test_check_figure_leaves_the_plot_it_was_given_untouched():
     assert not any(hasattr(layer, "data") for layer in p.layers)
     dp.check_figure(p)
     assert not any(hasattr(layer, "data") for layer in p.layers)
-    # And the audit still reads the same figure on a second call.
-    assert set(dp.check_figure(p)["verdict"]) == {"pass"}
+    # And the audit still reads the same figure on a second call: every check
+    # passes but the one for text inside the panel, where it draws none.
+    again = dp.check_figure(p)
+    assert set(again.loc[again["check"] != "annotation_text_size",
+                         "verdict"]) == {"pass"}
+    assert verdict_for(again, "annotation_text_size") == "not applicable"

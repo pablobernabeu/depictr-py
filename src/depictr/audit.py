@@ -57,6 +57,13 @@ _WCAG_OBJECT_CONTRAST = 3.0
 # colour. Shared so the two halves of the sentence cannot drift apart.
 _NO_COLOUR_DETAIL = "No two encoding colours: nothing is distinguished by colour."
 
+# What they say instead when the figure draws its colour or fill from a
+# continuous scale, which they do not audit. A heatmap distinguishes its cells
+# by colour, so the sentence above would be false of it. The R twin carries the
+# same sentence.
+_CONTINUOUS_COLOUR_DETAIL = (
+    "Colour is a continuous scale, which these checks do not audit.")
+
 
 def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
                  min_delta_e: float = 5, min_text_pt: float = 6) -> pd.DataFrame:
@@ -96,25 +103,31 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     colour passed through ``scale_colour_identity()``. The audit cannot tell
     such a colour from decoration, so a colour meant to tell groups apart
     should be mapped, as ``aes(colour="'treated'")`` maps a constant, with
-    ``scale_colour_manual()`` to fix its values. A continuous colour or fill
-    scale is a smooth ramp rather than a set of codes, so it is excluded. The
-    outline colours, across every layer, are compared among themselves, and so
-    are the fill colours, and the row reports the closest pair from either set.
-    An outline is therefore never compared with its own fill, nor a group with
-    itself as another layer draws it.
+    ``scale_colour_manual()`` to fix its values. The outline colours, across
+    every layer, are compared among themselves, and so are the fill colours,
+    and the row reports the closest pair from either set. An outline is
+    therefore never compared with its own fill, nor a group with itself as
+    another layer draws it.
+
+    A continuous colour or fill scale, such as a heatmap's, is a smooth ramp
+    rather than a set of codes, and none of the colour rows audits it. When
+    nothing else in the figure encodes by colour, each of them abstains with a
+    ``detail`` that says so. Whether a ramp reads in order, to a reader with a
+    colour-vision deficiency and in greyscale as well, depends on how evenly
+    its lightness changes, which the audit does not measure. Prefer a
+    perceptually ordered map, such as viridis or depictr's sequential and
+    diverging ramps, over a rainbow (Crameri et al., 2020).
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
     between those same colours, which is what survives printing in black and
     white.
 
-    ``text_size`` is the smallest point size of any text the figure draws, after
-    scaling by ``width_cm / render_width_cm``: a figure drawn seven inches wide
-    and printed in an 8.9 cm column has every point size halved. Text drawn
-    inside the panel, by a layer such as ``geom_text`` or by an annotation, is
-    deliberately left out. It sits on the marks rather than on the background,
-    so there is no one background to measure its contrast against, and the two
-    engines size a layer's text in different units, which would leave the check
-    disagreeing with its R twin on the same figure.
+    ``text_size`` is the smallest point size of the text the theme draws around
+    the panel: axis labels and titles, legends, facet strips, titles and
+    captions. It is scaled by ``width_cm / render_width_cm``, so a figure drawn
+    seven inches wide and printed in an 8.9 cm column has every point size
+    halved. Text drawn inside the panel is measured by
+    ``annotation_text_size``.
 
     ``text_contrast`` is the WCAG 2.2 contrast ratio of the text that falls
     furthest short of its own threshold. Each text is measured against the
@@ -143,7 +156,14 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     alone, the single most common way an otherwise careful figure becomes
     unreadable.
 
-    **A limitation of the default palette.** The eight-colour qualitative
+    ``annotation_text_size`` is the smallest point size of the text drawn
+    inside the panel, scaled as ``text_size`` is and held to the same
+    ``min_text_pt``. That text comes from layers such as ``geom_text`` and
+    ``geom_label``, from annotations, and from depictr's own cell values and
+    labels. Its contrast is not measured, since it sits on the marks rather
+    than on one background.
+
+    **Limitations of the default palette.** The eight-colour qualitative
     palette clears the colour-separability checks comfortably and fails
     ``greyscale_separability``: its orange (``#e69f00``) and sky blue
     (``#56b4e9``) differ by only 0.79 in lightness, so they print as the same
@@ -154,6 +174,30 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     greyscale either, since the bluish green and the vermillion differ by 3.55.
     The threshold has been left where it is rather than moved to let the
     package's own defaults through.
+
+    The palette falls short on contrast as well. Four of its eight colours are
+    below the 3:1 against white that WCAG asks of a graphical object: the
+    orange at 2.25:1, the sky blue at 2.31:1, the grey at 2.85:1 and the yellow
+    at 1.32:1. The orange is the second colour, so a default figure on white
+    whose colour tells two or more groups apart fails ``geometry_contrast``,
+    and drawing its marks translucent lowers the ratio further. Opaque marks,
+    the vermillion (``#d55e00``, at 3.87:1) in the orange's place and a
+    redundant shape clear that row and ``redundant_encoding``, as the first
+    example below shows.
+
+    **Auditing at the printed size.** Text is drawn in points, so the size it
+    prints at depends on the two widths. A figure drawn at the size it will be
+    printed, as :func:`depictr.save_plot` draws one given
+    ``width=8.9, units="cm"``, needs no scaling. Pass the saved width as both
+    ``width_cm`` and ``render_width_cm``, or leave both at their defaults.
+    Given alone, ``width_cm`` audits the figure as though it had been drawn
+    seven inches wide and then shrunk to fit.
+
+    The default ``min_text_pt`` of 6 is lenient. As their guidelines stood on
+    30 September 2026, PLOS asked for text of 8 to 12 pt and APA Style for 8 to
+    14 pt. Elsevier asked for 7 pt as a rule of thumb, and Nature for 5 to 7
+    pt, with panel labels at 8 pt. Pass the floor of the journal the figure is
+    for as ``min_text_pt``. The four pages are listed under References.
 
     Parameters
     ----------
@@ -175,8 +219,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         greyscale separability checks. Defaults to 5, matching
         :func:`depictr.palette_safety`.
     min_text_pt : float
-        The smallest acceptable printed text size, in points. Defaults to 6, a
-        common publisher floor for figure text.
+        The smallest acceptable printed text size, in points, for the text
+        around the panel and the text inside it alike. Defaults to 6, below the
+        floor most journals set (see "Auditing at the printed size" above).
 
     Returns
     -------
@@ -189,6 +234,23 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     --------
     depictr.palette_safety : the palette in the abstract, rather than a figure.
 
+    References
+    ----------
+    APA Style. Figures.
+    https://apastyle.apa.org/style-grammar-guidelines/tables-figures/figures
+
+    Crameri, F., Shephard, G. E., & Heron, P. J. (2020). The misuse of colour
+    in science communication. Nature Communications, 11(1), 5444.
+    https://doi.org/10.1038/s41467-020-19160-7
+
+    Elsevier. Artwork sizing.
+    https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-sizing
+
+    Nature. Guide to preparing final artwork.
+    https://www.nature.com/documents/nature-final-artwork.pdf
+
+    PLOS ONE. Figures. https://journals.plos.org/plosone/s/figures
+
     Examples
     --------
     >>> import depictr as dp
@@ -199,9 +261,13 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ...         + geom_point()
     ...         + scale_colour_manual(values=["#005b96", "#d55e00"])
     ...         + dp.theme_depictr())
+
+    Every check passes but the one for text inside the panel, since the figure
+    draws none there.
+
     >>> report = dp.check_figure(good)
-    >>> set(report["verdict"])
-    {'pass'}
+    >>> report.loc[report["verdict"] != "pass", "check"].tolist()
+    ['annotation_text_size']
 
     The same figure destined for an 8.9 cm journal column, where the text is
     half the size it looks on screen.
@@ -209,6 +275,13 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     >>> shrunk = dp.check_figure(good, width_cm=8.9)
     >>> shrunk.loc[shrunk["check"] == "text_size", "verdict"].item()
     'fail'
+
+    Saved at 8.9 cm in the first place, with ``save_plot(width=8.9,
+    units="cm")``, it is drawn at the size it prints, so both widths are 8.9.
+
+    >>> saved = dp.check_figure(good, width_cm=8.9, render_width_cm=8.9)
+    >>> saved.loc[saved["check"] == "text_size", "verdict"].item()
+    'pass'
     """
     from plotnine import ggplot
     from plotnine.composition import Compose
@@ -243,14 +316,27 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         # through.
         encoding = _figure_colour_encoding(built, panel_bg)
         text = _figure_text(figure, plot_bg)
+        panel_text = _panel_text(figure)
     finally:
         plt.close(figure)
 
-    rows = _separability_rows(encoding.sets, min_delta_e)
-    rows.append(_text_size_row(text, width_cm, render_width_cm, min_text_pt))
-    rows.append(_text_contrast_row(text, width_cm, render_width_cm))
-    rows.append(_geometry_contrast_row(encoding.marks, panel_bg))
-    rows.append(_redundant_encoding_row(encoding.sets, encoding.redundant))
+    # A figure whose only text is inside the panel does draw text, just none
+    # that the two rows for the theme's text measure.
+    no_text = ("The figure draws no text outside the panel." if panel_text
+               else "The figure draws no text.")
+    rows = _separability_rows(encoding.sets, min_delta_e, encoding.abstain)
+    rows.append(_smallest_text_row("text_size", [t.size for t in text],
+                                   width_cm, render_width_cm, min_text_pt,
+                                   "text", no_text))
+    rows.append(_text_contrast_row(text, width_cm, render_width_cm, no_text))
+    rows.append(_geometry_contrast_row(encoding.marks, panel_bg,
+                                       encoding.abstain))
+    rows.append(_redundant_encoding_row(encoding.sets, encoding.redundant,
+                                        encoding.abstain))
+    rows.append(_smallest_text_row(
+        "annotation_text_size", panel_text, width_cm, render_width_cm,
+        min_text_pt, "in-panel text",
+        "The figure draws no text inside the panel."))
     return pd.DataFrame(
         rows, columns=["check", "measured", "threshold", "verdict", "detail"]
     )
@@ -399,13 +485,15 @@ class _Encoding(NamedTuple):
     ``sets`` holds the drawn colours of the colour and of the fill aesthetic
     across all layers, each a sorted list of ``(drawn, declared)`` pairs, and
     leaves out an aesthetic that encodes nothing. ``marks`` holds one drawn
-    colour per encoded group, for the geometry check, and ``redundant`` the
-    non-colour channels that vary alongside the colours.
+    colour per encoded group, for the geometry check, ``redundant`` the
+    non-colour channels that vary alongside the colours, and ``abstain`` the
+    detail the colour rows give when nothing encodes.
     """
 
     sets: dict[str, list[tuple[str, str]]]
     marks: list[_Drawn]
     redundant: list[str]
+    abstain: str
 
 
 def _alpha_targets(geom) -> set[str]:
@@ -577,6 +665,14 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
     Every colour is taken as drawn over ``background``, the panel, at the alpha
     its geom applies to it. The sets are sorted, so that a tie between two
     equally close pairs resolves the same way in both engines.
+
+    When nothing encodes by colour, the colour rows abstain, and their detail
+    says why. It tells a figure that draws its colour or fill from a continuous
+    scale apart from one that draws no colour code at all. A continuous scale
+    counts when the build trained it on data. A fill that a stat computes,
+    such as the counts of ``geom_bin_2d()``, therefore counts, and a scale
+    added to a plot that maps nothing to it does not. The R twin applies the
+    same rule through ggplot2's own ``is_empty()``.
     """
     from plotnine import geom_label, geom_text
     from plotnine.scales.scale_continuous import scale_continuous
@@ -585,9 +681,12 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
 
     continuous: set[str] = set()
     coded: set[str] = set()
+    graded = False
     for scale in plot.scales:
         if isinstance(scale, scale_continuous):
             continuous.update(scale.aesthetics)
+            if {"color", "fill"} & set(scale.aesthetics) and not scale.is_empty():
+                graded = True
         elif (isinstance(scale, scale_discrete)
               and not isinstance(scale, MapTrainMixin)):
             # An identity scale (MapTrainMixin) draws each value as given, so a
@@ -653,6 +752,7 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
         marks=marks,
         redundant=[aesthetic for aesthetic, seen in others.items()
                    if len(seen) >= 2],
+        abstain=_CONTINUOUS_COLOUR_DETAIL if graded else _NO_COLOUR_DETAIL,
     )
 
 
@@ -681,28 +781,58 @@ def _is_bold(weight) -> bool:
     return float(weight) >= 700
 
 
+def _text_as_drawn(artist) -> tuple[float, str, float] | None:
+    """A text artist's point size, declared colour and alpha, as drawn.
+
+    None when it draws nothing: when it is hidden or blank, when its colour or
+    size does not parse, or when it is fully transparent. When the artist has
+    an alpha of its own, matplotlib draws the text in it and ignores the
+    colour's alpha, which counts only when the artist has none.
+    """
+    if not artist.get_visible() or not artist.get_text().strip():
+        return None
+    parsed = _parse_colour(artist.get_color())
+    size = float(artist.get_fontsize())
+    if parsed is None or not np.isfinite(size):
+        return None
+    declared, own = parsed
+    alpha = own if artist.get_alpha() is None else float(artist.get_alpha())
+    if alpha <= 0:
+        return None
+    return size, declared, alpha
+
+
+def _panel_text(figure) -> list[float]:
+    """The point size of every text drawn inside a panel.
+
+    plotnine draws a layer's text, and an annotation's, with ``Axes.text``, so
+    the text inside each panel is what its axes holds in ``Axes.texts``, and
+    the theme's text never is. A text that draws nothing is left out, as
+    :func:`_figure_text` leaves it out. The R twin walks the panel cells of
+    the rendered table for the same text.
+    """
+    return [drawn[0] for ax in figure.axes for artist in ax.texts
+            if (drawn := _text_as_drawn(artist)) is not None]
+
+
 def _figure_text(figure, plot_bg: str) -> list[_Text]:
-    """Every piece of text the figure will actually draw.
+    """Every piece of text the theme draws around the panels.
 
     Reads the matplotlib text artists, which is where the resolved point size
     and colour of a label exist, and where an element the theme defines but the
     figure never draws simply does not appear.
 
-    Text an axes owns directly is skipped, which is what leaves layer and
-    annotation text out of the measurement: tick labels, axis titles and the
-    legend belong to the axis, the figure or the legend rather than to
+    Text an axes owns directly is skipped and left to :func:`_panel_text`,
+    which is where layer and annotation text are. Tick labels, axis titles and
+    the legend belong to the axis, the figure or the legend rather than to
     ``Axes.texts``.
 
     Each text is paired with the background it is drawn on, which WCAG measures
     contrast against. plotnine's strip text carries its strip as ``.patch``,
     and legend text sits inside an anchored box whose patch is the legend
     background. Either counts only when it is drawn, and everything else is on
-    the plot background.
-
-    A text drawn with an alpha is composited over its background, as a mark is
-    over the panel. When the artist has an alpha of its own, matplotlib draws
-    the text in it and ignores the colour's alpha, which counts only when the
-    artist has none.
+    the plot background. A text drawn with an alpha is composited over its
+    background, as a mark is over the panel.
     """
     # matplotlib's findobj lists an artist's children before the artist, so an
     # inner box is met before the box around it and the innermost one wins.
@@ -721,16 +851,10 @@ def _figure_text(figure, plot_bg: str) -> list[_Text]:
         if id(artist) in from_layers or id(artist) in seen:
             continue
         seen.add(id(artist))
-        if not artist.get_visible() or not artist.get_text().strip():
+        drawn = _text_as_drawn(artist)
+        if drawn is None:
             continue
-        parsed = _parse_colour(artist.get_color())
-        size = float(artist.get_fontsize())
-        if parsed is None or not np.isfinite(size):
-            continue
-        declared, own = parsed
-        alpha = own if artist.get_alpha() is None else float(artist.get_alpha())
-        if alpha <= 0:
-            continue
+        size, declared, alpha = drawn
         strip = getattr(artist, "patch", None)
         if isinstance(strip, mpatches.Patch):
             background = _painted(strip, plot_bg) or plot_bg
@@ -786,19 +910,20 @@ _SET_NOUNS = {"color": "colours", "fill": "fill colours"}
 
 
 def _separability_rows(sets: dict[str, list[tuple[str, str]]],
-                       min_delta_e: float) -> list[dict]:
+                       min_delta_e: float,
+                       abstain: str = _NO_COLOUR_DETAIL) -> list[dict]:
     """The four colour rows plus the greyscale row.
 
     Each set holds the drawn colours of one aesthetic, and only colours
     declared differently are paired, so a group is never compared with itself.
     The rows report the closest pair over the sets, the first set winning a
-    tie.
+    tie. ``abstain`` is the detail every row gives when no set encodes.
     """
     names = ["colour_separability"] + [
         f"colour_separability_{d}" for d in DEFICIENCIES
     ]
     if not sets:
-        return [_row(name, np.nan, min_delta_e, _NO_COLOUR_DETAIL)
+        return [_row(name, np.nan, min_delta_e, abstain)
                 for name in names + ["greyscale_separability"]]
 
     def closest_over_sets(measure):
@@ -834,19 +959,26 @@ def _separability_rows(sets: dict[str, list[tuple[str, str]]],
     return rows
 
 
-def _text_size_row(text, width_cm: float, render_width_cm: float,
-                   min_text_pt: float) -> dict:
-    if not text:
-        return _row("text_size", np.nan, min_text_pt,
-                    "The figure draws no text.")
-    nominal = min(t.size for t in text)
-    return _row("text_size", nominal * width_cm / render_width_cm, min_text_pt,
-                f"Smallest text {nominal:.2f} pt, drawn at "
+def _smallest_text_row(check: str, sizes: list[float], width_cm: float,
+                       render_width_cm: float, min_text_pt: float, noun: str,
+                       absent: str) -> dict:
+    """The smallest of some text at its printed size, against the floor.
+
+    Serves ``text_size``, for the theme's text, and ``annotation_text_size``,
+    for the text drawn inside the panel. ``noun`` is how the detail names the
+    text measured, and ``absent`` the detail when there is no such text.
+    """
+    if not sizes:
+        return _row(check, np.nan, min_text_pt, absent)
+    nominal = min(sizes)
+    return _row(check, nominal * width_cm / render_width_cm, min_text_pt,
+                f"Smallest {noun} {nominal:.2f} pt, drawn at "
                 f"{render_width_cm:.2f} cm and printed at {width_cm:.2f} cm.")
 
 
 def _text_contrast_row(text: list[_Text], width_cm: float,
-                       render_width_cm: float) -> dict:
+                       render_width_cm: float,
+                       absent: str = "The figure draws no text.") -> dict:
     """The text that falls furthest short of its own WCAG threshold.
 
     Each text is measured against its own background and held to 3:1 when it
@@ -854,10 +986,10 @@ def _text_contrast_row(text: list[_Text], width_cm: float,
     otherwise. The row reports the text with the smallest ratio relative to its
     threshold. Ties go to the smaller printed size, then to the colour and
     background in byte order, which is the order the R twin breaks them in.
+    ``absent`` is the detail when the figure draws no such text.
     """
     if not text:
-        return _row("text_contrast", np.nan, _WCAG_TEXT_CONTRAST,
-                    "The figure draws no text.")
+        return _row("text_contrast", np.nan, _WCAG_TEXT_CONTRAST, absent)
     printed = [t.size * width_cm / render_width_cm for t in text]
     thresholds = [
         _WCAG_LARGE_TEXT_CONTRAST
@@ -889,15 +1021,17 @@ def _ink_as_drawn(declared: str, alpha: float, drawn: str) -> str:
     return f"{declared} at alpha {alpha:.2f}, drawn as {drawn},"
 
 
-def _geometry_contrast_row(marks: list[_Drawn], background: str) -> dict:
+def _geometry_contrast_row(marks: list[_Drawn], background: str,
+                           abstain: str = _NO_COLOUR_DETAIL) -> dict:
     """The encoded group whose drawn colour contrasts least with the background.
 
     Ties go to the drawn colour, then the declared one, in byte order, which is
-    the order the R twin breaks them in.
+    the order the R twin breaks them in. ``abstain`` is the detail when no
+    group is encoded.
     """
     if not marks:
         return _row("geometry_contrast", np.nan, _WCAG_OBJECT_CONTRAST,
-                    _NO_COLOUR_DETAIL)
+                    abstain)
     ratios = _contrast_ratio([mark.drawn for mark in marks], background)
     worst = min(range(len(marks)), key=lambda i: (
         ratios[i], marks[i].drawn, marks[i].declared))
@@ -908,9 +1042,10 @@ def _geometry_contrast_row(marks: list[_Drawn], background: str) -> dict:
 
 
 def _redundant_encoding_row(sets: dict[str, list[tuple[str, str]]],
-                            redundant: list[str]) -> dict:
+                            redundant: list[str],
+                            abstain: str = _NO_COLOUR_DETAIL) -> dict:
     if not sets:
-        return _row("redundant_encoding", np.nan, 1, _NO_COLOUR_DETAIL)
+        return _row("redundant_encoding", np.nan, 1, abstain)
     if redundant:
         detail = f"Colour is joined by {' and '.join(redundant)}."
     else:
