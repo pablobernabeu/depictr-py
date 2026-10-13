@@ -1,11 +1,15 @@
 """Smoke tests for the time-series plots: each builds a figure without error."""
 
+import re
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
+from matplotlib.lines import Line2D
 from plotnine import ggplot
+from plotnine.exceptions import PlotnineWarning
 
 import depictr.timeseries as ts
 
@@ -154,3 +158,146 @@ def test_daily_index_infers_a_weekly_period():
 def test_timeseries_plot_raw_and_rolling():
     assert _builds(ts.timeseries_plot(S))
     assert _builds(ts.timeseries_plot(V, rolling=12))
+
+
+def _draw(p):
+    """Draw `p` once, returning its lines as drawn and plotnine's warnings.
+
+    Each line is an (n, 2) array of x and y, in layer order. plotnine hands
+    matplotlib one Line2D per path and keeps an interior missing value as a NaN
+    vertex, where matplotlib leaves a gap. A NaN row inside an array is
+    therefore a break in the drawn line. A plot is drawn only once here, since
+    drawing it again adds its layers to the same figure a second time.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        fig = p.draw(show=False)
+    try:
+        lines = [a.get_xydata() for a in fig.axes[0].get_children()
+                 if isinstance(a, Line2D)]
+    finally:
+        plt.close(fig)
+    notes = [str(w.message) for w in caught if issubclass(w.category, PlotnineWarning)]
+    return lines, notes
+
+
+def test_timeseries_plot_keeps_a_gap_in_place():
+    # Dropping the missing value closed up the gap: 6.0 was drawn at x = 5,
+    # every later point one step to the left, and the line ran from 4 to 6.
+    values = np.arange(20.0)
+    values[5] = np.nan
+    p = ts.timeseries_plot(pd.Series(values))
+    assert p.data["x"].tolist() == list(range(20))
+    assert p.data.loc[p.data["x"] == 6, "value"].item() == 6.0
+    (line,), _ = _draw(p)
+    np.testing.assert_array_equal(line[:, 0], np.arange(20.0))
+    assert np.isnan(line[5, 1])
+    np.testing.assert_array_equal(np.delete(line[:, 1], 5), np.delete(values, 5))
+
+
+def test_timeseries_plot_rolling_mean_is_missing_across_a_gap():
+    # The centred mean was taken over the closed-up series, so the windows next
+    # to the gap averaged values from both sides of it (4.33 and 5.67 here).
+    values = np.arange(20.0)
+    values[5] = np.nan
+    (_, roll), _ = _draw(ts.timeseries_plot(pd.Series(values), rolling=3))
+    # The first and last windows run off the series and are not drawn.
+    np.testing.assert_array_equal(roll[:, 0], np.arange(1.0, 19.0))
+    # The windows centred on 4, 5 and 6 reach the gap, so the overlay breaks
+    # there. Elsewhere, the centred mean of a straight line is the line itself.
+    gap = np.isin(roll[:, 0], [4, 5, 6])
+    assert np.isnan(roll[gap, 1]).all()
+    np.testing.assert_allclose(roll[~gap, 1], roll[~gap, 0])
+
+
+def test_timeseries_plot_draws_an_object_column_with_its_gap():
+    # Python floats and None arrive with the object dtype. plotnine read such
+    # values as categories, one group each, so no line was drawn at all, with
+    # or without the None.
+    s = pd.Series([1.0, None, 3.0, 4.0], dtype=object)
+    (line,), _ = _draw(ts.timeseries_plot(s))
+    np.testing.assert_array_equal(line[:, 0], [0, 1, 2, 3])
+    assert np.isnan(line[1, 1])
+
+
+def test_timeseries_plot_keeps_a_missing_month_on_the_date_axis():
+    # With June missing, the line ran straight from May to July.
+    idx = pd.period_range("2020-01", periods=12, freq="M")
+    values = np.arange(1.0, 13.0)
+    values[5] = np.nan
+    p = ts.timeseries_plot(pd.Series(values, index=idx))
+    assert list(p.data["x"]) == list(idx.to_timestamp())
+    (line,), _ = _draw(p)
+    assert len(line) == 12
+    assert np.isnan(line[5, 1])
+
+
+def test_timeseries_plot_counts_positions_from_the_first_entry():
+    # Missing values at either end keep their positions too, and the ends that
+    # cannot be drawn are left out without a warning.
+    values = np.array([np.nan, np.nan, 1.0, 2.0, 3.0, 4.0, np.nan])
+    p = ts.timeseries_plot(pd.Series(values), rolling=3)
+    assert p.data["x"].tolist() == list(range(7))
+    (line, roll), notes = _draw(p)
+    assert notes == []
+    np.testing.assert_array_equal(line, [[2, 1], [3, 2], [4, 3], [5, 4]])
+    np.testing.assert_array_equal(roll, [[3, 2], [4, 3]])
+
+
+def test_timeseries_plot_rolling_overlay_does_not_warn_on_complete_data():
+    # The undrawable ends of the overlay raised "geom_path: Removed 11 rows
+    # containing missing values" for every complete series.
+    _, notes = _draw(ts.timeseries_plot(V, rolling=12))
+    assert notes == []
+
+
+def test_several_columns_are_refused():
+    # A frame with two columns was read row by row into one series (1, 100, 2,
+    # 200 and so on), and timeseries_plot() dropped its index as well.
+    frame = pd.DataFrame({"a": V, "b": V + 100}, index=S.index)
+    two = re.escape("`x` has 2 columns; pass one series at a time.")
+    three = re.escape("`x` has 3 columns; pass one series at a time.")
+    array = np.column_stack([V, V, V])
+    with pytest.raises(ValueError, match=two):
+        ts.timeseries_plot(frame)
+    with pytest.raises(ValueError, match=three):
+        ts.timeseries_plot(array)
+    with pytest.raises(ValueError, match=two):
+        ts.seasonal_plot(frame)
+    with pytest.raises(ValueError, match=three):
+        ts.seasonal_plot(array, period=12)
+    pytest.importorskip("statsmodels")
+    with pytest.raises(ValueError, match=two):
+        ts.acf_plot(frame)
+    with pytest.raises(ValueError, match=three):
+        ts.acf_plot(array, kind="pacf")
+    with pytest.raises(ValueError, match=two):
+        ts.decompose_plot(frame)
+    with pytest.raises(ValueError, match=three):
+        ts.decompose_plot(array, period=12)
+
+
+def test_a_single_column_is_the_series():
+    # A one-column frame keeps its index, so the period and the date axis come
+    # from it as they do from the Series.
+    frame = S.to_frame("sales")
+    pd.testing.assert_frame_equal(ts.timeseries_plot(frame).data,
+                                  ts.timeseries_plot(S).data)
+    pd.testing.assert_frame_equal(ts.seasonal_plot(frame).data,
+                                  ts.seasonal_plot(S).data)
+    pd.testing.assert_frame_equal(ts.timeseries_plot(V.reshape(-1, 1)).data,
+                                  ts.timeseries_plot(V).data)
+    pytest.importorskip("statsmodels")
+    pd.testing.assert_frame_equal(ts.acf_plot(frame).data, ts.acf_plot(S).data)
+    pd.testing.assert_frame_equal(ts.decompose_plot(frame).data,
+                                  ts.decompose_plot(S).data)
+
+
+def test_object_values_are_read_as_numbers():
+    # The seasonal plot took the values of an object column as they came, and
+    # plotnine drew them as categories, one evenly spaced tick per value.
+    obj = S.astype(object)
+    expected = ts.seasonal_plot(S).data
+    pd.testing.assert_frame_equal(ts.seasonal_plot(obj).data, expected)
+    pd.testing.assert_frame_equal(ts.seasonal_plot(obj.to_frame("sales")).data,
+                                  expected)

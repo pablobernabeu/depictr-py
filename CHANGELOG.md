@@ -338,6 +338,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lengths now raise a `ValueError` that names both arguments. A missing outcome
   or score raises one too. A missing outcome used to cut the curve short at its
   rank, and missing scores went last, in the order of their rows.
+- `timeseries_plot()` dropped missing values before drawing. Without a date
+  index, every later point moved one step to the left for each value dropped,
+  and on a date axis the line ran straight across the gap. The rolling mean was
+  taken over the closed-up series, so the windows next to a gap averaged values
+  from both sides of it. Missing values now keep their place, and the line and
+  the rolling mean break at them, as in the R twin. The rolling overlay no
+  longer warns that it removed rows containing missing values, which it did on
+  complete data as well.
+- `timeseries_plot()`, `acf_plot()`, `decompose_plot()` and `seasonal_plot()`
+  read a frame or 2-D array row by row, so several columns were interleaved
+  into one series, and a frame lost its index. Several columns now raise
+  `ValueError`, and a single column is read as the series, so a one-column
+  frame keeps its index. The R twin's `timeseries_plot()` draws one line per
+  column of a multivariate `ts`.
+- `timeseries_plot()` and `seasonal_plot()` drew the values of an object
+  column, for example one holding Python floats and `None`, as categories.
+  `timeseries_plot()` drew no line at all, and `seasonal_plot()` spaced the
+  values evenly up the axis, one tick per value. The values are now read as
+  numbers.
 
 ## [0.3.0] - 2026-09-24
 

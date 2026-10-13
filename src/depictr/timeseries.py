@@ -43,17 +43,36 @@ def _require_statsmodels():
         ) from exc
 
 
-def _as_series(x):
-    """Coerce the input to a pandas Series, keeping any index it arrives with.
+_SEVERAL_COLUMNS = "`x` has {} columns; pass one series at a time."
 
-    A 1-D array becomes a Series over a plain integer index; a Series is passed
-    through. The index is used only as the x-axis of the series plot, so a
-    datetime, period or integer index all work.
+
+def _as_series(x):
+    """Coerce the input to a Series of floats, keeping its index and its gaps.
+
+    A Series keeps its index, and a 1-D array becomes a Series over a plain
+    integer index. The index is used only as the x-axis of the series plot, so a
+    datetime, period or integer index all work. A frame or 2-D array with one
+    column is read as that column, so a frame keeps its index. Several columns
+    are refused: read row by row, as a flattened array is, they would be
+    interleaved into one sequence.
+
+    The values are read as floats, with NaN for every missing value. plotnine
+    reads the values of an object column, such as Python floats mixed with
+    None, as categories, one group each. Missing values are kept in place.
+    Dropping one would close up the gap and move every later observation one
+    step along.
     """
+    if isinstance(x, pd.DataFrame):
+        if x.shape[1] != 1:
+            raise ValueError(_SEVERAL_COLUMNS.format(x.shape[1]))
+        x = x.iloc[:, 0]
     if isinstance(x, pd.Series):
-        return x.dropna()
-    arr = np.asarray(x, dtype=float).ravel()
-    return pd.Series(arr).dropna()
+        return pd.Series(x.to_numpy(dtype=float, na_value=np.nan), index=x.index)
+    arr = np.asarray(x, dtype=float)
+    n_cols = int(np.prod(arr.shape[1:])) if arr.ndim > 1 else 1
+    if n_cols != 1:
+        raise ValueError(_SEVERAL_COLUMNS.format(n_cols))
+    return pd.Series(arr.reshape(-1))
 
 
 def _as_complete_series(x):
@@ -67,7 +86,7 @@ def _as_complete_series(x):
     their behalf. Missing values at either end only shorten the series, so they
     are trimmed as before.
     """
-    series = x if isinstance(x, pd.Series) else pd.Series(np.asarray(x, dtype=float).ravel())
+    series = _as_series(x)
     present = series.notna().to_numpy()
     if not present.any():
         return series.dropna()  # empty; each caller reports this case itself
@@ -119,7 +138,10 @@ def acf_plot(x, kind="acf", lags=None, title=None):
         The series. Any index is ignored here; only the values are used.
         Missing values at either end are trimmed; an internal missing value is
         an error, since dropping it would correlate values across the
-        closed-up gap.
+        closed-up gap. The R twin keeps such a value in place and computes the
+        correlations from the pairs of observations both present, with a
+        warning. A frame or 2-D array with one column is read as that column,
+        and one with several columns is refused.
     kind : {"acf", "pacf"}
         Autocorrelation or partial autocorrelation.
     lags : int, optional
@@ -197,7 +219,9 @@ def decompose_plot(x, period=None, model="additive", title=None):
         The series. A datetime or period index sets the x-axis; otherwise the
         observation number is used. Missing values at either end are trimmed;
         an internal missing value is an error, since dropping it would shift
-        every later observation and misalign the components.
+        every later observation and misalign the components. A frame or 2-D
+        array with one column is read as that column, and one with several
+        columns is refused.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
         omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
@@ -275,7 +299,9 @@ def seasonal_plot(x, period=None, title=None):
     x : pandas.Series or array-like
         The series. Missing values at either end are trimmed; an internal
         missing value is an error, since dropping it would assign every later
-        observation to the wrong position in the period.
+        observation to the wrong position in the period. A frame or 2-D array
+        with one column is read as that column, and one with several columns is
+        refused.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
         omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
@@ -345,10 +371,14 @@ def timeseries_plot(x, rolling=None, title=None):
     ----------
     x : pandas.Series or array-like
         The series. A datetime or period index sets the x-axis; otherwise the
-        observation number is used.
+        observation number is used. A missing value keeps its place on the axis
+        and leaves a break in the line. A frame or 2-D array with one column is
+        read as that column, and one with several columns is refused. The R
+        twin draws one line per column of a multivariate ``ts``.
     rolling : int, optional
         Window length for a centred rolling mean, drawn over the series in the
-        accent colour. Omit for the raw line only.
+        accent colour. A window that reaches a missing value is missing too, so
+        the overlay breaks where the line does. Omit for the raw line only.
     title : str, optional
 
     Returns
@@ -372,8 +402,13 @@ def timeseries_plot(x, rolling=None, title=None):
         x_vals = np.arange(len(series))
     df = pd.DataFrame({"x": x_vals, "value": series.to_numpy()})
 
-    p = ggplot(df, aes("x", "value")) + geom_line(color=BRAND, size=0.7)
+    # plotnine keeps a missing value inside a line as a break in it, which is
+    # how a gap should look. na_rm silences the warning about the missing values
+    # it drops at either end, which every rolling overlay has.
+    p = ggplot(df, aes("x", "value")) + geom_line(color=BRAND, size=0.7, na_rm=True)
     if rolling:
+        # Taken over the series with its gaps, so a window that reaches one is
+        # missing as well.
         df = df.assign(roll=df["value"].rolling(int(rolling), center=True).mean())
-        p = p + geom_line(aes(y="roll"), data=df, color=ACCENT, size=1.0)
+        p = p + geom_line(aes(y="roll"), data=df, color=ACCENT, size=1.0, na_rm=True)
     return p + labs(x="", y="Value", title=title) + theme_depictr()
