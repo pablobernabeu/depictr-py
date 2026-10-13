@@ -83,9 +83,10 @@ print(show(p, width=9, height=7))
 
 ## Multicollinearity
 
-A variance-inflation-factor bar per predictor, with a reference line at the usual
-threshold of 5. Bars past it flag predictors whose variance is inflated by
-collinearity.
+A variance-inflation-factor bar per model term, with a reference line at the
+usual threshold of 5. Bars past it flag terms whose coefficients' variance is
+inflated by collinearity. A factor with more than two levels gets a single
+generalised VIF, which does not depend on its reference level.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.vif_plot(model)

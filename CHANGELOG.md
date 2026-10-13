@@ -113,6 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how to audit a figure saved at its final width, with that width given as
   both widths or neither, and the docstring gives four publishers' text floors,
   dated and linked, where it called 6 pt a common publisher floor.
+- `vif_plot()` gains `threshold`, placed before `title` as in the R twin, so a
+  title passed by position must now be named. The reference line is drawn
+  solid in the R twin's grey, `#666666`, where it was dashed in the accent.
 
 ### Deprecated
 
@@ -267,6 +270,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   multiplies them by a quasibinomial fit's dispersion. statsmodels' Pearson
   estimate leaves out the trials of a two-column response, so for such a fit
   the scale is recomputed over the trials, which gives R's dispersion.
+- `vif_plot()` reported a VIF for each dummy column, so a factor with a small
+  reference level was flagged as collinear even when it was independent of
+  everything else, and relevelling changed the verdict. For a three-level
+  factor whose reference level held 14 of 400 rows, each dummy read 7.7, past
+  the line at 5, and 1.04 once another level was the reference. It now reports
+  the generalised VIF of each term (Fox & Monette, 1992), as the R twin does,
+  which is 1.005 for that factor whichever level is the reference. When a term
+  spans several columns, the bars show GVIF^(1/(2 df)) against the square root
+  of the threshold, under the R twin's axis titles. The VIFs come from the
+  covariance of the coefficients, so a weighted fit or a GLM is measured with
+  the weights of its fit. For OLS, WLS, GLM and Logit results, they agree with
+  the R twin and with R's `car::vif()`. A WLS or GLS result, which was refused
+  as not fitted, is now accepted. The columns are grouped by the formula,
+  under patsy or formulaic. A model fitted from arrays has no terms, so each
+  of its columns counts as one.
+- `vif_plot()` drew infinite VIFs for a design whose coefficients are aliased,
+  or VIFs of about 1e15 under statsmodels 0.15, with no more than a warning.
+  Such a model now raises `ValueError` naming the aliased terms, in the R
+  twin's words. A model with fewer than two predictor columns raises as in R,
+  and one without an intercept warns that its VIFs come from uncentred
+  columns.
 - `scale_colour_depictr()` and `scale_fill_depictr()` drew a ninth group in the
   missing-value grey, indistinguishable from missing data, with no warning of
   depictr's own, and so did every plot that adds them, such as `ecdf_plot()`

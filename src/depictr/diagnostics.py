@@ -3,9 +3,9 @@
 These cover the everyday checks on a fitted OLS or GLM: the normality of the
 residuals, points that pull the fit around, collinearity among the predictors,
 and the fit of a logistic model averaged over its predicted probabilities. The
-quantities come from statsmodels (its influence machinery and variance-inflation
-factor); each figure is re-drawn under the depictr theme so a diagnostic sits in
-the same visual language as the rest of a report.
+quantities come from statsmodels (its influence machinery and the coefficient
+covariance of the fit); each figure is re-drawn under the depictr theme so a
+diagnostic sits in the same visual language as the rest of a report.
 
 ``statsmodels`` arrives with the core install (plotnine itself requires it);
 the ``depictr[models]`` extra remains to pin the tested floor.
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 import numbers
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -32,7 +33,7 @@ from plotnine import (
     scale_size_area,
 )
 
-from .palette import ACCENT, BRAND
+from .palette import BRAND
 from .theme import theme_depictr
 
 
@@ -355,25 +356,225 @@ def influence_plot(model, title=None):
     )
 
 
-def vif_plot(model, title=None):
-    """Horizontal bar chart of the variance inflation factor per predictor.
+def _model_terms(model):
+    """The design columns of each term of a fitted model, and its intercept.
 
-    The variance inflation factor (VIF) measures how much a coefficient's
-    variance is inflated by collinearity with the other predictors. A VIF of 1
-    means no collinearity; the reference line sits at 5, a common threshold above
-    which collinearity is usually treated as a concern. The intercept is dropped,
-    as its VIF is not interpretable in the usual way.
+    statsmodels up to 0.14 keeps a formula's patsy DesignInfo as
+    ``data.design_info``, and from 0.15 as ``data.model_spec``, which holds a
+    formulaic ModelSpec when the formula engine is formulaic. Each names the
+    terms and the columns they fill, and the intercept is the term
+    "Intercept" or "1". The spec is read according to its own type, because
+    statsmodels' FormulaManager reads one through whichever engine is set at
+    the time, which need not be the engine that built it. A model fitted from
+    arrays has no terms, so each column stands for itself, and the intercept
+    is the constant column statsmodels found.
+
+    Returns
+    -------
+    tuple of (dict, str or None)
+        The column indices of each term, keyed by its name, in model order,
+        and the intercept's key, or None for a model without one.
+    """
+    names = [str(name) for name in model.model.exog_names]
+    data = model.model.data
+    spec = getattr(data, "model_spec", None)
+    if spec is None:
+        spec = getattr(data, "design_info", None)
+    if spec is None:
+        const = getattr(data, "const_idx", None)
+        terms = {name: [i] for i, name in enumerate(names)}
+        return terms, None if const is None else names[const]
+    if hasattr(spec, "term_name_slices"):  # patsy's DesignInfo
+        slices = dict(spec.term_name_slices)
+    else:  # formulaic's ModelSpec
+        slices = {str(term): columns for term, columns in spec.term_slices.items()}
+    positions = range(len(names))
+    terms = {name: list(positions[columns]) for name, columns in slices.items()}
+    intercept = next((name for name in ("Intercept", "1") if name in terms), None)
+    return terms, intercept
+
+
+def _aliased_columns(design, tol=1e-7):
+    """Indices of the design columns that lie in the span of those before them.
+
+    R's lm() finds aliased coefficients this way, with this tolerance. Working
+    from the first column, a column is kept when what is left of it, once the
+    columns already kept are projected out, is at least ``tol`` of its length.
+    Otherwise, it is aliased, and lm() reports its coefficient as NA.
+    """
+    basis = np.zeros((design.shape[0], 0))
+    aliased = []
+    for j in range(design.shape[1]):
+        column = design[:, j]
+        rest = column - basis @ (basis.T @ column)
+        # A second pass keeps the basis orthogonal to working precision.
+        rest -= basis @ (basis.T @ rest)
+        length = np.linalg.norm(rest)
+        if length <= tol * np.linalg.norm(column):
+            aliased.append(j)
+        else:
+            basis = np.column_stack([basis, rest / length])
+    return aliased
+
+
+def _refuse_aliased(terms):
+    """Refuse a VIF for aliased coefficients, with the R twin's sentence."""
+    raise ValueError(
+        f"VIF is undefined when coefficients are aliased: {', '.join(terms)}. "
+        "Drop the redundant term(s) and refit."
+    )
+
+
+def _has_coefficient_covariance(obj) -> bool:
+    """True for a fitted statsmodels result that holds its coefficients' covariance.
+
+    With the design, that covariance is all a VIF needs. WLS and GLS results
+    lack the influence machinery that _is_fitted_model() looks for, so a fit
+    of any of statsmodels' linear regression models counts as well, as a
+    weighted lm() does in the R twin.
+    """
+    from statsmodels.regression.linear_model import RegressionModel
+
+    fitted = _is_fitted_model(obj) or isinstance(getattr(obj, "model", None),
+                                                 RegressionModel)
+    return fitted and getattr(obj, "normalized_cov_params", None) is not None
+
+
+def _gvif_terms(model) -> pd.DataFrame:
+    """Generalised variance inflation factors, one per model term.
+
+    A port of the R twin's internal ``gvif_terms()``. Returns one row per term
+    other than the intercept, in model order, with its degrees of freedom (the
+    columns it spans), the GVIF of Fox and Monette (1992) and the adjusted
+    value GVIF^(1/(2 df)).
+    """
+    terms, intercept = _model_terms(model)
+    exog = np.asarray(model.model.exog, dtype=float)
+    # A weighted fit's whitened design gives a row of zero weight no say, as
+    # R's lm() leaves such rows out before it looks for aliasing.
+    design = np.asarray(getattr(model.model, "wexog", exog), dtype=float)
+    aliased = set(_aliased_columns(design))
+    if aliased:
+        _refuse_aliased([name for name, columns in terms.items()
+                         if aliased.intersection(columns)])
+
+    # A categorical with a single level fills no column under patsy or
+    # formulaic, so its term has no coefficient and no VIF.
+    predictors = {name: cols for name, cols in terms.items()
+                  if name != intercept and cols}
+    columns = [c for cols in predictors.values() for c in cols]
+    if len(columns) < 2:
+        raise ValueError("VIF needs at least two predictor columns.")
+    if intercept is None:
+        # The coefficients' covariance then comes from uncentred columns,
+        # which makes predictors far from zero look collinear with each other.
+        # car::vif() gives a warning for the same reason.
+        warnings.warn(
+            "The model has no intercept, so the VIFs come from uncentred "
+            "columns and can be inflated by the predictors' means.",
+            UserWarning, stacklevel=3,
+        )
+
+    # The GVIF compares the confidence region of a term's coefficients with
+    # the one they would have if their columns were uncorrelated with the
+    # rest. R is therefore the correlation matrix of the coefficient
+    # estimates, as in the R twin and car::vif(). It comes from the unscaled
+    # covariance, (X'WX)^-1, which statsmodels keeps as normalized_cov_params.
+    # For an unweighted linear model with an intercept, the GVIF is the same
+    # as from the correlations of the predictor columns. Only the covariance,
+    # however, reflects the weights of a weighted fit or of a GLM.
+    cov = np.asarray(model.normalized_cov_params, dtype=float)
+    cov = cov[np.ix_(columns, columns)]
+    sd = np.sqrt(np.diag(cov))
+    corr = cov / np.outer(sd, sd)
+    where = {c: i for i, c in enumerate(columns)}
+    every = np.arange(len(columns))
+    rows = []
+    with np.errstate(divide="ignore", invalid="ignore"):
+        det_all = np.linalg.det(corr)
+        for name, cols in predictors.items():
+            inside = np.array([where[c] for c in cols], dtype=int)
+            outside = np.setdiff1d(every, inside)
+            gvif = (np.linalg.det(corr[np.ix_(inside, inside)])
+                    * np.linalg.det(corr[np.ix_(outside, outside)]) / det_all)
+            rows.append({"term": name, "df": len(cols), "gvif": gvif,
+                         "gvif_adj": gvif ** (1 / (2 * len(cols)))})
+    res = pd.DataFrame(rows, columns=["term", "df", "gvif", "gvif_adj"])
+
+    # A GVIF is at least 1 whenever the covariance has full rank. A value that
+    # is not finite or not positive means rounding has left it singular,
+    # which is aliasing by another route.
+    bad = ~np.isfinite(res["gvif"]) | (res["gvif"] <= 0)
+    if bad.any():
+        _refuse_aliased(list(res.loc[bad, "term"]))
+    return res
+
+
+def vif_plot(model, threshold=5, title=None):
+    """Horizontal bar chart of the variance inflation factor of each model term.
+
+    The variance inflation factor (VIF) measures how much collinearity with
+    the other predictors inflates the variance of a coefficient. A VIF of 1
+    means no collinearity, and the reference line marks ``threshold``, 5 by
+    default, a common rule of thumb above which collinearity is treated as a
+    concern.
+
+    A term that spans several design columns, such as a factor with more than
+    two levels, gets one generalised VIF, the GVIF of Fox and Monette (1992).
+    Let R be the correlation matrix of the coefficient estimates other than
+    the intercept, R11 its block for the term and R22 the block for the other
+    terms. Then GVIF = det(R11) det(R22) / det(R). Unlike the VIFs of a
+    factor's separate dummy columns, it does not depend on which level is the
+    reference. For a term of one column, it is the ordinary VIF. When any term
+    spans several columns, the bars show GVIF^(1/(2 df)) and the line moves to
+    the square root of ``threshold``. GVIF^(1/(2 df)) puts terms of different
+    sizes on one scale, and for a single column it is the square root of the
+    VIF.
+
+    The correlations come from the fit's unscaled coefficient covariance,
+    ``normalized_cov_params``, so a weighted fit or a GLM is measured with the
+    weights of its fit. For an unweighted linear model with an intercept, they
+    give the values the formula gives with R the correlation matrix of the
+    predictor columns, as Fox and Monette state it. The values are those of
+    the R twin and of R's ``car::vif()``. A Probit result differs slightly,
+    because statsmodels takes its covariance from the observed information
+    matrix, where R's ``glm()`` uses the expected one. A GLM with a probit
+    link gives R's values.
+
+    The columns are grouped into terms by the model's formula, whether
+    statsmodels built it with patsy or with formulaic. A model fitted from
+    arrays has no formula, so each column is a term of its own, and the dummy
+    columns of a factor are not grouped. A model whose coefficients are
+    aliased has no VIF, so it raises ``ValueError`` naming the terms they
+    belong to, as does a model with fewer than two predictor columns. A pandas
+    categorical keeps a category that no row takes, after rows are filtered
+    out for instance. Such a category fills a column of zeros, which counts as
+    aliased, so drop it with ``Series.cat.remove_unused_categories()`` before
+    the fit. R's ``lm()`` drops such a level itself. A model without an
+    intercept warns, because its VIFs then come from uncentred columns.
 
     Parameters
     ----------
     model : statsmodels results object
-        A fitted OLS/GLM result with a design matrix of two or more predictors.
+        A fitted OLS, WLS, GLM, Logit or Probit result with two or more
+        predictor columns.
+    threshold : float, default 5
+        The VIF taken as the rule of thumb, drawn as the reference line. On
+        the GVIF^(1/(2 df)) scale, it is drawn at ``sqrt(threshold)``.
     title : str, optional
         Plot title.
 
     Returns
     -------
     plotnine.ggplot
+        Its ``data`` hold one row per term, with the columns ``term``, ``df``,
+        ``gvif`` and ``vif``, the value drawn.
+
+    References
+    ----------
+    Fox, J., & Monette, G. (1992). Generalized collinearity diagnostics.
+    Journal of the American Statistical Association, 87(417), 178-183.
+    https://doi.org/10.1080/01621459.1992.10475190
 
     Examples
     --------
@@ -382,32 +583,41 @@ def vif_plot(model, title=None):
     >>> cy = dp.crop_yield()
     >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
     >>> p = dp.vif_plot(model)
+
+    A factor with several levels gets one generalised VIF:
+
+    >>> ws = dp.wellbeing_survey()
+    >>> fit = smf.ols("life_satisfaction ~ stress + region + education", ws).fit()
+    >>> p = dp.vif_plot(fit)
     """
     _require_statsmodels()
-    from statsmodels.stats.outliers_influence import variance_inflation_factor
-
-    if not _is_fitted_model(model):
+    if not _has_coefficient_covariance(model):
         raise TypeError("vif_plot needs a fitted statsmodels result.")
+    if (isinstance(threshold, bool) or not isinstance(threshold, numbers.Real)
+            or not math.isfinite(threshold) or threshold <= 0):
+        raise ValueError("`threshold` must be a single positive number.")
 
-    exog = np.asarray(model.model.exog)
-    names = list(model.model.exog_names)
-    rows = []
-    for i, name in enumerate(names):
-        if name.lower() in {"intercept", "const"}:
-            continue
-        rows.append({"term": name, "vif": variance_inflation_factor(exog, i)})
-    if not rows:
-        raise ValueError("Need at least one non-intercept predictor for a VIF.")
-    df = pd.DataFrame(rows).sort_values("vif")
+    res = _gvif_terms(model)
+    # A term of one column has an ordinary VIF, drawn against the threshold
+    # itself. A term of several columns has no scalar VIF. When there is one,
+    # every term is drawn as GVIF^(1/(2 df)) and the line moves to the square
+    # root of the threshold, as in the R twin.
+    if (res["df"] > 1).any():
+        value, line = res["gvif_adj"], math.sqrt(threshold)
+        axis = r"$\mathrm{GVIF}^{1/(2\,\mathrm{df})}$"
+    else:
+        value, line, axis = res["gvif"], threshold, "Variance inflation factor"
+    df = res[["term", "df", "gvif"]].assign(vif=value)
+    df = df.sort_values("vif", kind="stable")
     # Lock the order so the largest VIF reads at the top after the flip.
     df["term"] = pd.Categorical(df["term"], categories=list(df["term"]), ordered=True)
 
     return (
         ggplot(df, aes("term", "vif"))
         + geom_col(fill=BRAND, width=0.7)
-        + geom_hline(yintercept=5, linetype="dashed", color=ACCENT)
+        + geom_hline(yintercept=line, color="#666666")
         + coord_flip()
-        + labs(x="", y="Variance inflation factor", title=title)
+        + labs(x="", y=axis, title=title)
         + theme_depictr(grid="x")
     )
 

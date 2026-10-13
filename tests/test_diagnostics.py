@@ -1,11 +1,14 @@
 """Smoke tests: every regression-diagnostic plot builds without error."""
 
+import copy
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
 from plotnine import ggplot
 
-from depictr.data import clinical_trial, crop_yield
+from depictr.data import clinical_trial, crop_yield, wellbeing_survey
 from depictr.diagnostics import (
     binned_residual_plot,
     influence_plot,
@@ -55,6 +58,253 @@ def test_influence_plot_rejects_raw_array():
 def test_vif_plot(ols, glm):
     assert _builds(vif_plot(ols, title="VIF"))
     assert _builds(vif_plot(glm))
+
+
+# ---- variance inflation factors --------------------------------------------
+
+
+@pytest.fixture(params=["patsy", "formulaic"])
+def formula_engine(request):
+    """Fit under each formula engine that the installed statsmodels offers.
+
+    statsmodels 0.15 added formulaic beside patsy, chosen through
+    ``statsmodels.formula.options``. Before 0.15, patsy was the only engine.
+    """
+    formula = pytest.importorskip("statsmodels.formula")
+    options = getattr(formula, "options", None)
+    if options is None:
+        if request.param != "patsy":
+            pytest.skip("statsmodels before 0.15 has no formulaic engine")
+        yield request.param
+        return
+    pytest.importorskip(request.param)
+    previous = options.formula_engine
+    options.formula_engine = request.param
+    try:
+        yield request.param
+    finally:
+        options.formula_engine = previous
+
+
+def _gvif_terms(model):
+    # The port of the R twin's internal gvif_terms(): one row per term with its
+    # df, GVIF and GVIF^(1/(2 df)).
+    from depictr.diagnostics import _gvif_terms as gvif_terms
+
+    return gvif_terms(model)
+
+
+def _gvif(model):
+    res = _gvif_terms(model)
+    return dict(zip(res["term"], res["gvif"], strict=True))
+
+
+def _hline(p):
+    # The reference line as built: its positions, colour and line type. The
+    # copy keeps the build from altering the plot under test.
+    built = copy.deepcopy(p)
+    built._build()
+    layer = next(lay for lay in built.layers
+                 if type(lay.geom).__name__ == "geom_hline")
+    data = layer.data
+    return (list(data["yintercept"]), *data["color"].unique(),
+            *data["linetype"].unique())
+
+
+def test_vif_gives_the_r_twins_generalised_vif_per_term(formula_engine):
+    # Printed by dev/goldens/vif.R from the R twin's gvif_terms() at the commit
+    # of change set CS30. Each factor is one term with one GVIF, whatever the
+    # engine names its columns. patsy orders the terms otherwise than R, so
+    # they are compared by name.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols("life_satisfaction ~ stress + region + education",
+                  wellbeing_survey()).fit()
+    res = _gvif_terms(fit).set_index("term")
+    r_twin = {"stress": (1, 1.21638178777, 1.10289699781),
+              "region": (3, 1.22488550981, 1.03438587836),
+              "education": (2, 1.01798089228, 1.00446522657)}
+    assert sorted(res.index) == sorted(r_twin)
+    for term, (df, gvif, adjusted) in r_twin.items():
+        assert res.loc[term, "df"] == df
+        assert res.loc[term, "gvif"] == pytest.approx(gvif, rel=1e-9)
+        assert res.loc[term, "gvif_adj"] == pytest.approx(adjusted, rel=1e-9)
+    # The figure draws GVIF^(1/(2 df)), since two terms span several columns,
+    # against the square root of the threshold, as the R twin does.
+    p = vif_plot(fit)
+    drawn = dict(zip(p.data["term"].astype(str), p.data["vif"], strict=True))
+    assert drawn == pytest.approx({t: v[2] for t, v in r_twin.items()}, rel=1e-9)
+    assert list(p.data["term"].cat.categories) == ["education", "region", "stress"]
+    assert p.labels.y == r"$\mathrm{GVIF}^{1/(2\,\mathrm{df})}$"
+    line, colour, linetype = _hline(p)
+    assert line == pytest.approx([np.sqrt(5)])
+    assert (colour, linetype) == ("#666666", "solid")
+    # Drawn last: drawing a flipped plot swaps the labels it holds.
+    assert _builds(p)
+
+
+def test_vif_of_a_factor_does_not_depend_on_its_reference_level():
+    # A three-level factor independent of x, with a reference level of 14 rows
+    # in 400. Each dummy's own VIF was 7.7 with "a" as the reference, past the
+    # line at 5, and 1.04 with "b". The GVIF is 1.005 either way.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    rng = np.random.default_rng(30)
+    site = np.repeat(["a", "b", "c"], [14, 193, 193])
+    x = rng.normal(size=400)
+    y = x + rng.normal(size=400)
+    drawn = {}
+    for levels in (["a", "b", "c"], ["b", "a", "c"]):
+        frame = pd.DataFrame({"y": y, "x": x,
+                              "site": pd.Categorical(site, categories=levels)})
+        p = vif_plot(smf.ols("y ~ x + site", frame).fit())
+        drawn[levels[0]] = dict(zip(p.data["term"].astype(str), p.data["vif"],
+                                    strict=True))
+    assert set(drawn["a"]) == set(drawn["b"]) == {"x", "site"}
+    assert drawn["a"] == pytest.approx(drawn["b"], rel=1e-10)
+    assert max(drawn["a"].values()) < 1.1
+
+
+def test_vif_weights_a_weighted_fit_and_a_glm_as_the_r_twin_does(glm):
+    # The GVIF describes the estimated coefficients, whose covariance carries
+    # the weights of the fit. The correlations of the unweighted design matrix
+    # gave other values. The values are printed by dev/goldens/vif.R, and
+    # car::vif() gives the same in R.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    ws = wellbeing_survey()
+    weights = np.resize([1.0, 2.0, 3.0], len(ws))
+    wls = smf.wls("life_satisfaction ~ stress + region + education", ws,
+                  weights=weights).fit()
+    weighted = {"stress": 1.22771766362, "region": 1.22763102351,
+                "education": 1.02413689177}
+    assert _gvif(wls) == pytest.approx(weighted, rel=1e-9)
+    # vif_plot() takes the WLS result, which lacks the influence machinery the
+    # other diagnostics need and was refused as not fitted, and draws those
+    # values. A raw array is still refused.
+    p = vif_plot(wls)
+    drawn = dict(zip(p.data["term"].astype(str), p.data["gvif"], strict=True))
+    assert drawn == pytest.approx(weighted, rel=1e-9)
+    with pytest.raises(TypeError, match="fitted statsmodels result"):
+        vif_plot(np.ones((4, 2)))
+    # A logistic GLM, and the same model fitted by Logit. The R fit is
+    # converged tightly, to the estimate statsmodels reaches.
+    expected = {"biomarker": 1.00264843600, "age": 1.00461360059,
+                "arm": 1.00348848503}
+    assert _gvif(glm) == pytest.approx(expected, rel=1e-7)
+    logit = smf.logit("adverse_event ~ biomarker + age + arm",
+                      clinical_trial()).fit(disp=0)
+    assert _gvif(logit) == pytest.approx(expected, rel=1e-7)
+
+
+def test_vif_plot_refuses_aliased_coefficients(formula_engine):
+    # rain2 is twice rainfall, so the design is rank-deficient and no VIF
+    # exists. statsmodels fitted it through a pseudo-inverse, and the plot drew
+    # infinite VIFs for both columns, or about 1e15 under statsmodels 0.15,
+    # with no more than a warning. The R twin refuses the same model with the
+    # same sentence.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    sm = pytest.importorskip("statsmodels.api")
+    cy = crop_yield()
+    cy["rain2"] = 2 * cy["rainfall"]
+    cy["treatment2"] = cy["treatment"]
+    cy["arm"] = cy["treatment"].astype("category").cat.add_categories("unused")
+    ct = clinical_trial()
+    ct["age_months"] = 12 * ct["age"]
+    with warnings.catch_warnings():
+        # statsmodels 0.15 warns that the design is rank-deficient.
+        warnings.simplefilter("ignore")
+        doubled = smf.ols('Q("yield") ~ rainfall + rain2 + fertiliser', cy).fit()
+        copied = smf.ols('Q("yield") ~ rainfall + treatment + treatment2', cy).fit()
+        logistic = smf.glm("adverse_event ~ biomarker + age + age_months", ct,
+                           family=sm.families.Binomial()).fit()
+        unused = smf.ols('Q("yield") ~ rainfall + fertiliser + arm', cy).fit()
+    with pytest.raises(ValueError, match=(
+            r"^VIF is undefined when coefficients are aliased: rain2\. "
+            r"Drop the redundant term\(s\) and refit\.$")):
+        vif_plot(doubled)
+    # A copy of a factor is aliased as a whole term, and a GLM is refused alike.
+    with pytest.raises(ValueError, match=r"aliased: treatment2\. "):
+        vif_plot(copied)
+    with pytest.raises(ValueError, match=r"aliased: age_months\. "):
+        vif_plot(logistic)
+    # A category that no row takes fills a column of zeros, as the docstring
+    # warns. R's lm() drops such a level, but this fit kept its coefficient.
+    with pytest.raises(ValueError, match=r"aliased: arm\. "):
+        vif_plot(unused)
+
+
+def test_vif_skips_a_term_that_fills_no_columns(formula_engine):
+    # A categorical with a single level fills no column under either engine,
+    # so it has no coefficient and no VIF. Computing one for it raised
+    # ZeroDivisionError.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    cy = crop_yield()
+    cy["farm"] = pd.Categorical(["only"] * len(cy))
+    with_farm = vif_plot(smf.ols('Q("yield") ~ rainfall + fertiliser + farm', cy).fit())
+    without = vif_plot(smf.ols('Q("yield") ~ rainfall + fertiliser', cy).fit())
+    drawn = dict(zip(with_farm.data["term"].astype(str), with_farm.data["vif"],
+                     strict=True))
+    expected = dict(zip(without.data["term"].astype(str), without.data["vif"],
+                        strict=True))
+    assert drawn == pytest.approx(expected, rel=1e-12)
+
+
+def test_vif_plot_draws_the_threshold_on_the_scale_of_its_bars(ols):
+    # Every term of this model has one column, so the bars are ordinary VIFs
+    # and the line marks the threshold itself, in the R twin's grey.
+    p = vif_plot(ols)
+    assert p.labels.y == "Variance inflation factor"
+    assert _hline(p) == ([5], "#666666", "solid")
+    assert _hline(vif_plot(ols, threshold=10))[0] == [10]
+    for bad in (0, -1, float("nan"), "VIF"):
+        with pytest.raises(ValueError, match="`threshold` must be"):
+            vif_plot(ols, threshold=bad)
+
+
+def test_vif_plot_warns_that_a_model_without_an_intercept_is_uncentred():
+    # Without an intercept, the coefficients' covariance comes from uncentred
+    # columns. car::vif() warns here too, and so does the R twin.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    rng = np.random.default_rng(13)
+    x1 = rng.normal(5, 1, size=100)
+    frame = pd.DataFrame({"x1": x1, "x2": 0.8 * x1 + rng.normal(0, 0.5, size=100)})
+    frame["y"] = frame["x1"] - frame["x2"] + rng.normal(size=100)
+    fit = smf.ols("y ~ 0 + x1 + x2", frame).fit()
+    with pytest.warns(UserWarning, match="no intercept"):
+        res = _gvif_terms(fit)
+    # Uncentred VIFs: each diagonal entry of X'X times that of its inverse.
+    gram = fit.model.exog.T @ fit.model.exog
+    np.testing.assert_allclose(res["gvif"],
+                               np.diag(gram) * np.diag(np.linalg.inv(gram)),
+                               rtol=1e-9)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _gvif_terms(smf.ols("y ~ x1 + x2", frame).fit())
+
+
+def test_vif_takes_each_column_of_an_array_fit_as_a_term():
+    # A fit from arrays has no formula to group its columns, so each column is
+    # a term, named as statsmodels names it, and the constant is left out.
+    sm = pytest.importorskip("statsmodels.api")
+    # A formula drops incomplete rows itself, but arrays have to arrive complete.
+    ws = wellbeing_survey().dropna(
+        subset=["life_satisfaction", "stress", "age", "income"])
+    exog = sm.add_constant(ws[["stress", "age", "income"]].to_numpy(dtype=float))
+    fit = sm.OLS(ws["life_satisfaction"].to_numpy(), exog).fit()
+    res = _gvif_terms(fit)
+    assert list(res["term"]) == ["x1", "x2", "x3"]
+    assert (res["df"] == 1).all()
+    smf = pytest.importorskip("statsmodels.formula.api")
+    by_formula = smf.ols("life_satisfaction ~ stress + age + income", ws).fit()
+    np.testing.assert_allclose(res["gvif"], _gvif_terms(by_formula)["gvif"],
+                               rtol=1e-10)
+
+
+def test_vif_needs_two_predictor_columns():
+    # A lone predictor has nothing to be collinear with, and the R twin refuses
+    # it too.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols('Q("yield") ~ rainfall', crop_yield()).fit()
+    with pytest.raises(ValueError, match="at least two predictor columns"):
+        vif_plot(fit)
 
 
 def test_binned_residual_plot(glm):
