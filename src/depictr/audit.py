@@ -35,6 +35,7 @@ from matplotlib.offsetbox import AnchoredOffsetbox
 
 from .cvd import (
     DEFICIENCIES,
+    _check_metric,
     _min_pairwise_delta_e,
     _rgb_to_lab,
     _srgb_to_linear,
@@ -66,7 +67,8 @@ _CONTINUOUS_COLOUR_DETAIL = (
 
 
 def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
-                 min_delta_e: float = 5, min_text_pt: float = 6) -> pd.DataFrame:
+                 min_delta_e: float = 5, min_text_pt: float = 6,
+                 metric: str = "ciede2000") -> pd.DataFrame:
     """Audit a finished figure for accessibility and honesty.
 
     Checks a figure as it will be submitted, rather than the palette it was
@@ -90,8 +92,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     one another, the colour that shows depends on what lies beneath it, and
     that is not measured.
 
-    ``colour_separability`` is the smallest CIE76 colour difference (Delta-E)
-    between two of the figure's encoding colours, and the three
+    ``colour_separability`` is the smallest colour difference between two of
+    the figure's encoding colours, by the CIEDE2000 formula (Sharma, Wu &
+    Dalal, 2005) unless ``metric`` asks for the older CIE76. The three
     ``colour_separability_*`` rows repeat that measurement after simulating each
     dichromacy at full severity with :func:`depictr.simulate_cvd`. Encoding
     colours are the distinct colour and fill values that tell groups apart. A
@@ -120,7 +123,8 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
     between those same colours, which is what survives printing in black and
-    white.
+    white. It is the absolute difference in lightness, whichever ``metric`` the
+    colour rows use.
 
     ``text_size`` is the smallest point size of the text the theme draws around
     the panel: axis labels and titles, legends, facet strips, titles and
@@ -231,13 +235,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         same 17.78 cm. The ratio of the two widths is the factor every point
         size is multiplied by.
     min_delta_e : float
-        The smallest acceptable CIE76 colour difference, used for the colour and
-        greyscale separability checks. Defaults to 5, matching
-        :func:`depictr.palette_safety`.
+        The smallest acceptable colour difference, on the scale of ``metric``,
+        for the colour separability checks, and the smallest acceptable
+        difference in lightness for the greyscale check. Defaults to 5,
+        matching :func:`depictr.palette_safety`.
     min_text_pt : float
         The smallest acceptable printed text size, in points, for the text
         around the panel and the text inside it alike. Defaults to 6, below the
         floor most journals set (see "Auditing at the printed size" above).
+    metric : {"ciede2000", "cie76"}
+        The colour difference the colour separability checks measure:
+        CIEDE2000, the default, or the Euclidean distance in CIELAB that
+        earlier versions measured. ``"cie76"`` is kept so that earlier results
+        can be reproduced, and a later release will remove it.
 
     Returns
     -------
@@ -268,6 +278,11 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     https://www.nature.com/documents/nature-final-artwork.pdf
 
     PLOS ONE. Figures. https://journals.plos.org/plosone/s/figures
+
+    Sharma, G., Wu, W., & Dalal, E. N. (2005). The CIEDE2000 color-difference
+    formula: Implementation notes, supplementary test data, and mathematical
+    observations. Color Research & Application, 30(1), 21-30.
+    https://doi.org/10.1002/col.20070
 
     Examples
     --------
@@ -321,8 +336,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     _positive_scalar(render_width_cm, "render_width_cm")
     _positive_scalar(min_delta_e, "min_delta_e")
     _positive_scalar(min_text_pt, "min_text_pt")
+    _check_metric(metric)
 
-    settings = (width_cm, render_width_cm, min_delta_e, min_text_pt)
+    settings = (width_cm, render_width_cm, min_delta_e, min_text_pt, metric)
     if isinstance(plot, Compose):
         return _audit_composition(plot, *settings)
     return _audit_plot(plot, *settings)
@@ -354,12 +370,13 @@ def _composition_panels(composition):
 
 
 def _audit_composition(composition, width_cm: float, render_width_cm: float,
-                       min_delta_e: float, min_text_pt: float) -> pd.DataFrame:
+                       min_delta_e: float, min_text_pt: float,
+                       metric: str) -> pd.DataFrame:
     """Each panel of a composition audited on its own, under a panel column."""
     reports = []
     for number, panel in enumerate(_composition_panels(composition), start=1):
         report = _audit_plot(panel, width_cm, render_width_cm, min_delta_e,
-                             min_text_pt)
+                             min_text_pt, metric)
         report.insert(0, "panel", number)
         reports.append(report)
     if not reports:
@@ -374,7 +391,8 @@ def _audit_composition(composition, width_cm: float, render_width_cm: float,
 
 
 def _audit_plot(plot, width_cm: float, render_width_cm: float,
-                min_delta_e: float, min_text_pt: float) -> pd.DataFrame:
+                min_delta_e: float, min_text_pt: float,
+                metric: str) -> pd.DataFrame:
     """The audit of a single plot, its settings already validated."""
     # Drawing mutates the plot it is given (it builds the layers in place), so
     # the audit works on a copy and leaves the caller's figure untouched.
@@ -398,7 +416,8 @@ def _audit_plot(plot, width_cm: float, render_width_cm: float,
     # that the two rows for the theme's text measure.
     no_text = ("The figure draws no text outside the panel." if panel_text
                else "The figure draws no text.")
-    rows = _separability_rows(encoding.sets, min_delta_e, encoding.abstain)
+    rows = _separability_rows(encoding.sets, min_delta_e, metric,
+                              encoding.abstain)
     rows.append(_smallest_text_row("text_size", [t.size for t in text],
                                    width_cm, render_width_cm, min_text_pt,
                                    "text", no_text))
@@ -982,14 +1001,16 @@ _SET_NOUNS = {"color": "colours", "fill": "fill colours"}
 
 
 def _separability_rows(sets: dict[str, list[tuple[str, str]]],
-                       min_delta_e: float,
+                       min_delta_e: float, metric: str = "ciede2000",
                        abstain: str = _NO_COLOUR_DETAIL) -> list[dict]:
     """The four colour rows plus the greyscale row.
 
     Each set holds the drawn colours of one aesthetic, and only colours
     declared differently are paired, so a group is never compared with itself.
     The rows report the closest pair over the sets, the first set winning a
-    tie. ``abstain`` is the detail every row gives when no set encodes.
+    tie. ``metric`` is the colour difference of the four colour rows, and the
+    greyscale row is a lightness gap either way. ``abstain`` is the detail
+    every row gives when no set encodes.
     """
     names = ["colour_separability"] + [
         f"colour_separability_{d}" for d in DEFICIENCIES
@@ -1014,7 +1035,7 @@ def _separability_rows(sets: dict[str, list[tuple[str, str]]],
         def measure(drawn, declared, condition=condition):
             seen = (drawn if condition == "normal"
                     else simulate_cvd(drawn, condition))
-            return _min_pairwise_delta_e(seen, declared)
+            return _min_pairwise_delta_e(seen, declared, metric)
 
         distance, a, b, size, noun = closest_over_sets(measure)
         rows.append(_row(name, distance, min_delta_e,
@@ -1022,7 +1043,8 @@ def _separability_rows(sets: dict[str, list[tuple[str, str]]],
                          f"{noun}."))
     # Lightness is what a black-and-white printer keeps, and CIE L* is a
     # function of luminance alone, so the greyscale difference between two
-    # colours is the CIE76 distance between their lightnesses.
+    # colours is the gap between their lightnesses, whichever metric the colour
+    # rows use.
     distance, a, b, _, _ = closest_over_sets(
         lambda drawn, declared: _min_pairwise_gap(_rgb_to_lab(drawn)[:, 0],
                                                   declared))

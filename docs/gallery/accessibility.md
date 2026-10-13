@@ -15,7 +15,9 @@ from _exec import pre, show, table
 ## The safety report
 
 The report gives the worst-case minimum distance between any two palette colours,
-across normal vision and each deficiency at full severity.
+across normal vision and each deficiency at full severity. The distance is the
+CIEDE2000 colour difference
+([Sharma, Wu and Dalal, 2005](https://doi.org/10.1002/col.20070)).
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 import depictr as dp
@@ -43,7 +45,7 @@ The same simulator drives the safety report above and the web app's
 colour-vision toggle. Below it maps every palette colour through each
 deficiency in turn, so the rows can be read against one another. The tightest
 pair is the reddish purple and the grey under deuteranopia, which is where the
-7.4 in the report comes from, and even that stays well above the threshold of 5.
+6.43 in the report comes from, and even that clears the threshold of 5.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 import pandas as pd
@@ -91,8 +93,8 @@ Eight colours is the guarantee, not a starting point. Asked for more,
 `depictr_palette` interpolates between the Okabe-Ito colours, and the
 in-between colours land close enough together that the same check fails them.
 The package warns when that happens, so no colours go out under a promise it
-cannot keep, and the honest reading of the report below is that nine groups is
-already the ceiling and ten is past it.
+cannot keep. The report below shows the check agreeing with the warning: eight
+colours pass, and nine already fail.
 
 ```python exec="1" html="1" source="material-block" session="a11y"
 import warnings

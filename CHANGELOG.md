@@ -142,6 +142,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `depictr_palette(kind="sequential")` keeps its pale end for fills. Past about
   six cycles, neighbouring lines take colours too close to tell apart, as the
   docstring now says.
+- Colour separability in `palette_safety()` and `check_figure()` is now
+  measured with CIEDE2000 (Sharma, Wu & Dalal, 2005). The 1976 Euclidean
+  distance it replaces overstates differences between saturated colours:
+  ggplot2's default five-colour palette was certified safe under
+  deuteranopia, though two of its colours become almost identical, 2.74 apart
+  in CIEDE2000. The threshold stays at 5, and the Okabe-Ito palette's closest
+  pair now measures 6.43, where it measured 7.4. `depictr_palette(9)` already
+  warned that interpolated colours lose the guarantee, and its nine colours
+  now fail the check too. `metric="cie76"` restores the old measure for this
+  release, and the greyscale check is the lightness gap under either. The R
+  twin makes the same change and gives the same numbers.
 
 ### Deprecated
 

@@ -1,16 +1,21 @@
 """Tests for the palette and the colour-vision-deficiency machinery."""
 
+import csv
 import re
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from depictr import depictr_palette, palette_safety, simulate_cvd
-from depictr.cvd import _rgb_to_lab
+from depictr.cvd import _ciede2000, _rgb_to_lab
 from depictr.palette import OKABE_ITO
 
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+# ggplot2's default palette for five groups, scales::hue_pal()(5).
+HUE5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
 
 
 def test_qualitative_palette_defaults_to_full_set():
@@ -47,6 +52,12 @@ def test_interpolated_palette_is_not_colourblind_safe():
     assert palette_safety(interpolated)["safe"] is False
     # The size the guarantee is actually made for still clears the threshold.
     assert palette_safety(depictr_palette(len(OKABE_ITO)))["safe"] is True
+    # Nine colours fail too, and nine is where the warning starts. The 1976
+    # distance passed them, at 5.63.
+    with pytest.warns(UserWarning):
+        nine = depictr_palette(9)
+    assert palette_safety(nine)["safe"] is False
+    assert palette_safety(nine, metric="cie76")["safe"] is True
 
 
 def test_sequential_and_diverging_ramps():
@@ -108,6 +119,64 @@ def test_default_palette_is_safe():
     assert report["safe"] is True
     assert set(report["by_condition"]) == {"normal", "protan", "deutan", "tritan"}
     assert report["worst_condition"] in report["by_condition"]
+    # Pinned in the R suite as well. The worst case is the reddish purple
+    # against the grey under deuteranopia, which the 1976 distance put at 7.4.
+    assert report["by_condition"] == {"normal": 21.25, "protan": 13.44,
+                                      "deutan": 6.43, "tritan": 11.13}
+    assert report["min_delta_e"] == 6.43
+    assert report["worst_condition"] == "deutan"
+    assert report["worst_pair"] == ("#cc79a7", "#999999")
+    assert palette_safety(metric="cie76")["min_delta_e"] == 7.4
+
+
+def test_ciede2000_reproduces_the_pairs_sharma_wu_and_dalal_published():
+    # Their supplementary test data, as the authors distribute it, with the
+    # differences given to four decimals. The pairs include the
+    # discontinuities in the mean hue and the hue difference, where
+    # implementations go wrong. The R suite reads an identical copy.
+    path = Path(__file__).parent / "data" / "sharma2005.csv"
+    with path.open(newline="") as handle:
+        pairs = list(csv.DictReader(handle))
+    assert len(pairs) == 34
+    for row in pairs:
+        first = [float(row[k]) for k in ("L1", "a1", "b1")]
+        second = [float(row[k]) for k in ("L2", "a2", "b2")]
+        ours = _ciede2000(first, second)
+        assert abs(ours - float(row["delta_e_2000"])) <= 1e-4, row["pair"]
+        # The formula is symmetric in its two colours.
+        assert _ciede2000(second, first) == pytest.approx(ours, rel=1e-12)
+
+
+def test_the_1976_distance_overstates_differences_between_saturated_colours():
+    # Two blues a reader can barely tell apart, measured both ways. The R suite
+    # pins the same numbers.
+    blues = ["#005b96", "#0060a8"]
+    assert palette_safety(blues)["by_condition"]["normal"] == 2.69
+    assert palette_safety(blues, metric="cie76")["by_condition"]["normal"] == 8.2
+
+
+def test_ggplot2s_five_colours_pass_under_cie76_and_fail_under_ciede2000():
+    # Under deuteranopia the sky blue and the pink become #709df5 and #80a3ef,
+    # 7.35 apart by the 1976 distance, which certified the palette as safe,
+    # and 2.74 apart in CIEDE2000.
+    assert simulate_cvd(["#00B0F6", "#E76BF3"], "deutan") == [
+        "#709df5", "#80a3ef"]
+    now = palette_safety(HUE5)
+    assert now["safe"] is False
+    assert now["min_delta_e"] == 2.74
+    assert now["worst_condition"] == "deutan"
+    assert now["worst_pair"] == ("#00B0F6", "#E76BF3")
+    assert palette_safety(HUE5, metric="ciede2000") == now
+    old = palette_safety(HUE5, metric="cie76")
+    assert old["safe"] is True
+    assert old["min_delta_e"] == 7.35
+    assert old["worst_pair"] == ("#00B0F6", "#E76BF3")
+
+
+def test_palette_safety_refuses_a_metric_it_does_not_know():
+    with pytest.raises(ValueError) as excinfo:
+        palette_safety(metric="cie94")
+    assert str(excinfo.value) == "`metric` must be 'ciede2000' or 'cie76'."
 
 
 def test_palette_safety_needs_a_pair():

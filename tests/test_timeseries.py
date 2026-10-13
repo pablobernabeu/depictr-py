@@ -165,8 +165,11 @@ def test_seasonal_cycle_lines_clear_3_to_1_against_white():
 
 def test_seasonal_cycle_colours_pass_every_colour_check_up_to_six_cycles():
     # Past about six cycles, a single-hue ramp shows the order of the cycles
-    # more than which is which. Greyscale separability fails from eight cycles
-    # and colour separability at twelve, so neither is asserted there.
+    # more than which is which. Measured with CIEDE2000, six cycles clear 5
+    # by the least margin under deuteranopia, at 5.24 (the R twin's ramp,
+    # rounded one hex unit away, measures 4.93 there). Every colour row fails
+    # from seven cycles and greyscale separability from eight, so none is
+    # asserted there.
     import depictr as dp
 
     for n_cycles in range(2, 7):

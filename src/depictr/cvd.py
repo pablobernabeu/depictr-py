@@ -11,15 +11,24 @@ This drives three things: the live colourblind-vision toggle in the web app,
 enough apart for each deficiency that they remain distinguishable, and the
 colour-separability rows of :func:`depictr.audit.check_figure`, which asks the
 same question of a finished figure. depictr uses them to validate its default
-palette rather than merely assert that it is safe.
+palette rather than merely assert that it is safe. How far apart two colours
+are is measured with the CIEDE2000 formula, as Sharma, Wu and Dalal (2005) set
+it out.
 
 Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
 physiologically-based model for simulation of color vision deficiency. IEEE
 Transactions on Visualization and Computer Graphics, 15(6), 1291-1298.
 https://doi.org/10.1109/TVCG.2009.113
+
+Sharma, G., Wu, W., & Dalal, E. N. (2005). The CIEDE2000 color-difference
+formula: Implementation notes, supplementary test data, and mathematical
+observations. Color Research & Application, 30(1), 21-30.
+https://doi.org/10.1002/col.20070
 """
 
 from __future__ import annotations
+
+import math
 
 import matplotlib.colors as mcolors
 import numpy as np
@@ -46,6 +55,21 @@ _MACHADO_1 = {
 }
 
 DEFICIENCIES = tuple(_MACHADO_1)
+
+# The colour differences palette_safety() and check_figure() can measure.
+_METRICS = ("ciede2000", "cie76")
+
+# Degrees to radians and back, the products that math.radians() and
+# math.degrees() compute, written out so that the R twin evaluates the same
+# products and the twins round alike.
+_RADIANS_PER_DEGREE = math.pi / 180
+_DEGREES_PER_RADIAN = 180 / math.pi
+
+
+def _check_metric(metric) -> None:
+    """Refuse a colour difference that the package does not measure."""
+    if not isinstance(metric, str) or metric not in _METRICS:
+        raise ValueError("`metric` must be 'ciede2000' or 'cie76'.")
 
 
 def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
@@ -118,14 +142,93 @@ def _rgb_to_lab(colours: list[str]) -> np.ndarray:
     return np.stack([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)], axis=1)
 
 
-def _min_pairwise_delta_e(colours: list[str],
-                          groups=None) -> tuple[float, tuple[int, int]]:
-    """Smallest CIE76 colour difference among all pairs, and that pair's indices.
+def _ciede2000(lab1, lab2) -> float:
+    """CIEDE2000 colour difference between two CIE L*a*b* colours.
 
-    ``groups``, when given, labels each colour, and a pair whose labels are
-    equal is skipped: ``check_figure`` labels each drawn colour with the colour
-    it was declared as, so that one group drawn in two ways is not set against
-    itself.
+    The formula as Sharma, Wu and Dalal (2005) set it out, with the parametric
+    weights kL, kC and kH at 1. Where the definition leaves a choice, theirs is
+    followed. A neutral colour has a hue angle of zero. A pair in which either
+    colour is neutral has no hue difference, and its mean hue is the sum of the
+    two hue angles. The R twin's ``.ciede2000()`` evaluates the same
+    expressions in the same order. The 34 pairs the authors published are in
+    ``tests/data/sharma2005.csv``.
+    """
+    l1, a1, b1 = (float(v) for v in lab1)
+    l2, a2, b2 = (float(v) for v in lab2)
+
+    # a* is scaled up for colours of low chroma, the formula's correction for
+    # greys, before chroma and hue are taken.
+    c_bar = (math.sqrt(a1 * a1 + b1 * b1) + math.sqrt(a2 * a2 + b2 * b2)) / 2
+    g = 0.5 * (1 - math.sqrt(c_bar ** 7 / (c_bar ** 7 + 25 ** 7)))
+    a1p = (1 + g) * a1
+    a2p = (1 + g) * a2
+    c1p = math.sqrt(a1p * a1p + b1 * b1)
+    c2p = math.sqrt(a2p * a2p + b2 * b2)
+
+    def hue(b: float, a: float) -> float:
+        h = 0.0 if b == 0 and a == 0 else math.atan2(b, a) * _DEGREES_PER_RADIAN
+        return h + 360 if h < 0 else h
+
+    h1p = hue(b1, a1p)
+    h2p = hue(b2, a2p)
+
+    # The differences in lightness, chroma and hue, the hue difference taken
+    # the short way round the circle.
+    neutral = c1p * c2p == 0
+    dlp = l2 - l1
+    dcp = c2p - c1p
+    dhp = h2p - h1p
+    if neutral:
+        dhp = 0.0
+    elif dhp > 180:
+        dhp = dhp - 360
+    elif dhp < -180:
+        dhp = dhp + 360
+    dbig_hp = 2 * math.sqrt(c1p * c2p) * math.sin(dhp / 2 * _RADIANS_PER_DEGREE)
+
+    # The weights for lightness, chroma and hue, taken at the pair's means. The
+    # term that couples the chroma and hue differences is the formula's
+    # correction for blues.
+    lbp = (l1 + l2) / 2
+    cbp = (c1p + c2p) / 2
+    if neutral:
+        hbp = h1p + h2p
+    elif abs(h1p - h2p) <= 180:
+        hbp = (h1p + h2p) / 2
+    elif h1p + h2p < 360:
+        hbp = (h1p + h2p + 360) / 2
+    else:
+        hbp = (h1p + h2p - 360) / 2
+    t_term = (1 - 0.17 * math.cos((hbp - 30) * _RADIANS_PER_DEGREE)
+              + 0.24 * math.cos(2 * hbp * _RADIANS_PER_DEGREE)
+              + 0.32 * math.cos((3 * hbp + 6) * _RADIANS_PER_DEGREE)
+              - 0.20 * math.cos((4 * hbp - 63) * _RADIANS_PER_DEGREE))
+    z = (hbp - 275) / 25
+    d_theta = 30 * math.exp(-(z * z))
+    r_c = 2 * math.sqrt(cbp ** 7 / (cbp ** 7 + 25 ** 7))
+    l50 = lbp - 50
+    s_l = 1 + 0.015 * (l50 * l50) / math.sqrt(20 + l50 * l50)
+    s_c = 1 + 0.045 * cbp
+    s_h = 1 + 0.015 * cbp * t_term
+    r_t = -math.sin(2 * d_theta * _RADIANS_PER_DEGREE) * r_c
+
+    lightness = dlp / s_l
+    chroma = dcp / s_c
+    hue_term = dbig_hp / s_h
+    return math.sqrt(lightness * lightness + chroma * chroma
+                     + hue_term * hue_term + r_t * chroma * hue_term)
+
+
+def _min_pairwise_delta_e(colours: list[str], groups=None,
+                          metric: str = "ciede2000"
+                          ) -> tuple[float, tuple[int, int]]:
+    """Smallest colour difference among all pairs, and that pair's indices.
+
+    The difference is CIEDE2000, or with ``metric="cie76"`` the Euclidean
+    distance in CIELAB. ``groups``, when given, labels each colour, and a pair
+    whose labels are equal is skipped: ``check_figure`` labels each drawn
+    colour with the colour it was declared as, so that one group drawn in two
+    ways is not set against itself.
     """
     lab = _rgb_to_lab(colours)
     best, pair = np.inf, (0, 0)
@@ -133,24 +236,36 @@ def _min_pairwise_delta_e(colours: list[str],
         for j in range(i + 1, len(lab)):
             if groups is not None and groups[i] == groups[j]:
                 continue
-            d = float(np.linalg.norm(lab[i] - lab[j]))
+            if metric == "cie76":
+                d = float(np.linalg.norm(lab[i] - lab[j]))
+            else:
+                d = _ciede2000(lab[i], lab[j])
             if d < best:
                 best, pair = d, (i, j)
     return best, pair
 
 
-def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> dict:
+def palette_safety(colours: list[str] | None = None, threshold: float = 5.0,
+                   metric: str = "ciede2000") -> dict:
     """Check that a palette stays distinguishable under each deficiency.
 
-    For normal vision and each deficiency at full severity, the palette's colours
-    are converted to CIE L*a*b* and the smallest pairwise colour difference
-    (CIE76 Delta-E) is found. The lower this minimum, the more likely two
-    categories are to be confused. A palette is reported safe when the minimum
-    across all conditions is at least ``threshold``.
+    For normal vision and each deficiency at full severity, the palette's
+    colours are converted to CIELAB and the smallest colour difference between
+    any two of them is found. The difference is CIEDE2000 (Sharma, Wu & Dalal,
+    2005) unless ``metric`` asks for the older measure. The lower this minimum,
+    the more likely two categories are to be confused. A palette is reported
+    safe when the minimum across all conditions is at least ``threshold``.
+
+    Earlier versions measured the Euclidean distance in CIELAB, known as CIE76,
+    which overstates the difference between saturated colours: the blues
+    ``#005b96`` and ``#0060a8`` are 8.20 apart by CIE76 and 2.69 by CIEDE2000.
+    ggplot2's default palette of five colours passed the check under CIE76,
+    although under deuteranopia its sky blue and its pink come within 2.74 of
+    each other in CIEDE2000.
 
     The default ``threshold`` of 5.0 is calibrated against the reference
     colourblind-safe palette: the Okabe-Ito set's tightest pair (reddish-purple
-    against grey) sits at Delta-E 7.4 under full deuteranopia, so the cut must lie
+    against grey) sits at 6.43 under full deuteranopia, so the cut must lie
     below that to pass the recommended palette, while still flagging colours that
     become near-identical under a deficiency. The difference includes lightness,
     which survives colour-vision deficiency, so two colours that share a hue but
@@ -164,13 +279,18 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
         at least two colours: a pairwise distance over fewer than two has no
         value, not an infinitely safe one.
     threshold : float
-        The smallest acceptable Delta-E.
+        The smallest acceptable colour difference, on the scale of ``metric``.
+    metric : {"ciede2000", "cie76"}
+        The colour difference to measure: CIEDE2000, the default, or the
+        Euclidean distance in CIELAB that earlier versions measured.
+        ``"cie76"`` is kept so that earlier results can be reproduced, and a
+        later release will remove it.
 
     Returns
     -------
     dict
         ``min_delta_e`` (the worst case across conditions), ``by_condition``
-        (the minimum Delta-E for normal vision and each deficiency),
+        (the minimum colour difference for normal vision and each deficiency),
         ``worst_condition`` and ``worst_pair`` (the closest colours and where),
         ``safe`` (whether ``min_delta_e`` meets ``threshold``) and ``threshold``.
 
@@ -180,13 +300,28 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
         uses only as many colours as it has groups and has text and a background
         besides.
 
+    References
+    ----------
+    Sharma, G., Wu, W., & Dalal, E. N. (2005). The CIEDE2000 color-difference
+    formula: Implementation notes, supplementary test data, and mathematical
+    observations. Color Research & Application, 30(1), 21-30.
+    https://doi.org/10.1002/col.20070
+
     Examples
     --------
     >>> import depictr as dp
     >>> dp.palette_safety()['safe']
     True
+
+    ggplot2's default palette of five colours, which passed under CIE76.
+
+    >>> hue5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
+    >>> dp.palette_safety(hue5)['safe'], dp.palette_safety(hue5, metric="cie76")['safe']
+    (False, True)
     """
     from .palette import depictr_palette
+
+    _check_metric(metric)
 
     # `colours or ...` would have swapped in the default palette for an empty
     # list, reporting on eight colours the caller never passed.
@@ -200,10 +335,12 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0) -> 
             "`colours` needs at least two colours to have a pairwise distance."
         )
     by_condition, pairs = {}, {}
-    by_condition["normal"], pairs["normal"] = _min_pairwise_delta_e(colours)
+    by_condition["normal"], pairs["normal"] = _min_pairwise_delta_e(
+        colours, metric=metric)
     for deficiency in DEFICIENCIES:
         sim = simulate_cvd(colours, deficiency, severity=1.0)
-        by_condition[deficiency], pairs[deficiency] = _min_pairwise_delta_e(sim)
+        by_condition[deficiency], pairs[deficiency] = _min_pairwise_delta_e(
+            sim, metric=metric)
     worst_condition = min(by_condition, key=by_condition.get)
     min_delta_e = by_condition[worst_condition]
     i, j = pairs[worst_condition]

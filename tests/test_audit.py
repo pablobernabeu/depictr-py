@@ -214,7 +214,7 @@ def test_a_deliberately_bad_figure_fails_the_checks_it_should():
     # Red against green: fine to a normal-sighted reader, gone under
     # deuteranopia.
     assert verdict_for(report, "colour_separability") == "pass"
-    assert measured_for(report, "colour_separability") > 100
+    assert measured_for(report, "colour_separability") > 50
     assert verdict_for(report, "colour_separability_deutan") == "fail"
     assert measured_for(report, "colour_separability_deutan") < 1
     # Base size 5 puts the axis text at 4 pt, well under the 6 pt floor.
@@ -235,10 +235,10 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     # assert_array_equal, unlike ==, treats as equal to itself.
     np.testing.assert_array_equal(
         dp.check_figure(good_figure())["measured"],
-        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, np.nan])
+        [50.12, 49.67, 58.3, 61.99, 16.92, 8.8, 8.45, 3.87, 1, np.nan])
     np.testing.assert_array_equal(
         dp.check_figure(bad_figure())["measured"],
-        [116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0, np.nan])
+        [69.59, 20.06, 0.11, 62.7, 6.32, 4, 8.45, 4.01, 0, np.nan])
 
     eight = pd.DataFrame({"g": list("abcdefgh"), "x": range(8), "y": range(8)})
     p = (ggplot(eight, aes("x", "y", colour="g")) + geom_point()
@@ -246,14 +246,14 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     report = dp.check_figure(p)
     np.testing.assert_array_equal(
         report["measured"],
-        [33.43, 18.15, 7.4, 16.18, 0.79, 8.8, 8.45, 1.32, 0, np.nan])
+        [21.25, 13.44, 6.43, 11.13, 0.79, 8.8, 8.45, 1.32, 0, np.nan])
     # The detail strings are part of the contract too, since they carry the
     # colours the numbers came from.
     assert report["detail"].tolist() == [
-        "Closest pair #d55e00 and #e69f00 of 8 encoding colours.",
+        "Closest pair #56b4e9 and #999999 of 8 encoding colours.",
         "Closest pair #999999 and #cc79a7 of 8 encoding colours.",
         "Closest pair #999999 and #cc79a7 of 8 encoding colours.",
-        "Closest pair #009e73 and #56b4e9 of 8 encoding colours.",
+        "Closest pair #cc79a7 and #e69f00 of 8 encoding colours.",
         "Closest pair #56b4e9 and #e69f00 in CIE lightness.",
         "Smallest text 8.80 pt, drawn at 17.78 cm and printed at 17.78 cm.",
         "Lowest-contrast text #4d4d4d on #ffffff at 8.80 pt.",
@@ -268,7 +268,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     annotated = dp.check_figure(annotated_figure())
     np.testing.assert_array_equal(
         annotated["measured"],
-        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, 5.7])
+        [50.12, 49.67, 58.3, 61.99, 16.92, 8.8, 8.45, 3.87, 1, 5.7])
     assert [detail_for(annotated, "text_size"),
             detail_for(annotated, "annotation_text_size")] == [
         "Smallest text 8.80 pt, drawn at 17.78 cm and printed at 17.78 cm.",
@@ -283,7 +283,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
                            + theme(plot_background=element_rect(fill="#333333")))
     np.testing.assert_array_equal(
         dark["measured"],
-        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 1.49, 1.77, 1, np.nan])
+        [50.12, 49.67, 58.3, 61.99, 16.92, 8.8, 1.49, 1.77, 1, np.nan])
     assert (detail_for(dark, "geometry_contrast")
             == "Lowest-contrast colour #005b96 on #333333.")
 
@@ -293,7 +293,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     bars = dp.check_figure(bars_figure(alpha=0.3))
     np.testing.assert_array_equal(
         bars["measured"],
-        [33.44, 27.98, 33.13, 35.37, 4.03, 8.8, 8.45, 1.46, 0, np.nan])
+        [26.57, 22.54, 25.84, 35.95, 4.03, 8.8, 8.45, 1.46, 0, np.nan])
     assert bars["detail"].tolist() == [
         *["Closest pair #b3cee0 and #f2cfb3 of 2 encoding fill colours."] * 4,
         "Closest pair #b3cee0 and #f2cfb3 in CIE lightness.",
@@ -310,7 +310,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     points = dp.check_figure(points_figure(alpha=0.7))
     np.testing.assert_array_equal(
         points["measured"],
-        [83.25, 69.5, 80.89, 85.03, 10.77, 8.8, 8.45, 2.56, 1, np.nan])
+        [43.96, 42.02, 47.69, 53.52, 10.77, 8.8, 8.45, 2.56, 1, np.nan])
     assert (detail_for(points, "geometry_contrast")
             == "Lowest-contrast colour #d55e00 at alpha 0.70, drawn as "
                "#e28e4d, on #ffffff.")
@@ -321,7 +321,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
     split = dp.check_figure(split_figure())
     np.testing.assert_array_equal(
         split["measured"],
-        [116.25, 35.04, 0.37, 119.38, 6.32, 8.8, 8.45, 4.01, 0, np.nan])
+        [69.59, 20.06, 0.11, 62.7, 6.32, 8.8, 8.45, 4.01, 0, np.nan])
     assert [*split["detail"][:5], detail_for(split, "geometry_contrast")] == [
         *["Closest pair #309208 and #d62728 of 2 encoding colours."] * 4,
         "Closest pair #309208 and #d62728 in CIE lightness.",
@@ -337,6 +337,58 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         [np.nan] * 5 + [8.8, 8.45] + [np.nan] * 3)
     assert set(gradient.loc[gradient["check"].isin(COLOUR_CHECKS), "detail"]) == {
         "Colour is a continuous scale, which these checks do not audit."}
+
+
+def test_a_figure_in_ggplot2s_five_colours_fails_the_deuteranopia_row():
+    # ggplot2's default colours for five groups, scales::hue_pal()(5). Under
+    # deuteranopia the sky blue and the pink come 2.74 apart in CIEDE2000. The
+    # 1976 distance put them 7.35 apart, and every colour row passed. The R
+    # suite pins the same rows.
+    hue5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
+    five = pd.DataFrame({"g": list("abcde"), "x": range(5), "y": range(5)})
+    p = (ggplot(five, aes("x", "y", colour="g")) + geom_point()
+         + scale_colour_manual(values=hue5) + dp.theme_depictr())
+    report = dp.check_figure(p)
+    assert report["measured"].tolist()[:4] == [26.71, 9.37, 2.74, 7.91]
+    assert report["verdict"].tolist()[:4] == ["pass", "pass", "fail", "pass"]
+    assert (detail_for(report, "colour_separability_deutan")
+            == "Closest pair #00b0f6 and #e76bf3 of 5 encoding colours.")
+    old = dp.check_figure(p, metric="cie76")
+    assert old["measured"].tolist()[:4] == [60.58, 16.87, 7.35, 12.87]
+    assert old["verdict"].tolist()[:4] == ["pass"] * 4
+
+
+def test_metric_cie76_restores_the_1976_distance():
+    # The numbers the audit reported before it measured CIEDE2000, pinned in
+    # the R suite as well. Only the four colour rows depend on the metric.
+    eight = pd.DataFrame({"g": list("abcdefgh"), "x": range(8), "y": range(8)})
+    p = (ggplot(eight, aes("x", "y", colour="g")) + geom_point()
+         + dp.scale_colour_depictr() + dp.theme_depictr())
+    old = dp.check_figure(p, metric="cie76")
+    np.testing.assert_array_equal(
+        old["measured"],
+        [33.43, 18.15, 7.4, 16.18, 0.79, 8.8, 8.45, 1.32, 0, np.nan])
+    assert old["detail"].tolist()[:4] == [
+        "Closest pair #d55e00 and #e69f00 of 8 encoding colours.",
+        "Closest pair #999999 and #cc79a7 of 8 encoding colours.",
+        "Closest pair #999999 and #cc79a7 of 8 encoding colours.",
+        "Closest pair #009e73 and #56b4e9 of 8 encoding colours.",
+    ]
+    pd.testing.assert_frame_equal(old.iloc[4:], dp.check_figure(p).iloc[4:])
+    np.testing.assert_array_equal(
+        dp.check_figure(bad_figure(), metric="cie76")["measured"],
+        [116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0, np.nan])
+    # A composition measures every panel by the metric it is given.
+    both = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()),
+                           metric="cie76")
+    assert both.loc[both["check"] == "colour_separability_deutan",
+                    "measured"].tolist() == [107.07, 0.37]
+
+
+def test_check_figure_refuses_a_metric_it_does_not_know():
+    with pytest.raises(ValueError) as excinfo:
+        dp.check_figure(good_figure(), metric="cie94")
+    assert str(excinfo.value) == "`metric` must be 'ciede2000' or 'cie76'."
 
 
 # --- the measurements themselves ---------------------------------------------
@@ -691,13 +743,13 @@ def test_each_aesthetics_colours_are_compared_among_themselves():
 def test_verdicts_on_translucent_fills_can_move_in_either_direction():
     # Red and green fills at alpha 0.6 are lighter by different amounts, so a
     # deuteranope tells them apart by lightness. Read at full opacity, they
-    # failed at 0.37.
+    # failed at 0.11.
     red_green = ("#d62728", "#309208")
     opaque = dp.check_figure(bars_figure(alpha=1, values=red_green))
     translucent = dp.check_figure(bars_figure(alpha=0.6, values=red_green))
-    assert measured_for(opaque, "colour_separability_deutan") == 0.37
+    assert measured_for(opaque, "colour_separability_deutan") == 0.11
     assert verdict_for(opaque, "colour_separability_deutan") == "fail"
-    assert measured_for(translucent, "colour_separability_deutan") == 11.58
+    assert measured_for(translucent, "colour_separability_deutan") == 5.59
     assert verdict_for(translucent, "colour_separability_deutan") == "pass"
     # The good figure's colours, which pass at full opacity, fall below 3:1 as
     # fills at alpha 0.3.
@@ -770,7 +822,7 @@ def test_redundant_encoding_counts_the_channels_that_vary_with_colour():
 
 
 def test_a_colour_mapped_in_several_layers_one_value_each_is_an_encoding():
-    # The same red and green in one layer fail deuteranopia at 0.37. Split one
+    # The same red and green in one layer fail deuteranopia at 0.11. Split one
     # group per layer, every colour row read "not applicable".
     one_layer = dp.check_figure(
         ggplot(CY, aes("rainfall", "yield", colour="treatment"))
@@ -780,7 +832,7 @@ def test_a_colour_mapped_in_several_layers_one_value_each_is_an_encoding():
     split = dp.check_figure(split_figure())
     pd.testing.assert_frame_equal(encoding_rows(split),
                                   encoding_rows(one_layer))
-    assert measured_for(split, "colour_separability_deutan") == 0.37
+    assert measured_for(split, "colour_separability_deutan") == 0.11
     assert verdict_for(split, "colour_separability_deutan") == "fail"
     # A layer inherits a constant the plot maps, as it inherits any mapping.
     inherited = dp.check_figure(
@@ -1059,8 +1111,8 @@ def test_a_composite_is_audited_panel_by_panel_in_reading_order():
     assert report["check"].tolist() == CHECKS * 2
     np.testing.assert_array_equal(
         report["measured"],
-        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, np.nan,
-         116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0, np.nan])
+        [50.12, 49.67, 58.3, 61.99, 16.92, 8.8, 8.45, 3.87, 1, np.nan,
+         69.59, 20.06, 0.11, 62.7, 6.32, 4, 8.45, 4.01, 0, np.nan])
     assert report.index.tolist() == list(range(20))
     second = (report[report["panel"] == 2].drop(columns="panel")
               .reset_index(drop=True))
