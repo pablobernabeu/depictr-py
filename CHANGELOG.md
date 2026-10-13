@@ -122,6 +122,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how to audit a figure saved at its final width, with that width given as
   both widths or neither, and the docstring gives four publishers' text floors,
   dated and linked, where it called 6 pt a common publisher floor.
+- `check_figure()` accepts a composition and audits each panel on its own,
+  depth-first in the order the composition holds them, with a leading `panel`
+  column. It used to raise `TypeError`, which left the package's own
+  compositions without an audit. Among them are the figures of
+  `arrange_plots()`, `residual_diagnostics_plot()`, `model_report()`,
+  `estimation_plot(two_panel=True)` and `explore_pairs()`. Each panel's legend
+  is measured with the panel, and a `plot_spacer()` takes no panel number. The
+  R twin numbers the panels of a patchwork by the same rule.
 - `vif_plot()` gains `threshold`, placed before `title` as in the R twin, so a
   title passed by position must now be named. The reference line is drawn
   solid in the R twin's grey, `#666666`, where it was dashed in the accent.

@@ -199,13 +199,29 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     pt, with panel labels at 8 pt. Pass the floor of the journal the figure is
     for as ``min_text_pt``. The four pages are listed under References.
 
+    **Compositions.** A composition, such as :func:`depictr.arrange_plots`,
+    :func:`depictr.residual_diagnostics_plot` and :func:`depictr.model_report`
+    return, is audited panel by panel. Each panel has its own scales, theme
+    and text, so each is audited as it would be on its own. The reports are
+    stacked under a leading integer column, ``panel``, which only the report
+    of a composition has. The widths are those of the whole composition.
+    A panel's text keeps its point size whatever share of the width the panel
+    takes, so the text of every panel scales by the same ratio.
+
+    Panels are numbered depth-first through any composition nested inside, in
+    the order the composition holds them, which is the reading order of the
+    grids :func:`depictr.arrange_plots` builds. A ``plot_spacer()`` draws no
+    figure of its own and takes no number. A panel's legend is measured with
+    the panel. Only the panels are measured, so anything a composition draws
+    around them is not. The R twin numbers the panels of a patchwork by the
+    same rule.
+
     Parameters
     ----------
-    plot : plotnine.ggplot
+    plot : plotnine.ggplot or plotnine.composition.Compose
         A plot, as returned by any depictr plotting function, including one
-        extended afterwards with ``+``. A multi-panel composite is refused: its
-        panels have their own scales, themes and text, and one table of numbers
-        cannot describe them all. Check each panel on its own.
+        extended afterwards with ``+``, or a multi-panel composition (see
+        "Compositions" above).
     width_cm : float
         The width, in centimetres, that the figure will occupy in the finished
         document. Defaults to 17.78 cm, the seven inches
@@ -228,7 +244,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     pandas.DataFrame
         One row per check, with columns ``check``, ``measured``, ``threshold``,
         ``verdict`` (``"pass"``, ``"fail"`` or ``"not applicable"``) and
-        ``detail``, a short note naming what produced the measurement.
+        ``detail``, a short note naming what produced the measurement. For a
+        composition, the rows of each panel in turn, after a leading integer
+        column ``panel``.
 
     See Also
     --------
@@ -282,17 +300,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     >>> saved = dp.check_figure(good, width_cm=8.9, render_width_cm=8.9)
     >>> saved.loc[saved["check"] == "text_size", "verdict"].item()
     'pass'
+
+    Each panel of a composition is audited, and a column says which panel
+    each row describes. At base size 5, the second panel's text is too small.
+
+    >>> small = good + dp.theme_depictr(base_size=5)
+    >>> both = dp.check_figure(dp.arrange_plots(good, small))
+    >>> both.loc[both["verdict"] == "fail", ["panel", "check"]].values.tolist()
+    [[2, 'text_size']]
     """
     from plotnine import ggplot
     from plotnine.composition import Compose
 
-    # A composite has several panels, each with its own scales, theme and text.
-    # One table of numbers cannot describe them all.
-    if isinstance(plot, Compose):
-        raise TypeError(
-            "`plot` is a multi-panel composite. Check each panel on its own."
-        )
-    if not isinstance(plot, ggplot):
+    if not isinstance(plot, (ggplot, Compose)):
         raise TypeError(
             "`plot` must be a plot object, as returned by any depictr plotting "
             "function."
@@ -302,6 +322,60 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     _positive_scalar(min_delta_e, "min_delta_e")
     _positive_scalar(min_text_pt, "min_text_pt")
 
+    settings = (width_cm, render_width_cm, min_delta_e, min_text_pt)
+    if isinstance(plot, Compose):
+        return _audit_composition(plot, *settings)
+    return _audit_plot(plot, *settings)
+
+
+# The columns of a report, before the panel column a composition's report adds.
+_COLUMNS = ["check", "measured", "threshold", "verdict", "detail"]
+
+
+# --- compositions -----------------------------------------------------------
+
+
+def _composition_panels(composition):
+    """The panels of a composition, depth-first in the order it holds them.
+
+    Reached by iterating over the composition, as plotnine documents, so the
+    walk does not depend on how a composition stores its plots. A nested
+    composition is walked where it stands. A ``plot_spacer()`` draws no figure
+    of its own, so it is not a panel, as a patchwork spacer is not in the R
+    twin.
+    """
+    from plotnine.composition import Compose, plot_spacer
+
+    for item in composition:
+        if isinstance(item, Compose):
+            yield from _composition_panels(item)
+        elif not isinstance(item, plot_spacer):
+            yield item
+
+
+def _audit_composition(composition, width_cm: float, render_width_cm: float,
+                       min_delta_e: float, min_text_pt: float) -> pd.DataFrame:
+    """Each panel of a composition audited on its own, under a panel column."""
+    reports = []
+    for number, panel in enumerate(_composition_panels(composition), start=1):
+        report = _audit_plot(panel, width_cm, render_width_cm, min_delta_e,
+                             min_text_pt)
+        report.insert(0, "panel", number)
+        reports.append(report)
+    if not reports:
+        empty = pd.DataFrame(columns=_COLUMNS).astype(
+            {"measured": float, "threshold": float})
+        empty.insert(0, "panel", pd.Series(dtype="int64"))
+        return empty
+    return pd.concat(reports, ignore_index=True)
+
+
+# --- one plot ---------------------------------------------------------------
+
+
+def _audit_plot(plot, width_cm: float, render_width_cm: float,
+                min_delta_e: float, min_text_pt: float) -> pd.DataFrame:
+    """The audit of a single plot, its settings already validated."""
     # Drawing mutates the plot it is given (it builds the layers in place), so
     # the audit works on a copy and leaves the caller's figure untouched.
     built = copy.deepcopy(plot)
@@ -337,9 +411,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         "annotation_text_size", panel_text, width_cm, render_width_cm,
         min_text_pt, "in-panel text",
         "The figure draws no text inside the panel."))
-    return pd.DataFrame(
-        rows, columns=["check", "measured", "threshold", "verdict", "detail"]
-    )
+    return pd.DataFrame(rows, columns=_COLUMNS)
 
 
 # --- validation -------------------------------------------------------------

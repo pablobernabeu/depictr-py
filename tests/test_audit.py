@@ -30,6 +30,7 @@ from plotnine import (
     theme_dark,
     theme_void,
 )
+from plotnine.composition import plot_spacer
 
 import depictr as dp
 from depictr.cvd import _rgb_to_lab
@@ -1043,6 +1044,70 @@ def test_a_measurement_exactly_on_the_threshold_passes():
                        "text_size") == "fail"
 
 
+# --- composites --------------------------------------------------------------
+
+
+def test_a_composite_is_audited_panel_by_panel_in_reading_order():
+    # Pinned so the two engines cannot drift apart unnoticed: the R suite
+    # audits the same two panels and pins the same vector. Each panel reports
+    # what its figure reports alone, under a leading panel column.
+    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()))
+    assert report.columns.tolist() == [
+        "panel", "check", "measured", "threshold", "verdict", "detail"]
+    assert len(report) == 20
+    assert report["panel"].tolist() == [1] * 10 + [2] * 10
+    assert report["check"].tolist() == CHECKS * 2
+    np.testing.assert_array_equal(
+        report["measured"],
+        [111.87, 89.87, 107.07, 98.5, 16.92, 8.8, 8.45, 3.87, 1, np.nan,
+         116.25, 35.04, 0.37, 119.38, 6.32, 4, 8.45, 4.01, 0, np.nan])
+    assert report.index.tolist() == list(range(20))
+    second = (report[report["panel"] == 2].drop(columns="panel")
+              .reset_index(drop=True))
+    pd.testing.assert_frame_equal(second, dp.check_figure(bad_figure()))
+
+
+def test_nested_compositions_are_walked_depth_first_and_spacers_are_not_panels():
+    nested = dp.check_figure((good_figure() | bad_figure()) / good_figure())
+    assert nested["panel"].unique().tolist() == [1, 2, 3]
+    assert nested.loc[nested["check"] == "text_size",
+                      "measured"].tolist() == [8.8, 4, 8.8]
+
+    # A spacer draws no figure of its own, so the panels on either side of it
+    # are numbered 1 and 2, as in the R twin.
+    spaced = dp.check_figure(good_figure() | plot_spacer() | bad_figure())
+    assert spaced["panel"].unique().tolist() == [1, 2]
+    assert spaced.loc[spaced["check"] == "text_size",
+                      "measured"].tolist() == [8.8, 4]
+
+    # With nothing but spacers, there is no panel to audit.
+    empty = dp.check_figure(plot_spacer() | plot_spacer())
+    assert empty.columns.tolist() == spaced.columns.tolist()
+    assert len(empty) == 0
+
+
+def test_the_package_own_composites_are_audited_panel_by_panel():
+    smf = pytest.importorskip("statsmodels.formula.api")
+    # "yield" is a Python keyword, so the formula needs Q("yield").
+    fit = smf.ols('Q("yield") ~ rainfall + fertiliser + soil_ph', CY).fit()
+    diagnostics = dp.check_figure(dp.residual_diagnostics_plot(fit))
+    assert diagnostics["panel"].unique().tolist() == [1, 2, 3, 4]
+    assert len(diagnostics) == 40
+    report = dp.check_figure(dp.model_report(fit))
+    assert report["panel"].unique().tolist() == [1, 2, 3]
+    assert set(report.loc[report["check"] == "text_size", "verdict"]) == {
+        "pass"}
+
+
+def test_check_figure_leaves_a_composition_untouched():
+    # As for a single plot, each panel is drawn from a copy, so no layer of the
+    # caller's composition is built.
+    composite = dp.arrange_plots(good_figure(), bad_figure())
+    dp.check_figure(composite)
+    assert not any(hasattr(layer, "data")
+                   for panel in composite for layer in panel.layers)
+
+
 # --- refusals ----------------------------------------------------------------
 
 
@@ -1054,13 +1119,6 @@ def test_check_figure_refuses_what_it_cannot_audit():
     with pytest.raises(TypeError) as excinfo:
         dp.check_figure("a plot")
     assert str(excinfo.value) == message
-    # A composite has several panels, each with its own scales, theme and text.
-    composite = dp.arrange_plots(ggplot() + dp.theme_depictr(),
-                                 ggplot() + dp.theme_depictr())
-    with pytest.raises(TypeError) as excinfo:
-        dp.check_figure(composite)
-    assert str(excinfo.value) == (
-        "`plot` is a multi-panel composite. Check each panel on its own.")
 
 
 @pytest.mark.parametrize(
