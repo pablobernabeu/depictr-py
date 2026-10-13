@@ -46,6 +46,64 @@ def test_acf_plot_bad_kind():
         ts.acf_plot(S, kind="nonsense")
 
 
+# ---- the partial autocorrelation: parity with the R twin -------------------
+# AirPassengers from R's datasets package: the monthly totals of international
+# airline passengers, in thousands, from January 1949 to December 1960, one
+# year per row. R_PACF_AIR holds the partial autocorrelations at lags 1 to 21
+# that the R twin's acf_plot(type = "partial") draws for it, from R's pacf().
+# Both are printed by dev/goldens/timeseries.R from the R twin at the commit of
+# change set CS40, whose tests pin the same values.
+AIR_PASSENGERS = np.array([
+    112, 118, 132, 129, 121, 135, 148, 148, 136, 119, 104, 118,
+    115, 126, 141, 135, 125, 149, 170, 170, 158, 133, 114, 140,
+    145, 150, 178, 163, 172, 178, 199, 199, 184, 162, 146, 166,
+    171, 180, 193, 181, 183, 218, 230, 242, 209, 191, 172, 194,
+    196, 196, 236, 235, 229, 243, 264, 272, 237, 211, 180, 201,
+    204, 188, 235, 227, 234, 264, 302, 293, 259, 229, 203, 229,
+    242, 233, 267, 269, 270, 315, 364, 347, 312, 274, 237, 278,
+    284, 277, 317, 313, 318, 374, 413, 405, 355, 306, 271, 306,
+    315, 301, 356, 348, 355, 422, 465, 467, 404, 347, 305, 336,
+    340, 318, 362, 348, 363, 435, 491, 505, 404, 359, 310, 337,
+    360, 342, 406, 396, 420, 472, 548, 559, 463, 407, 362, 405,
+    417, 391, 419, 461, 472, 535, 622, 606, 508, 461, 390, 432,
+], dtype=float)
+R_PACF_AIR = [
+    0.948047340752492, -0.229421874117177, 0.038147780503991,
+    0.093785438151741, 0.073606697894160, 0.007727602590501,
+    0.125597130176117, 0.089951343164267, 0.232488542208562,
+    0.166051259804356, 0.171274419743056, -0.135431102278015,
+    -0.539691241907120, -0.026610140069523, 0.090764981938823,
+    0.024955559165498, 0.032515570006784, 0.073432640501125,
+    0.048442114810552, -0.045541680123359, 0.045752935204032,
+]
+
+
+def test_air_passengers_literal_is_rs_series():
+    # A typing slip in the literal would move every value pinned against it.
+    assert AIR_PASSENGERS.size == 144
+    assert AIR_PASSENGERS.sum() == 40363
+
+
+def test_pacf_gives_the_r_twins_values():
+    # statsmodels' default estimator, the adjusted Yule-Walker, differed from
+    # R's pacf() by up to 0.18 on this series (-0.718 against -0.540 at lag
+    # 13) and put lags 15, 18 and 20 outside the band where R does not.
+    pytest.importorskip("statsmodels")
+    p = ts.acf_plot(pd.Series(AIR_PASSENGERS), kind="pacf")
+    assert p.data["lag"].tolist() == list(range(1, 22))
+    np.testing.assert_allclose(p.data["value"], R_PACF_AIR, rtol=0, atol=1e-10)
+
+
+def test_pacf_at_lag_one_is_the_autocorrelation():
+    # The partial autocorrelation at lag 1 is the autocorrelation at lag 1. The
+    # adjusted estimator multiplied it by n / (n - 1), 120 / 119 for this
+    # series.
+    pytest.importorskip("statsmodels")
+    pacf_1 = ts.acf_plot(S, kind="pacf").data["value"].iloc[0]
+    acf_1 = ts.acf_plot(S, kind="acf").data["value"].iloc[0]
+    assert pacf_1 == pytest.approx(acf_1, rel=1e-12)
+
+
 def test_decompose_plot():
     pytest.importorskip("statsmodels")
     assert _builds(ts.decompose_plot(S, model="additive"))
@@ -249,6 +307,55 @@ def test_timeseries_plot_rolling_overlay_does_not_warn_on_complete_data():
     # containing missing values" for every complete series.
     _, notes = _draw(ts.timeseries_plot(V, rolling=12))
     assert notes == []
+
+
+def _overlay(p):
+    """The values of the rolling-mean overlay of a timeseries_plot() figure."""
+    return p.layers[1].geom.data["roll"].to_numpy()
+
+
+def test_an_even_window_is_the_centred_2_by_m_average():
+    # pandas' rolling(4, center=True) put the mean of observations 1 to 4 at
+    # observation 3, half a step after its centre, and the R twin put it half a
+    # step before. A centred moving average of even order averages two
+    # adjacent windows, which gives the observations at either end half weight
+    # (Hyndman & Athanasopoulos, 2021, Section 3.3). The R twin's tests pin the
+    # same values, and dev/goldens/timeseries.R prints them from it.
+    roll = _overlay(ts.timeseries_plot(pd.Series(np.arange(1.0, 11.0)), rolling=4))
+    np.testing.assert_allclose(roll, [np.nan, np.nan, 3, 4, 5, 6, 7, 8, np.nan, np.nan])
+    # An odd window was already centred on its observation and is unchanged.
+    roll = _overlay(ts.timeseries_plot(V, rolling=5))
+    np.testing.assert_array_equal(roll, pd.Series(V).rolling(5, center=True).mean())
+
+
+def test_a_twelve_month_average_is_the_classical_trend():
+    # The 2 x 12 average is the trend of a classical decomposition of monthly
+    # data, which statsmodels computes on its own.
+    pytest.importorskip("statsmodels")
+    from statsmodels.tsa.seasonal import seasonal_decompose
+
+    roll = _overlay(ts.timeseries_plot(S, rolling=12))
+    np.testing.assert_allclose(roll, seasonal_decompose(V, period=12).trend, rtol=1e-10)
+
+
+def test_an_even_window_breaks_at_a_gap():
+    # The 2 x 4 average spans five observations, so the windows centred on 3
+    # to 7 reach the missing value at 5. Elsewhere, the centred average of a
+    # straight line is the line itself.
+    values = np.arange(20.0)
+    values[5] = np.nan
+    roll = _overlay(ts.timeseries_plot(pd.Series(values), rolling=4))
+    missing = np.isnan(roll)
+    assert np.flatnonzero(missing).tolist() == [0, 1, 3, 4, 5, 6, 7, 18, 19]
+    np.testing.assert_allclose(roll[~missing], np.flatnonzero(~missing))
+
+
+def test_an_even_window_longer_than_the_series_draws_nothing():
+    # A 2 x 4 average needs five observations. On four, every window runs off
+    # the series, as an odd window longer than the series does.
+    roll = _overlay(ts.timeseries_plot(pd.Series([1.0, 2.0, 3.0, 4.0]), rolling=4))
+    assert len(roll) == 4
+    assert np.isnan(roll).all()
 
 
 def test_several_columns_are_refused():

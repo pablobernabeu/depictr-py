@@ -388,6 +388,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plot is made, where it came each time the figure was drawn. The R twin
   applies the same rule in `outlier_plot()` and `explore_pairs()`, which take no
   group here.
+- `acf_plot(kind="pacf")` used statsmodels' default estimator, the adjusted
+  Yule-Walker. It disagreed with R's `pacf()` by up to 0.18 on R's
+  `AirPassengers` and put lags 15, 18 and 20 outside the significance band
+  where R does not. It also multiplied the partial autocorrelation at lag 1 by
+  n / (n - 1), although at that lag it equals the autocorrelation. It now uses
+  the unadjusted estimator (`method="ywm"`) and gives R's values. statsmodels'
+  documentation reports that the adjusted estimator performed consistently
+  worse in simulations.
+- `timeseries_plot()` drew a moving average over an even window, such as
+  `rolling=12` for monthly data, half an observation late. Equal weights over
+  twelve observations are centred between two of them, and pandas' centred
+  rolling mean drew the mean of observations 1 to 12 at observation 7, where
+  its centre is 6.5. An even window now gives the 2×12 moving average
+  (Hyndman & Athanasopoulos, 2021, Section 3.3), a 12-point average followed
+  by a 2-point one. It is centred on each observation. Over one seasonal
+  period, it is the trend of a classical decomposition. It spans one
+  observation more than the window, so a series no longer than an even window
+  has no overlay. The R twin drew the same average half an observation early,
+  and the twins now draw the same values. An odd window is unchanged.
 
 ## [0.3.0] - 2026-09-24
 

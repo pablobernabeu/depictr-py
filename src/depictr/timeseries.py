@@ -132,6 +132,14 @@ def acf_plot(x, kind="acf", lags=None, title=None):
     95% significance band, plus or minus 1.96 / sqrt(n), is drawn as a shaded
     ribbon: stems reaching past it are the candidate lags.
 
+    The partial autocorrelations are the Yule-Walker estimates from the sample
+    autocorrelations, without the small-sample adjustment
+    (``pacf(method="ywm")``). They are the values R's ``pacf()`` gives, so the
+    twins draw the same stems. statsmodels' default, the adjusted estimator,
+    differs from R by up to 0.18 on R's ``AirPassengers``, and statsmodels'
+    documentation reports that it performed consistently worse than the other
+    estimators in simulations.
+
     Parameters
     ----------
     x : pandas.Series or array-like
@@ -186,7 +194,7 @@ def acf_plot(x, kind="acf", lags=None, title=None):
         values = acf(series.to_numpy(), nlags=lags, fft=True)
         y_lab = "Autocorrelation"
     else:
-        values = pacf(series.to_numpy(), nlags=lags)
+        values = pacf(series.to_numpy(), nlags=lags, method="ywm")
         y_lab = "Partial autocorrelation"
 
     # Drop lag 0 (always 1) so the band and the scale are not dominated by it.
@@ -376,14 +384,27 @@ def timeseries_plot(x, rolling=None, title=None):
         read as that column, and one with several columns is refused. The R
         twin draws one line per column of a multivariate ``ts``.
     rolling : int, optional
-        Window length for a centred rolling mean, drawn over the series in the
-        accent colour. A window that reaches a missing value is missing too, so
-        the overlay breaks where the line does. Omit for the raw line only.
+        Window length for a centred moving average, drawn over the series in
+        the accent colour. An odd window averages each observation with the
+        same number of neighbours on either side. An even window, such as 12
+        for monthly data, gives the 2×12 moving average, a 12-point average
+        followed by a 2-point one (Hyndman & Athanasopoulos, 2021, Section
+        3.3), as in the R twin. The two observations at the ends of the 13 it
+        spans count half, which centres the average on its observation, as
+        equal weights over an even window cannot. A window
+        that runs off either end of the series, or reaches a missing value, is
+        missing too, so the overlay breaks where the line does. Omit for the
+        raw line only.
     title : str, optional
 
     Returns
     -------
     plotnine.ggplot
+
+    References
+    ----------
+    Hyndman, R. J., & Athanasopoulos, G. (2021). Forecasting: Principles and
+    practice (3rd ed.). OTexts. https://otexts.com/fpp3/
 
     Examples
     --------
@@ -409,6 +430,37 @@ def timeseries_plot(x, rolling=None, title=None):
     if rolling:
         # Taken over the series with its gaps, so a window that reaches one is
         # missing as well.
-        df = df.assign(roll=df["value"].rolling(int(rolling), center=True).mean())
+        df = df.assign(roll=_moving_average(df["value"], int(rolling)))
         p = p + geom_line(aes(y="roll"), data=df, color=ACCENT, size=1.0, na_rm=True)
     return p + labs(x="", y="Value", title=title) + theme_depictr()
+
+
+def _moving_average(values, window):
+    """Centred moving average over ``window`` observations, as the R twin's.
+
+    Equal weights over an odd window centre the average on an observation.
+    Over an even window they centre it between two observations: pandas'
+    ``rolling(4, center=True)`` puts the mean of observations 1 to 4 at
+    observation 3. An even window m therefore gives the 2 x m average, an
+    m-point average followed by a 2-point one (Hyndman & Athanasopoulos, 2021,
+    Section 3.3). Its weights, ``[0.5, 1, ..., 1, 0.5] / m``, span m + 1
+    observations. It is the trend that ``seasonal_decompose()`` estimates for
+    a period of m. A window that runs off either end of the series, or reaches
+    a missing value, gives NaN, as R's ``filter()`` gives NA.
+    """
+    values = np.asarray(values, dtype=float)
+    if window < 2 or window % 2:
+        # An odd window is centred already. A negative one takes the same path,
+        # so pandas refuses it with its own error, as it did before.
+        return pd.Series(values).rolling(window, center=True).mean().to_numpy()
+    out = np.full(values.shape, np.nan)
+    # np.convolve() swaps its arguments when the weights are the longer of the
+    # two, so a series too short for one full window keeps every value missing.
+    if len(values) > window:
+        weights = np.r_[0.5, np.ones(window - 1), 0.5] / window
+        half = window // 2
+        # Each full window holds one value, centred on the observation half a
+        # window in from its start. np.convolve() works window by window, so a
+        # missing value spoils only the windows that reach it.
+        out[half:-half] = np.convolve(values, weights, mode="valid")
+    return out

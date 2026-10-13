@@ -86,7 +86,9 @@ print(show(p, width=8, height=8))
 
 ## The series with a rolling mean
 
-The same series as a line, with a twelve-month centred rolling mean over it.
+The same series as a line, with a centred twelve-month moving average over it.
+Twelve is an even window, so the average is the 2×12 one, a twelve-month
+average followed by a two-month one, which centres it on each month.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.timeseries_plot(series, rolling=12)
