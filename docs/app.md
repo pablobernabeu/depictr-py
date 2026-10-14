@@ -25,7 +25,9 @@ that deficiency would see it, through the same Machado-2009 simulation the
 [accessibility page](gallery/accessibility.md) reports on. Below is the identical
 plot with the selector set to deuteranopia. The blue is barely touched and the
 orange has moved towards mustard. Surviving that shift is what the palette is
-chosen for, and the two curves stay as easy to tell apart as before.
+chosen for, and the two curves stay as easy to tell apart as before. The app
+draws the simulated figure with `dp.simulate_figure`, so a script can produce
+the same view.
 
 ![The same app view with the colour-vision selector set to "deutan". The cumulative distribution is redrawn with the standard-treatment curve shifted from orange to mustard yellow while the enhanced-treatment curve stays blue, and the two remain clearly distinguishable.](assets/app-colour-vision.png){ width="820" }
 

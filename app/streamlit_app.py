@@ -19,32 +19,21 @@ import pandas as pd
 import streamlit as st
 
 import depictr as dp
-from depictr.cvd import _MACHADO_1, _linear_to_srgb, _srgb_to_linear
 
 st.set_page_config(page_title="depictr gallery", layout="wide")
 
 
-def simulate_image(fig, deficiency: str):
-    """Return the figure's pixels as seen under a colour-vision deficiency."""
-    from matplotlib.backends.backend_agg import FigureCanvasAgg
-
-    canvas = FigureCanvasAgg(fig)
-    canvas.draw()
-    rgba = np.asarray(canvas.buffer_rgba()) / 255.0
-    rgb, alpha = rgba[..., :3], rgba[..., 3:]
-    if deficiency == "normal":
-        return np.concatenate([rgb, alpha], axis=-1)
-    linear = _srgb_to_linear(rgb)
-    simulated = _linear_to_srgb(linear @ _MACHADO_1[deficiency].T)
-    return np.concatenate([np.clip(simulated, 0, 1), alpha], axis=-1)
-
-
 def show(plot, code: str, deficiency: str):
     """Render a depictr plot under the chosen vision, beside its source call."""
-    fig = plot.draw(show=False)
+    # Normal vision is any deficiency at severity zero, which gives the
+    # figure's pixels as drawn.
+    if deficiency == "normal":
+        image = dp.simulate_figure(plot, "deutan", severity=0)
+    else:
+        image = dp.simulate_figure(plot, deficiency)
     left, right = st.columns([3, 2])
     with left:
-        st.image(simulate_image(fig, deficiency), use_container_width=True)
+        st.image(image, use_container_width=True)
     with right:
         st.caption("The exact call")
         st.code(code, language="python")

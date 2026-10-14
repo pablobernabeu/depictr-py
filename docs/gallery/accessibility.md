@@ -9,7 +9,7 @@ That is the second half of this page.
 ```python exec="1" html="1" session="a11y"
 import sys; sys.path.insert(0, "docs")
 
-from _exec import pre, show, table
+from _exec import image, pre, show, table
 ```
 
 ## The safety report
@@ -86,6 +86,35 @@ lines = [f"{original}  ->  {seen}"
          for original, seen in zip(palette, simulated)]
 print(pre("\n".join(lines)))
 ```
+
+## A finished figure as a deficiency sees it
+
+`simulate_figure` applies the same simulation to a whole figure. It draws the
+plot and passes every pixel through the transform, so the legend and the text
+change with the data. The result is an array of pixels that matplotlib's
+`imshow` or Streamlit's `st.image` can show, and the web app draws its
+colour-vision toggle this way. Below, the grouped distribution from the top of
+the page appears under normal vision, which is severity zero, and then under
+each deficiency at full severity.
+
+```python exec="1" html="1" source="material-block" session="a11y"
+import numpy as np
+
+p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
+                            legend_inside=True)
+views = [dp.simulate_figure(p, "deutan", severity=0, dpi=60)]
+views += [dp.simulate_figure(p, deficiency, dpi=60)
+          for deficiency in dp.cvd.DEFICIENCIES]
+grid = np.concatenate([np.concatenate(views[:2], axis=1),
+                       np.concatenate(views[2:], axis=1)])
+print(image(grid, alt="The grouped distribution of reaction times four "
+            "times over: under normal vision, then as readers with "
+            "protanopia, deuteranopia and tritanopia see it."))
+```
+
+The R twin's `simulate_figure()` applies the same matrices to the figure's
+vector elements and returns a gtable. A solid region comes out in the same
+colour in both, to within the rounding of an eight-bit channel.
 
 ## Where the guarantee stops
 

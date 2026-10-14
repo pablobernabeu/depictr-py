@@ -6,9 +6,10 @@ and severity of colour-vision deficiency would perceive. The transformation is
 defined on linear-light RGB, so a colour is decoded from sRGB to linear RGB (the
 IEC 61966-2-1 transfer functions), transformed, then re-encoded.
 
-This drives three things: the live colourblind-vision toggle in the web app,
-:func:`palette_safety`, which checks that the colours in a palette stay far
-enough apart for each deficiency that they remain distinguishable, and the
+This drives three things: :func:`simulate_figure`, which shows a whole figure
+as a reader with a deficiency sees it and backs the colour-vision toggle in the
+web app, :func:`palette_safety`, which checks that the colours in a palette stay
+far enough apart for each deficiency that they remain distinguishable, and the
 colour-separability rows of :func:`depictr.audit.check_figure`, which asks the
 same question of a finished figure. depictr uses them to validate its default
 palette rather than merely assert that it is safe. How far apart two colours
@@ -29,6 +30,7 @@ https://doi.org/10.1002/col.20070
 from __future__ import annotations
 
 import math
+import numbers
 
 import matplotlib.colors as mcolors
 import numpy as np
@@ -183,7 +185,6 @@ _MACHADO = {
 }
 
 # The full-severity matrices, which palette_safety() and check_figure() use.
-# The web app imports them under this name.
 _MACHADO_1 = {deficiency: table[10] for deficiency, table in _MACHADO.items()}
 
 DEFICIENCIES = tuple(_MACHADO)
@@ -237,6 +238,16 @@ def _machado_matrix(deficiency: str, severity: float) -> np.ndarray:
     return (1 - f) * table[i] + f * table[i + 1]
 
 
+def _check_vision(deficiency, severity) -> None:
+    """Refuse a deficiency or severity the simulation does not cover."""
+    if deficiency not in _MACHADO:
+        raise ValueError(
+            "`deficiency` must be one of 'protan', 'deutan' or 'tritan'."
+        )
+    if not 0 <= severity <= 1:
+        raise ValueError("`severity` must lie in [0, 1].")
+
+
 def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> list[str]:
     """Simulate how a palette appears under a colour-vision deficiency.
 
@@ -263,17 +274,138 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
     >>> import depictr as dp
     >>> dp.simulate_cvd(['#005b96', '#e69f00'], 'deutan')
     ['#275295', '#cab411']
+
+    See Also
+    --------
+    depictr.simulate_figure : the same simulation applied to a whole figure.
     """
-    if deficiency not in _MACHADO:
-        raise ValueError(
-            "`deficiency` must be one of 'protan', 'deutan' or 'tritan'."
-        )
-    if not 0 <= severity <= 1:
-        raise ValueError("`severity` must lie in [0, 1].")
+    _check_vision(deficiency, severity)
     matrix = _machado_matrix(deficiency, severity)
     linear = _srgb_to_linear(_to_rgb01(colours))
     simulated = _linear_to_srgb(linear @ matrix.T)
     return [mcolors.to_hex(np.clip(row, 0, 1)) for row in simulated]
+
+
+def _simulate_pixels(rgba: np.ndarray, deficiency: str, severity: float) -> np.ndarray:
+    """A copy of an RGBA image in [0, 1], its colours as a deficiency sees them.
+
+    Each pixel takes the transform that :func:`simulate_cvd` applies to a
+    colour, without rounding to eight bits, and keeps its alpha.
+    """
+    seen = np.array(rgba, dtype=float)
+    matrix = _machado_matrix(deficiency, severity)
+    simulated = _linear_to_srgb(_srgb_to_linear(seen[..., :3]) @ matrix.T)
+    seen[..., :3] = np.clip(simulated, 0, 1)
+    return seen
+
+
+def _drawn(plot) -> bool:
+    """Whether plotnine has drawn a plot, or any plot of a composition.
+
+    Drawing attaches the matplotlib figure to the plot, and the composition
+    attaches its figure to each plot it holds.
+    """
+    if "figure" in vars(plot):
+        return True
+    return any(_drawn(item) for item in getattr(plot, "items", ())
+               if item is not None)
+
+
+def simulate_figure(plot, deficiency: str, severity: float = 1.0,
+                    dpi: float = 150) -> np.ndarray:
+    """Show a finished figure as a reader with a colour-vision deficiency sees it.
+
+    :func:`simulate_cvd` simulates a list of colours, and this function the
+    figure they end up in, legend, colourbar, text and background included. A
+    copy of the plot is drawn and rasterised with matplotlib's Agg renderer.
+    Every pixel then goes through the same transform: it is decoded from sRGB
+    to linear light, multiplied by Machado et al.'s matrix for the deficiency
+    and severity and encoded again. The alpha channel is kept as drawn.
+
+    The R twin's ``simulate_figure()`` applies the same matrices to the
+    figure's vector elements and returns a gtable to draw or save. A solid
+    region comes out in the same colour in both, to within the rounding of an
+    eight-bit channel.
+
+    Parameters
+    ----------
+    plot : plotnine.ggplot or plotnine.composition.Compose
+        The plot, or a composition of several, as it would be saved. It is
+        left as it was, since a copy is drawn. A plot whose ``draw()`` method
+        has already been called is refused, because plotnine does not draw it
+        correctly a second time.
+    deficiency : {"protan", "deutan", "tritan"}
+        The deficiency to simulate (red-, green- or blue-weak vision).
+    severity : float
+        Severity in [0, 1], as for :func:`simulate_cvd`. Zero returns the
+        pixels as drawn, which is the figure under normal vision.
+    dpi : float
+        The resolution to rasterise at, in dots per inch. The image is the
+        figure's width and height in inches times ``dpi`` pixels.
+
+    Returns
+    -------
+    numpy.ndarray
+        The image as floats in [0, 1], of shape (height, width, 4), with the
+        channels red, green, blue and alpha. Matplotlib's ``imshow()`` and
+        Streamlit's ``st.image()`` take it as it is.
+
+    Raises
+    ------
+    TypeError
+        When ``plot`` is not a plotnine plot or composition.
+    ValueError
+        When ``deficiency``, ``severity`` or ``dpi`` is out of range, or when
+        ``plot`` has already been drawn.
+
+    Examples
+    --------
+    >>> import depictr as dp
+    >>> p = dp.ecdf_plot(dp.lexical_decision(), "RT", group="condition")
+    >>> seen = dp.simulate_figure(p, "deutan", dpi=72)
+    >>> seen.shape[2], bool(seen.min() >= 0 and seen.max() <= 1)
+    (4, True)
+
+    Under normal vision, for a side-by-side comparison:
+
+    >>> as_drawn = dp.simulate_figure(p, "deutan", severity=0, dpi=72)
+    >>> as_drawn.shape == seen.shape
+    True
+    """
+    import copy
+
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from plotnine import ggplot
+    from plotnine.composition import Compose
+
+    _check_vision(deficiency, severity)
+    if not isinstance(plot, (ggplot, Compose)):
+        raise TypeError("`plot` must be a plotnine ggplot or composition.")
+    if (isinstance(dpi, bool) or not isinstance(dpi, numbers.Real)
+            or not math.isfinite(dpi) or dpi <= 0):
+        raise ValueError("`dpi` must be a positive number.")
+
+    # Drawing builds a plot's layers and attaches the figure to it in place,
+    # so a copy is drawn and the caller's plot is left as it was. A plot drawn
+    # before cannot be drawn again: plotnine's copy shares its figure and its
+    # built state, and the second drawing came out with the panel missing.
+    if _drawn(plot):
+        raise ValueError(
+            "`plot` has already been drawn, and plotnine does not draw a plot "
+            "correctly a second time. Pass the plot before it is drawn, or "
+            "build it again.")
+    figure = copy.deepcopy(plot).draw(show=False)
+    try:
+        figure.set_dpi(dpi)
+        canvas = FigureCanvasAgg(figure)
+        canvas.draw()
+        rgba = np.asarray(canvas.buffer_rgba(), dtype=float) / 255
+    finally:
+        plt.close(figure)
+    if severity == 0:
+        return rgba
+    return _simulate_pixels(rgba, deficiency, severity)
 
 
 def _rgb_to_lab(colours: list[str]) -> np.ndarray:

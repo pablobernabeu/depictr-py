@@ -138,6 +138,7 @@ The palette, the colour-vision checks and the figure audit are shown in use on t
 ::: depictr.check_figure
 ::: depictr.palette_safety
 ::: depictr.simulate_cvd
+::: depictr.simulate_figure
 
 ## Composition and data
 

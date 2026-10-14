@@ -195,7 +195,7 @@ The exported functions fall into families that follow the stages of an analysis.
 | Family | Functions |
 | --- | --- |
 | Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette`, `legend_inside` |
-| Accessibility | `check_figure`, `palette_safety`, `simulate_cvd` |
+| Accessibility | `check_figure`, `palette_safety`, `simulate_cvd`, `simulate_figure` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
 | Estimation and tables | `estimation_plot` (single- or two-panel Cumming), `summary_table` |
 | Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot` |

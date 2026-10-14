@@ -3,8 +3,9 @@
 Not part of the ``depictr`` package. The gallery, home and reference pages run
 their code at build time through markdown-exec, and these helpers turn a result
 into markup the page can display: ``show`` renders a plotnine figure as inline
-SVG, ``table`` renders a data frame as an unstyled HTML table, and ``pre``
-renders escaped text as a code block. Each returns its markup rather than
+SVG, ``image`` renders an array of pixels as an inline PNG, ``table`` renders a
+data frame as an unstyled HTML table, and ``pre`` renders escaped text as a
+code block. Each returns its markup rather than
 printing it, because markdown-exec gives every executed block a ``print`` of its
 own that writes to the block's output buffer, and that ``print`` is not in scope
 here; the blocks therefore call ``print(show(p))``.
@@ -360,6 +361,26 @@ def show(p, width: float = 8, height: float = 5, alt: str = "depictr plot") -> s
     return _ascii('<div class="dp-figure">'
                   + _adapt(buf.getvalue(), f"d{_counter}-", alt)
                   + "</div>")
+
+
+def image(pixels, alt: str = "depictr plot") -> str:
+    """Return an RGBA array, as ``dp.simulate_figure`` gives one, as a PNG.
+
+    A raster cannot take its ink from the page as the SVG figures do, so it
+    keeps the figure's own background under both colour schemes. The PNG is
+    inlined as a data URI, like the SVG figures, so the page carries no
+    separate image file.
+    """
+    import base64
+    import html
+
+    import matplotlib.pyplot as plt
+
+    buf = io.BytesIO()
+    plt.imsave(buf, pixels, format="png")
+    data = base64.b64encode(buf.getvalue()).decode("ascii")
+    return _ascii(f'<div class="dp-figure"><img src="data:image/png;base64,'
+                  f'{data}" alt="{html.escape(alt)}"></div>')
 
 
 def table(df, index: bool = False) -> str:

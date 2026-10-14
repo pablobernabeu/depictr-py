@@ -51,6 +51,17 @@ def test_kaplan_meier_pane_opens_on_the_event_column():
     assert len(_images(at)) == 1
 
 
+def test_the_colour_vision_selector_redraws_the_figure():
+    # Under a deficiency, the figure comes from dp.simulate_figure(), which
+    # replaced the app's own simulation of the pixels.
+    at = AppTest.from_file(str(APP), default_timeout=600)
+    at.run()
+    _selectbox(at, "Simulate vision").select("deutan").run()
+    assert not at.exception
+    assert not at.error
+    assert len(_images(at)) == 1
+
+
 def test_kaplan_meier_pane_explains_a_dataset_with_no_event_column():
     # crop_yield has no column coded 0/1 or 1/2, so there is nothing to offer
     # as the event indicator: the pane says so and draws no figure.

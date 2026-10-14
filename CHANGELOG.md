@@ -56,6 +56,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   colours, and the ramps refuse it. Python has no options object, so the
   scale is added to each plot that should use the order. The default order is
   unchanged, and the R twin gives the same order.
+- `simulate_figure()` shows a finished figure, legend and colourbar included,
+  as a reader with a colour-vision deficiency sees it. It draws a copy of a
+  plot or composition at `dpi` and passes every pixel through the transform
+  that `simulate_cvd()` applies to a colour. The alpha channel is kept, and the
+  image comes back as an array of floats in [0, 1]. Severity zero returns the
+  figure as drawn. A plot whose `draw()` method has already been called is
+  refused, since plotnine does not draw it correctly a second time. The web
+  app's colour-vision toggle now calls it, where the app did the same work
+  with three private names from `depictr.cvd`. The R twin's
+  `simulate_figure()` uses the same matrices on the figure's vector elements
+  and returns a gtable.
 
 ### Changed
 

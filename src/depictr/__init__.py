@@ -27,7 +27,7 @@ from .classification import (
     threshold_plot,
 )
 from .compose import arrange_plots, save_plot
-from .cvd import palette_safety, simulate_cvd
+from .cvd import palette_safety, simulate_cvd, simulate_figure
 from .data import (
     DATASETS,
     clinical_trial,
@@ -88,7 +88,7 @@ __all__ = [
     "scale_fill_depictr", "legend_inside", "depictr_palette",
     "depictr_brand", "depictr_accent",
     # Accessibility
-    "palette_safety", "simulate_cvd", "check_figure",
+    "palette_safety", "simulate_cvd", "simulate_figure", "check_figure",
     # Exploratory analysis
     "explore_distribution", "explore_categorical", "explore_bivariate",
     "scatter_trend", "correlation_heatmap", "missingness_map", "ecdf_plot",
