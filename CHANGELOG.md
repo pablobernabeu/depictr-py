@@ -29,6 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows. The contrast of that text is not measured. When all of a figure's text
   is inside the panel, the two rows for the text around it no longer say that
   the figure draws no text.
+- `check_figure(max_text_pt=)` checks a ceiling as well as a floor, and
+  `save_plot(check=True)` audits the figure at the width it is saved at, so the
+  text sizes are the printed ones. The ceiling adds a last row,
+  `text_size_max`, for the largest text at its printed size, around the panel
+  and inside it, and that row passes at or below its threshold. Nature, for
+  one, allowed no text above 7 pt but the panel labels. Without `max_text_pt`,
+  the report keeps its ten rows. `save_plot(check=True)` gives the saved width,
+  converted to centimetres from inches or millimetres, as both `width_cm` and
+  `render_width_cm`, and warns with each check the figure fails. It still
+  returns the filename alone, where the R twin attaches the report to it.
 - `survival_plot()` draws the confidence limits and censor marks that the R
   twin draws. The limits are dotted steps around each curve at `conf_level`,
   which was accepted but unused and must now lie strictly between 0 and 1, and
@@ -225,6 +235,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any transparent background composited onto white, unless `pil_kwargs` is
   passed. A missing output directory is now created, as in the R twin, where it
   raised `FileNotFoundError`.
+- `save_plot()` saved a composition, such as the output of `arrange_plots()`,
+  at the figure size of its last panel's theme, by default 6.4 by 4.8 inches,
+  whatever `width` and `height` asked for. plotnine sizes a composition that
+  way and ignores the size its `save()` is given. The size asked for is now
+  written into that theme, so a composition is saved at it, as a single plot
+  is and as the R twin saves a patchwork.
 - `effects_plot()` and `interaction_plot()` held covariates at means taken over
   every row of the source frame, including rows the fit dropped, and treated
   every column as a predictor, so an unrelated all-missing column raised

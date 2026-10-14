@@ -92,9 +92,12 @@ of text and geometry against their backgrounds, and whether any distinction rest
 on colour alone. The size check covers the text drawn inside the panel as well as
 around it, and the contrast check covers the text around it alone. For a figure
 saved at its final width, give that width as both `width_cm` and
-`render_width_cm`, or neither. The audit leaves continuous colour scales alone,
-and the colour rows of a heatmap say so. For those, prefer a perceptually
-ordered map such as viridis or the package's sequential and diverging ramps.
+`render_width_cm`, or neither, or let `save_plot(check=True)` audit it at the
+width it saves. A journal that caps text size, as Nature does at 7 pt, can be
+held to its cap with `max_text_pt`. The audit leaves continuous colour scales
+alone, and the colour rows of a heatmap say so. For those, prefer a
+perceptually ordered map such as viridis or the package's sequential and
+diverging ramps.
 
 Two limitations belong here, beside the claim they qualify. The
 colourblind-safety guarantee covers hue confusion alone, and in greyscale the

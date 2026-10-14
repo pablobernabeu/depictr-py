@@ -1134,6 +1134,57 @@ def test_a_measurement_exactly_on_the_threshold_passes():
                        "text_size") == "fail"
 
 
+# --- a text ceiling ----------------------------------------------------------
+
+
+def test_max_text_pt_appends_a_ceiling_row_that_passes_at_or_below_it():
+    # Without a ceiling, the report keeps its ten rows, so the default output
+    # and the vectors both suites pin are unchanged. With one, its row comes
+    # last and the ten before it are those of the plain report.
+    plain = dp.check_figure(good_figure())
+    report = dp.check_figure(good_figure(), max_text_pt=7)
+    assert len(report) == 11
+    assert report["check"].tolist() == CHECKS + ["text_size_max"]
+    pd.testing.assert_frame_equal(report.head(10), plain)
+    # The largest text is the axis titles at the base size of 11 pt, which
+    # Nature's 7 pt ceiling refuses. The R suite pins the same row.
+    assert measured_for(report, "text_size_max") == 11
+    assert threshold_for(report, "text_size_max") == 7
+    assert verdict_for(report, "text_size_max") == "fail"
+    assert detail_for(report, "text_size_max") == (
+        "Largest text 11.00 pt, drawn at 17.78 cm and printed at 17.78 cm.")
+    # The one inverted row: it passes at or below its threshold, the boundary
+    # included.
+    assert verdict_for(dp.check_figure(good_figure(), max_text_pt=11),
+                       "text_size_max") == "pass"
+    assert verdict_for(dp.check_figure(good_figure(), max_text_pt=10.99),
+                       "text_size_max") == "fail"
+    # Printed at half the width it is drawn at, the same text clears it.
+    column = dp.check_figure(good_figure(), width_cm=8.89, max_text_pt=7)
+    assert measured_for(column, "text_size_max") == 5.5
+    assert verdict_for(column, "text_size_max") == "pass"
+
+
+def test_the_ceiling_measures_the_text_inside_the_panel_too():
+    # A 12 pt note is larger than any text the theme draws.
+    report = dp.check_figure(annotated_figure(size=12), max_text_pt=7)
+    assert measured_for(report, "text_size_max") == 12
+    # A figure that draws no text has nothing to hold to a ceiling.
+    blank = dp.check_figure(ggplot() + theme_void(), max_text_pt=7)
+    assert verdict_for(blank, "text_size_max") == "not applicable"
+    assert detail_for(blank, "text_size_max") == "The figure draws no text."
+
+
+def test_each_panel_of_a_composite_is_held_to_the_ceiling():
+    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()),
+                             max_text_pt=7)
+    assert len(report) == 22
+    ceiling = report[report["check"] == "text_size_max"]
+    assert ceiling["panel"].tolist() == [1, 2]
+    assert ceiling["measured"].tolist() == [11, 5]
+    assert ceiling["verdict"].tolist() == ["fail", "pass"]
+
+
 # --- composites --------------------------------------------------------------
 
 
@@ -1220,6 +1271,14 @@ def test_check_figure_refuses_non_positive_settings(argument, value):
         dp.check_figure(good_figure(), **{argument: value})
     assert str(excinfo.value) == (
         f"`{argument}` must be a single positive number.")
+
+
+@pytest.mark.parametrize("value", [0, -1, "wide", float("nan")])
+def test_check_figure_refuses_a_ceiling_that_is_not_a_positive_number(value):
+    # None, the default, asks for no ceiling, so it is not among these.
+    with pytest.raises(ValueError) as excinfo:
+        dp.check_figure(good_figure(), max_text_pt=value)
+    assert str(excinfo.value) == "`max_text_pt` must be a single positive number."
 
 
 # --- the audit sees what the user added --------------------------------------

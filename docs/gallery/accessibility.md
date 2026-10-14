@@ -153,6 +153,11 @@ for 7 pt and
 [Nature](https://www.nature.com/documents/nature-final-artwork.pdf) for 5 to
 7 pt.
 
+Nature's range has a ceiling as well as a floor, since no text but the panel
+labels may exceed 7 pt. Passing `max_text_pt=7` holds a figure to it in a row
+of its own, `text_size_max`. `dp.save_plot(check=True)` runs the audit as it
+saves, at the width it saves at, and warns about each check the figure fails.
+
 A figure built with two well-separated colours drawn opaque, a redundant shape
 and no shrinking clears every row it can be held to, so the audit returns a
 pass as readily as a failure. It draws no text inside the panel, so that row

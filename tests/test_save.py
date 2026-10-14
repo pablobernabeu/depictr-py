@@ -13,11 +13,13 @@ from plotnine import (
     geom_smooth,
     geom_tile,
     ggplot,
+    scale_colour_manual,
     theme_matplotlib,
     theme_void,
 )
 
 import depictr as dp
+from depictr import audit
 
 CY = dp.crop_yield()
 
@@ -150,3 +152,117 @@ def test_font_settings_do_not_leak_into_the_session(tmp_path):
     dp.save_plot(opaque_figure(), str(tmp_path / "figure.pdf"))
     after = (matplotlib.rcParams["pdf.fonttype"], matplotlib.rcParams["ps.fonttype"])
     assert after == before
+
+
+@pytest.mark.parametrize("extension", ["png", "tiff"])
+def test_a_composition_is_saved_at_the_size_asked_for(tmp_path, extension):
+    # plotnine saves a composition at the figure size of its last plot's theme
+    # and ignores the width and height it is given, so this one used to be
+    # written at 6.4 by 4.8 inches whatever was asked for.
+    composite = dp.arrange_plots(opaque_figure(), opaque_figure())
+    path = dp.save_plot(composite, str(tmp_path / f"figure.{extension}"),
+                        width=3.5, height=2, dpi=100)
+    with Image.open(path) as image:
+        assert image.size == (350, 200)
+    # The caller's composition keeps its own theme.
+    assert composite.last_plot.theme.getp("figure_size") != (3.5, 2)
+
+
+# --- save_plot(check=True): the audit at the width the figure is saved at ----
+
+
+# The reference figures of the check_figure() tests. The good one clears every
+# check that applies, and the bad one fails deuteranopia, the text floor and
+# redundant encoding. The R suite saves the same two.
+def audited_good():
+    return (ggplot(CY, aes("rainfall", "yield", colour="treatment",
+                           shape="treatment"))
+            + geom_point()
+            + scale_colour_manual(values=["#005b96", "#d55e00"])
+            + dp.theme_depictr())
+
+
+def audited_bad():
+    return (ggplot(CY, aes("rainfall", "yield", colour="treatment"))
+            + geom_point()
+            + scale_colour_manual(values=["#d62728", "#309208"])
+            + dp.theme_depictr(base_size=5))
+
+
+def test_check_audits_at_the_saved_width_given_as_both_widths(tmp_path,
+                                                              monkeypatch):
+    seen = {}
+    real = audit.check_figure
+
+    def spy(plot, **kwargs):
+        seen["kwargs"] = kwargs
+        seen["report"] = real(plot, **kwargs)
+        return seen["report"]
+
+    monkeypatch.setattr(audit, "check_figure", spy)
+    path = tmp_path / "column.png"
+    # Drawn at 8.9 cm and printed at 8.9 cm, the text is the size it was drawn
+    # at, so the good figure fails nothing and save_plot() says nothing.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        returned = dp.save_plot(audited_good(), str(path), width=8.9, height=6,
+                                units="cm", dpi=72, check=True)
+    assert returned == str(path)
+    assert path.exists()
+    assert seen["kwargs"] == {"width_cm": 8.9, "render_width_cm": 8.9}
+    report = seen["report"]
+    assert report.loc[report["check"] == "text_size", "measured"].item() == 8.8
+    assert report.loc[report["check"] == "text_size", "detail"].item() == (
+        "Smallest text 8.80 pt, drawn at 8.90 cm and printed at 8.90 cm.")
+
+
+def test_check_warns_with_the_checks_the_figure_fails(tmp_path):
+    # A row with nothing to measure, here the text inside the panel, is not a
+    # failure.
+    expected = (
+        "The figure fails 3 checks at the 8.90 cm it is saved at: "
+        "colour_separability_deutan 0.11 (threshold 5.00), text_size 4.00 "
+        "(threshold 6.00) and redundant_encoding 0.00 (threshold 1.00). "
+        "Pass that width to check_figure() as both width_cm and "
+        "render_width_cm for the full report.")
+    with pytest.warns(UserWarning) as record:
+        dp.save_plot(audited_bad(), str(tmp_path / "column.png"), width=8.9,
+                     height=6, units="cm", dpi=72, check=True)
+    assert [str(w.message) for w in record] == [expected]
+    # In a composition, each failure names its panel.
+    with pytest.warns(UserWarning, match=r"fails 3 checks .*: panel 2 "
+                      r"colour_separability_deutan 0\.11"):
+        dp.save_plot(dp.arrange_plots(audited_good(), audited_bad()),
+                     str(tmp_path / "both.png"), width=8.9, height=6,
+                     units="cm", dpi=72, check=True)
+
+
+def test_check_takes_the_saved_width_in_any_unit():
+    from depictr.compose import _saved_width_cm
+
+    assert _saved_width_cm(7, "in") == pytest.approx(17.78)
+    assert _saved_width_cm(8.9, "cm") == pytest.approx(8.9)
+    assert _saved_width_cm(89, "mm") == pytest.approx(8.9)
+
+
+@pytest.mark.parametrize("arguments", [
+    {"check": None}, {"check": "yes"}, {"check": 1}])
+def test_check_must_be_true_or_false(tmp_path, arguments):
+    path = tmp_path / "never.png"
+    with pytest.raises(TypeError, match=r"^`check` must be True or False\.$"):
+        dp.save_plot(audited_good(), str(path), **arguments)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("arguments", [
+    {"width": None, "height": None}, {"units": "pt"}, {"width": -1}])
+def test_check_refuses_a_width_it_cannot_read_before_writing(tmp_path,
+                                                             arguments):
+    path = tmp_path / "never.png"
+    with pytest.raises(ValueError, match=r"^`check=True` needs the width"):
+        dp.save_plot(audited_good(), str(path), check=True, **arguments)
+    assert not path.exists()
+    # The audit refuses what it cannot read, as check_figure() does.
+    with pytest.raises(TypeError, match=r"must be a plot object"):
+        dp.save_plot("a plot", str(path), check=True)
+    assert not path.exists()

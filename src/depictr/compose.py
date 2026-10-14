@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import io
+import math
+import numbers
 import os
 import warnings
 from functools import reduce
@@ -11,6 +13,9 @@ from functools import reduce
 # Fonts in a PDF or PostScript file embedded as TrueType (Type 42).
 # matplotlib's default, Type 3, is the kind Nature's figure guide refuses.
 _EMBEDDED_FONTS = {"pdf.fonttype": 42, "ps.fonttype": 42}
+
+# Centimetres in one of each unit that plotnine's save() takes a size in.
+_CM_PER_UNIT = {"in": 2.54, "cm": 1.0, "mm": 0.1}
 
 
 def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
@@ -79,12 +84,14 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
 
 
 def save_plot(plot, filename, width: float = 7, height: float = 4.5,
-              dpi: int = 300, units: str = "in", **kwargs) -> str:
+              dpi: int = 300, units: str = "in", check: bool = False,
+              **kwargs) -> str:
     """Save a depictr/plotnine plot at publication resolution.
 
     Missing directories on the way to ``filename`` are created, and PDF, EPS
     and TIFF files are written to pass the technical checks journals run on
-    submitted figures.
+    submitted figures. With ``check=True``, the figure is also audited with
+    :func:`depictr.check_figure` at the width it is saved at.
 
     A PDF or EPS embeds its fonts as TrueType (Type 42). matplotlib's default,
     Type 3, is the kind Nature refuses, and the setting holds for this save
@@ -128,17 +135,26 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
 
     Parameters
     ----------
-    plot : plotnine.ggplot
-        The plot to save.
+    plot : plotnine.ggplot or plotnine.composition.Compose
+        The plot to save, or a composition of several.
     filename : str
         Output path; the extension sets the format (``.png``, ``.pdf``,
         ``.eps``, ``.tiff``, ``.svg``).
     width, height : float
-        Figure size, in ``units``.
+        Figure size, in ``units``. A composition is saved at this size too.
     dpi : int
         Dots per inch (300 suits print).
     units : str
         Size units (``"in"``, ``"cm"`` or ``"mm"``).
+    check : bool
+        Whether to audit the figure with :func:`depictr.check_figure` at the
+        width it is saved at, given as both ``width_cm`` and
+        ``render_width_cm``, so that the text sizes it reports are the printed
+        ones. A warning names each check the figure fails. Defaults to False.
+        The audit runs before the file is written, so a plot it cannot read is
+        refused without saving. For the full report, or for other thresholds
+        such as a journal's own text floor, call :func:`depictr.check_figure`
+        with the saved width as both widths.
     **kwargs
         Passed to :meth:`plotnine.ggplot.save`, and from there to matplotlib's
         ``savefig()``.
@@ -146,13 +162,14 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     Returns
     -------
     str
-        The filename written.
+        The filename written. With ``check=True``, the R twin attaches the
+        audit report to it, and this twin returns the filename alone.
 
     Warns
     -----
     UserWarning
         When an EPS or PostScript file is saved from a plot with translucent
-        layers.
+        layers, and, with ``check=True``, when the figure fails a check.
 
     Examples
     --------
@@ -172,8 +189,37 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     >>> path = dp.save_plot(p, tiff)
     >>> os.path.getsize(path) < 1_000_000
     True
+
+    Audited at the 8.9 cm column it is saved for, where its text prints at the
+    size it is drawn. It passes every check that applies, so nothing is said.
+
+    >>> column = os.path.join(tempfile.mkdtemp(), "rt-column.png")
+    >>> path = dp.save_plot(p, column, width=8.9, height=6, units="cm",
+    ...                     dpi=72, check=True)
     """
     import matplotlib as mpl
+    from plotnine import theme
+    from plotnine.composition import Compose
+
+    if not isinstance(check, bool):
+        raise TypeError("`check` must be True or False.")
+    # The audit runs before anything is written, so a figure it cannot read,
+    # or a width it cannot convert, leaves no file behind.
+    report = saved_cm = None
+    if check:
+        from .audit import check_figure
+
+        saved_cm = _saved_width_cm(width, units)
+        report = check_figure(plot, width_cm=saved_cm,
+                              render_width_cm=saved_cm)
+
+    # plotnine draws a composition at the figure size of its last plot's theme
+    # and ignores the width and height its save() is given, so the size is
+    # written into that theme. Adding to a composition copies it, which leaves
+    # the caller's untouched.
+    if isinstance(plot, Compose) and width is not None and height is not None:
+        plot = plot + theme(figure_size=(_inches(width, units),
+                                         _inches(height, units)))
 
     # plotnine joins `path` and the file name itself. The joined path is needed
     # here first, for the directory and for a TIFF written outside matplotlib.
@@ -205,7 +251,63 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
                 UserWarning,
                 stacklevel=2,
             )
+    if report is not None:
+        failed = _failed_checks(report)
+        if failed:
+            noun = "check" if len(failed) == 1 else "checks"
+            warnings.warn(
+                f"The figure fails {len(failed)} {noun} at the "
+                f"{saved_cm:.2f} cm it is saved at: {_and_list(failed)}. "
+                "Pass that width to check_figure() as both width_cm and "
+                "render_width_cm for the full report.",
+                UserWarning,
+                stacklevel=2,
+            )
     return filename
+
+
+def _saved_width_cm(width, units) -> float:
+    """The width a figure is saved at, in centimetres.
+
+    Raises ValueError when it is not a single positive number in one of the
+    units plotnine's save() takes.
+    """
+    if (isinstance(width, bool) or not isinstance(width, numbers.Real)
+            or not math.isfinite(width) or width <= 0
+            or not isinstance(units, str) or units not in _CM_PER_UNIT):
+        raise ValueError(
+            "`check=True` needs the width the figure is saved at: a single "
+            'positive number in "in", "cm" or "mm".')
+    return float(width) * _CM_PER_UNIT[units]
+
+
+def _inches(value, units) -> float:
+    """A size in inches, from any unit plotnine's save() takes."""
+    if units not in _CM_PER_UNIT:
+        raise ValueError(f"Unknown units '{units}'")
+    return value * _CM_PER_UNIT[units] / 2.54
+
+
+def _failed_checks(report) -> list[str]:
+    """Each check a report fails, with what it measured against its threshold.
+
+    In a composition's report, each names the panel it is in. A check with
+    nothing to measure is not a failure, so it is not named.
+    """
+    failed = report[report["verdict"] == "fail"]
+    return [
+        (f"panel {row['panel']} " if "panel" in row else "")
+        + f"{row['check']} {row['measured']:.2f} "
+        f"(threshold {row['threshold']:.2f})"
+        for row in failed.to_dict("records")
+    ]
+
+
+def _and_list(items: list[str]) -> str:
+    """Join items as "a, b and c"."""
+    if len(items) < 2:
+        return "".join(items)
+    return f"{', '.join(items[:-1])} and {items[-1]}"
 
 
 def _with_embedded_fonts(plot):

@@ -68,16 +68,19 @@ _CONTINUOUS_COLOUR_DETAIL = (
 
 def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
                  min_delta_e: float = 5, min_text_pt: float = 6,
-                 metric: str = "ciede2000") -> pd.DataFrame:
+                 metric: str = "ciede2000",
+                 max_text_pt: float | None = None) -> pd.DataFrame:
     """Audit a finished figure for accessibility and honesty.
 
     Checks a figure as it will be submitted, rather than the palette it was
     built from. Every row carries the value it measured next to the threshold it
     was measured against, so a verdict can be argued with rather than merely
     accepted. A check passes when the measured value is at least the threshold.
-    A check with nothing to measure, such as colour separability on a figure
-    that encodes nothing by colour, reports ``NaN`` and a verdict of
-    ``"not applicable"`` instead of a free pass.
+    The one exception is ``text_size_max``, a ceiling added when
+    ``max_text_pt`` is given, which passes when the measured value is at most
+    its threshold. A check with nothing to measure, such as colour separability
+    on a figure that encodes nothing by colour, reports ``NaN`` and a verdict
+    of ``"not applicable"`` instead of a free pass.
 
     Colours and text are measured as drawn. A translucent colour is composited
     over the background it is drawn on with the alpha it is drawn with, so it
@@ -167,6 +170,11 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     labels. Its contrast is not measured, since it sits on the marks rather
     than on one background.
 
+    ``text_size_max`` is reported only when ``max_text_pt`` is given, as the
+    last row. It is the largest point size of all the text measured, around
+    the panel and inside it, scaled as ``text_size`` is. It is the one row
+    that passes at or below its threshold.
+
     **Limitations of the default palette.** The eight-colour qualitative
     palette clears the colour-separability checks comfortably and fails
     ``greyscale_separability``: its orange (``#e69f00``) and sky blue
@@ -199,13 +207,17 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ``width=8.9, units="cm"``, needs no scaling. Pass the saved width as both
     ``width_cm`` and ``render_width_cm``, or leave both at their defaults.
     Given alone, ``width_cm`` audits the figure as though it had been drawn
-    seven inches wide and then shrunk to fit.
+    seven inches wide and then shrunk to fit. :func:`depictr.save_plot` with
+    ``check=True`` audits a figure at the width it saves it at, given as both.
 
     The default ``min_text_pt`` of 6 is lenient. As their guidelines stood on
     30 September 2026, PLOS asked for text of 8 to 12 pt and APA Style for 8 to
     14 pt. Elsevier asked for 7 pt as a rule of thumb, and Nature for 5 to 7
     pt, with panel labels at 8 pt. Pass the floor of the journal the figure is
-    for as ``min_text_pt``. The four pages are listed under References.
+    for as ``min_text_pt``, and its ceiling, where it sets one, as
+    ``max_text_pt``. Nature's 7 pt applies to all text but the panel labels,
+    and a panel label drawn as a panel's title or annotation is measured with
+    the rest. The four pages are listed under References.
 
     **Compositions.** A composition, such as :func:`depictr.arrange_plots`,
     :func:`depictr.residual_diagnostics_plot` and :func:`depictr.model_report`
@@ -252,15 +264,20 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         CIEDE2000, the default, or the Euclidean distance in CIELAB that
         earlier versions measured. ``"cie76"`` is kept so that earlier results
         can be reproduced, and a later release will remove it.
+    max_text_pt : float, optional
+        The largest acceptable printed text size, in points, or None, the
+        default, for no ceiling. When given, a ``text_size_max`` row is
+        appended (see ``text_size_max`` above).
 
     Returns
     -------
     pandas.DataFrame
         One row per check, with columns ``check``, ``measured``, ``threshold``,
         ``verdict`` (``"pass"``, ``"fail"`` or ``"not applicable"``) and
-        ``detail``, a short note naming what produced the measurement. For a
-        composition, the rows of each panel in turn, after a leading integer
-        column ``panel``.
+        ``detail``, a short note naming what produced the measurement. There
+        are ten rows, and an eleventh, ``text_size_max``, when ``max_text_pt``
+        is given. For a composition, the rows of each panel in turn, after a
+        leading integer column ``panel``.
 
     See Also
     --------
@@ -320,6 +337,14 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     >>> saved.loc[saved["check"] == "text_size", "verdict"].item()
     'pass'
 
+    Nature allowed no text above 7 pt but the panel labels. The axis titles
+    here are 11 pt, so the ceiling row fails.
+
+    >>> nature = dp.check_figure(good, max_text_pt=7)
+    >>> nature.loc[nature["check"] == "text_size_max",
+    ...            ["measured", "verdict"]].values.tolist()
+    [[11.0, 'fail']]
+
     Each panel of a composition is audited, and a column says which panel
     each row describes. At base size 5, the second panel's text is too small.
 
@@ -340,9 +365,12 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     _positive_scalar(render_width_cm, "render_width_cm")
     _positive_scalar(min_delta_e, "min_delta_e")
     _positive_scalar(min_text_pt, "min_text_pt")
+    if max_text_pt is not None:
+        _positive_scalar(max_text_pt, "max_text_pt")
     _check_metric(metric)
 
-    settings = (width_cm, render_width_cm, min_delta_e, min_text_pt, metric)
+    settings = (width_cm, render_width_cm, min_delta_e, min_text_pt, metric,
+                max_text_pt)
     if isinstance(plot, Compose):
         return _audit_composition(plot, *settings)
     return _audit_plot(plot, *settings)
@@ -374,13 +402,13 @@ def _composition_panels(composition):
 
 
 def _audit_composition(composition, width_cm: float, render_width_cm: float,
-                       min_delta_e: float, min_text_pt: float,
-                       metric: str) -> pd.DataFrame:
+                       min_delta_e: float, min_text_pt: float, metric: str,
+                       max_text_pt: float | None = None) -> pd.DataFrame:
     """Each panel of a composition audited on its own, under a panel column."""
     reports = []
     for number, panel in enumerate(_composition_panels(composition), start=1):
         report = _audit_plot(panel, width_cm, render_width_cm, min_delta_e,
-                             min_text_pt, metric)
+                             min_text_pt, metric, max_text_pt)
         report.insert(0, "panel", number)
         reports.append(report)
     if not reports:
@@ -395,9 +423,13 @@ def _audit_composition(composition, width_cm: float, render_width_cm: float,
 
 
 def _audit_plot(plot, width_cm: float, render_width_cm: float,
-                min_delta_e: float, min_text_pt: float,
-                metric: str) -> pd.DataFrame:
-    """The audit of a single plot, its settings already validated."""
+                min_delta_e: float, min_text_pt: float, metric: str,
+                max_text_pt: float | None = None) -> pd.DataFrame:
+    """The audit of a single plot, its settings already validated.
+
+    The ceiling row is appended only when ``max_text_pt`` is given, so the
+    report asked for without one keeps its ten rows.
+    """
     # Drawing mutates the plot it is given (it builds the layers in place), so
     # the audit works on a copy and leaves the caller's figure untouched.
     built = copy.deepcopy(plot)
@@ -434,6 +466,9 @@ def _audit_plot(plot, width_cm: float, render_width_cm: float,
         "annotation_text_size", panel_text, width_cm, render_width_cm,
         min_text_pt, "in-panel text",
         "The figure draws no text inside the panel."))
+    if max_text_pt is not None:
+        rows.append(_largest_text_row([t.size for t in text] + panel_text,
+                                      width_cm, render_width_cm, max_text_pt))
     return pd.DataFrame(rows, columns=_COLUMNS)
 
 
@@ -964,14 +999,20 @@ def _figure_text(figure, plot_bg: str) -> list[_Text]:
 # --- rows -------------------------------------------------------------------
 
 
-def _verdict(measured: float, threshold: float) -> str:
+def _verdict(measured: float, threshold: float, ceiling: bool = False) -> str:
+    """A row's verdict.
+
+    A floor passes at or above its threshold, and a ceiling at or below it.
+    """
     if measured is None or (isinstance(measured, float) and np.isnan(measured)):
         return "not applicable"
-    return "pass" if measured >= threshold else "fail"
+    passes = measured <= threshold if ceiling else measured >= threshold
+    return "pass" if passes else "fail"
 
 
-def _row(check: str, measured, threshold: float, detail: str) -> dict:
-    verdict = _verdict(measured, threshold)
+def _row(check: str, measured, threshold: float, detail: str,
+         ceiling: bool = False) -> dict:
+    verdict = _verdict(measured, threshold, ceiling)
     return {
         "check": check,
         "measured": (np.nan if verdict == "not applicable"
@@ -1072,6 +1113,25 @@ def _smallest_text_row(check: str, sizes: list[float], width_cm: float,
     return _row(check, nominal * width_cm / render_width_cm, min_text_pt,
                 f"Smallest {noun} {nominal:.2f} pt, drawn at "
                 f"{render_width_cm:.2f} cm and printed at {width_cm:.2f} cm.")
+
+
+def _largest_text_row(sizes: list[float], width_cm: float,
+                      render_width_cm: float, max_text_pt: float) -> dict:
+    """The largest text at its printed size, against a ceiling.
+
+    Serves ``text_size_max``, over the text around the panel and inside it
+    together, since a ceiling such as Nature's applies to all of it. It is the
+    one row that passes at or below its threshold.
+    """
+    if not sizes:
+        return _row("text_size_max", np.nan, max_text_pt,
+                    "The figure draws no text.", ceiling=True)
+    nominal = max(sizes)
+    return _row("text_size_max", nominal * width_cm / render_width_cm,
+                max_text_pt,
+                f"Largest text {nominal:.2f} pt, drawn at "
+                f"{render_width_cm:.2f} cm and printed at {width_cm:.2f} cm.",
+                ceiling=True)
 
 
 def _text_contrast_row(text: list[_Text], width_cm: float,
