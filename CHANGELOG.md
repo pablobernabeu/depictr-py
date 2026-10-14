@@ -179,6 +179,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   orange stays in the palette. The smoothers of the residual panels in
   `residual_diagnostics_plot()` and `model_report()` are drawn in the
   reference grey `#999999`, as in R, where they took the orange.
+- `simulate_cvd()` at partial severity now uses Machado et al.'s published
+  matrices, interpolated between the tabulated severities. Interpolating
+  towards normal vision missed them on the default palette by up to 11 units
+  of the 1976 Delta-E, or 6.2 in CIEDE2000. Full-severity results, and so
+  `palette_safety()`, `check_figure()` and the web app's colour-vision view,
+  are unchanged. The authors tabulate a matrix for each tenth of severity, and
+  a severity between two tenths now takes the linear interpolation of the two,
+  as colorspacious does, whose output it matches. The old transform drew the
+  full-severity matrix towards the identity. Between severities 0.3 and 0.7, it
+  moved the palette's colours too little under protan and deutan and too far
+  under tritan, so under a red-green deficiency they looked further apart than
+  the model predicts. The R twin makes the same change, and the two test
+  suites pin the same colours.
 
 ### Deprecated
 

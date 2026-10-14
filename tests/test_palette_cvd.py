@@ -162,6 +162,113 @@ def test_simulate_cvd_matches_colorspacious():
         assert simulate_cvd(palette, deficiency) == theirs, deficiency
 
 
+# Colours spread over the gamut, added to the palette where an external
+# implementation checks each table and the interpolation between them.
+GAMUT = ["#ff0000", "#00ff00", "#0000ff", "#3366cc", "#7f3f00", "#00ffff",
+         "#ff00ff", "#202020"]
+
+# The default palette simulated at partial severity by the R twin, whose
+# output equals colorspace's, as dev/goldens/cvd.R prints it. The R suite's
+# test-t4-theming.R pins the same colours, so the twins are held to them
+# without colorspace or colorspacious.
+OKABE_ITO_DEFAULT_ORDER = ["#005b96", "#e69f00", "#009e73", "#d55e00",
+                           "#cc79a7", "#56b4e9", "#f0e442", "#999999"]
+PARTIAL_SEVERITY_GOLDEN = {
+    ("protan", 0.25): ["#235b97", "#d7a200", "#629873", "#bb6900", "#b482a7",
+                       "#75b2ea", "#f4e13c", "#999999"],
+    ("deutan", 0.25): ["#1a5896", "#daa700", "#5e9574", "#bf7200", "#b686a6",
+                       "#70aee9", "#f5e345", "#999999"],
+    ("tritan", 0.25): ["#0d5c8f", "#e2a042", "#389b79", "#ce632a", "#c57ea3",
+                       "#60b4e2", "#f2e26e", "#999999"],
+    ("protan", 0.5): ["#305c97", "#cba300", "#7e9573", "#a66e00", "#a087a7",
+                      "#87b2ea", "#f6df35", "#999999"],
+    ("deutan", 0.5): ["#225695", "#d2ac04", "#768f75", "#b07e00", "#a78fa6",
+                      "#7caae9", "#f8e348", "#999999"],
+    ("tritan", 0.5): ["#005f8a", "#e99b55", "#059d7f", "#d75a32", "#cc7b9d",
+                      "#4bb7dd", "#f4df86", "#999999"],
+    ("protan", 0.75): ["#385d98", "#c2a300", "#8f9372", "#937000", "#8f89a8",
+                       "#92b2eb", "#f7de2d", "#999999"],
+    ("deutan", 0.75): ["#265495", "#cdb00a", "#828a76", "#a58600", "#9c94a5",
+                       "#83a7e8", "#fae34b", "#999999"],
+    ("tritan", 0.75): ["#006580", "#f7916e", "#00a089", "#e7483e", "#d77694",
+                       "#00bed3", "#fbdaa5", "#999999"],
+}
+
+
+def test_partial_severities_use_the_tabulated_matrices():
+    # Machado et al. publish a matrix for every tenth of severity.
+    # Interpolating from the identity to the severity-1 matrix gave a protan
+    # 0.5 first row of 0.576143, 0.526292 and -0.102434 instead of the
+    # published one below.
+    from depictr.cvd import _MACHADO, _MACHADO_1, _machado_matrix
+
+    np.testing.assert_allclose(_machado_matrix("protan", 0.5)[0],
+                               [0.458064, 0.679578, -0.137642])
+    np.testing.assert_allclose(_machado_matrix("deutan", 0.5)[0],
+                               [0.547494, 0.607765, -0.155259])
+    np.testing.assert_allclose(_machado_matrix("tritan", 0.5)[0],
+                               [1.017277, 0.027029, -0.044306])
+    # Between two tenths, the transform lies on the line between their
+    # matrices.
+    table = _MACHADO["deutan"]
+    np.testing.assert_allclose(_machado_matrix("deutan", 0.25),
+                               (table[2] + table[3]) / 2)
+    for deficiency, table in _MACHADO.items():
+        assert table.shape == (11, 3, 3)
+        # Severity zero is normal vision, and full severity keeps the
+        # matrices the safety checks have always used, bit for bit.
+        assert np.array_equal(table[0], np.eye(3))
+        assert np.array_equal(table[10], _MACHADO_1[deficiency])
+        assert np.array_equal(_machado_matrix(deficiency, 1.0),
+                              _MACHADO_1[deficiency])
+        assert np.array_equal(_machado_matrix(deficiency, 0.0), np.eye(3))
+        # Every published matrix maps a grey to itself, up to the six decimals
+        # the table is printed to, which catches a mistyped entry.
+        np.testing.assert_allclose(table.sum(axis=2), 1, atol=1e-5)
+
+
+def test_tabulated_matrices_match_colorspacious():
+    # colorspacious and R's colorspace copied the same table from Machado et
+    # al.'s supplementary page, and agree with each other entry for entry.
+    cvd = pytest.importorskip("colorspacious.cvd")
+    from depictr.cvd import _MACHADO
+
+    names = {"protan": "protanomaly", "deutan": "deuteranomaly",
+             "tritan": "tritanomaly"}
+    for deficiency, name in names.items():
+        for k in range(11):
+            theirs = np.asarray(cvd.MACHADO_ET_AL_MATRICES[name][10 * k])
+            assert np.array_equal(_MACHADO[deficiency][k], theirs), (
+                deficiency, k)
+
+
+def test_partial_severity_matches_colorspacious():
+    # colorspacious interpolates linearly between the two neighbouring tenths,
+    # so 0.25 and 0.75 test the interpolation and 0.3, 0.5 and 0.7 the table.
+    colorspacious = pytest.importorskip("colorspacious")
+    import matplotlib.colors as mcolors
+
+    colours = depictr_palette() + GAMUT
+    rgb = np.array([mcolors.to_rgb(c) for c in colours])
+    names = {"protan": "protanomaly", "deutan": "deuteranomaly",
+             "tritan": "tritanomaly"}
+    for severity in (0.25, 0.3, 0.5, 0.7, 0.75):
+        for deficiency, name in names.items():
+            space = {"name": "sRGB1+CVD", "cvd_type": name,
+                     "severity": 100 * severity}
+            theirs = [mcolors.to_hex(np.clip(row, 0, 1)) for row in
+                      colorspacious.cspace_convert(rgb, space, "sRGB1")]
+            ours = simulate_cvd(colours, deficiency, severity=severity)
+            assert ours == theirs, (deficiency, severity)
+
+
+def test_partial_severity_matches_the_r_twin():
+    for (deficiency, severity), expected in PARTIAL_SEVERITY_GOLDEN.items():
+        ours = simulate_cvd(OKABE_ITO_DEFAULT_ORDER, deficiency,
+                            severity=severity)
+        assert ours == expected, (deficiency, severity)
+
+
 def test_severity_zero_is_identity():
     colours = ["#005b96", "#e69f00"]
     assert simulate_cvd(colours, "deutan", severity=0.0) == [
