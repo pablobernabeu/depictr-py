@@ -111,6 +111,19 @@ def test_residual_diagnostics_plot_saves(ols, tmp_path):
     assert fn.exists() and fn.stat().st_size > 0
 
 
+def test_residual_smoothers_are_drawn_in_the_reference_grey(ols, glm_fits):
+    # The lowess smoothers were drawn in the orange #e69f00, a group colour of
+    # the palette, where the R twin draws them in depictr_reference(), grey60.
+    from plotnine import geom_smooth
+
+    for fit in (ols, glm_fits["poisson"]):
+        smooths = [layer.geom.aes_params.get("color")
+                   for panel in _panels(residual_diagnostics_plot(fit, seed=1))
+                   for layer in panel.layers
+                   if isinstance(layer.geom, geom_smooth)]
+        assert smooths == ["#999999"] * 3
+
+
 def test_panels_reject_raw_array():
     with pytest.raises(TypeError):
         residual_diagnostics_plot([1.0, 2.0, 3.0])

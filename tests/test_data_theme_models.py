@@ -121,6 +121,33 @@ def test_an_explicit_n_still_fixes_the_palette():
     assert list(dict.fromkeys(_drawn(p, "color"))) == depictr_palette(5)[:3]
 
 
+def test_the_scales_take_the_contrast_first_order():
+    contrast_first = depictr_palette(order="contrast")
+    p = (ggplot(_groups(3), aes("x", "x", colour="g")) + geom_point()
+         + scale_colour_depictr(order="contrast"))
+    assert list(dict.fromkeys(_drawn(p, "color"))) == contrast_first[:3]
+    p = ggplot(_groups(3), aes("g", fill="g")) + geom_bar() + scale_fill_depictr(
+        order="contrast")
+    assert list(dict.fromkeys(_drawn(p, "fill"))) == contrast_first[:3]
+    with pytest.raises(ValueError, match="`order` must be"):
+        scale_colour_depictr(order="brightest")
+
+
+def test_the_contrast_first_scale_warns_past_four_groups():
+    # As past eight, the warning comes when the plot is drawn, since that is
+    # when the scale learns how many groups there are.
+    p = (ggplot(_groups(5), aes("x", "x", colour="g")) + geom_point()
+         + scale_colour_depictr(order="contrast"))
+    with pytest.warns(UserWarning, match="^Past four colours"):
+        colours = list(dict.fromkeys(_drawn(p, "color")))
+    assert colours == depictr_palette(order="contrast")[:5]
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _drawn(ggplot(_groups(4), aes("x", "x", colour="g")) + geom_point()
+               + scale_colour_depictr(order="contrast"), "color")
+    assert not any("Past four" in str(w.message) for w in caught)
+
+
 def test_tidy_estimates_from_frame_normalises_columns():
     raw = pd.DataFrame({
         "term": ["a", "b"], "estimate": [1.0, -1.0],

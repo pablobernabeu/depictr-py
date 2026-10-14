@@ -38,6 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the R twin's, so the twins draw the same limits. The new `censor_marks`,
   `True` by default, marks each censored observation with a "+", and the new
   `logrank` says whether to print the log-rank test as a subtitle.
+- `depictr_palette(order="contrast")`, also accepted by `scale_colour_depictr()`
+  and `scale_fill_depictr()`, reorders the built-in palette so that up to three
+  groups pass every colour check of `check_figure()`, contrast against white
+  included, and up to four keep 3:1. It leads with the brand blue, the
+  vermillion and the reddish purple, then the bluish green. It warns past four
+  colours, and the ramps refuse it. Python has no options object, so the
+  scale is added to each plot that should use the order. The default order is
+  unchanged, and the R twin gives the same order.
 
 ### Changed
 
@@ -153,6 +161,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now fail the check too. `metric="cie76"` restores the old measure for this
   release, and the greyscale check is the lightness gap under either. The R
   twin makes the same change and gives the same numbers.
+- The accent colour is now the vermillion `#d55e00`, as in the R twin. The
+  orange it replaces reaches only 2.25:1 against white, below the 3:1 that
+  WCAG 2.2 asks of a graphical object, and it marked the flagged points of
+  `outlier_plot()`, the missing cells of `missingness_map()`, the cumulative
+  line of `scree_plot()` and the rolling mean of `timeseries_plot()`. The
+  orange stays in the palette. The smoothers of the residual panels in
+  `residual_diagnostics_plot()` and `model_report()` are drawn in the
+  reference grey `#999999`, as in R, where they took the orange.
 
 ### Deprecated
 

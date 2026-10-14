@@ -424,6 +424,44 @@ def test_greyscale_separability_fails_for_the_default_palette():
         assert verdict_for(report, check) == "pass"
 
 
+def test_two_and_three_groups_in_the_contrast_first_order_pass_every_colour_row():
+    colour_rows = CHECKS[:5] + ["geometry_contrast"]
+    # Education is an ordered category, and plotnine advises against shapes for
+    # one, so the three groups are drawn as plain categories.
+    wb = WB.assign(education=WB["education"].cat.as_unordered())
+
+    def grouped(data, x, y, group, order):
+        return (ggplot(data, aes(x, y, colour=group, shape=group))
+                + geom_point() + dp.scale_colour_depictr(order=order)
+                + dp.theme_depictr())
+
+    for p in (grouped(CY, "rainfall", "yield", "treatment", "contrast"),
+              grouped(wb, "age", "stress", "education", "contrast")):
+        verdicts = dp.check_figure(p).set_index("check")["verdict"]
+        assert list(verdicts[colour_rows]) == ["pass"] * len(colour_rows)
+    # Three groups sit where the documentation says: 6.86 apart in lightness,
+    # with the reddish purple the lowest contrast at 3.06:1.
+    report = dp.check_figure(grouped(wb, "age", "stress", "education",
+                                     "contrast"))
+    assert measured_for(report, "greyscale_separability") == 6.86
+    assert measured_for(report, "geometry_contrast") == 3.06
+
+    # In the default order the orange draws the second group, at 2.25:1.
+    report = dp.check_figure(grouped(CY, "rainfall", "yield", "treatment",
+                                     "default"))
+    assert verdict_for(report, "geometry_contrast") == "fail"
+    assert measured_for(report, "geometry_contrast") == 2.25
+
+    # Python has no options object, so the order is added plot by plot, here
+    # to one of depictr's own plots. plotnine says it replaces the scale.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Scale for 'color'")
+        report = dp.check_figure(dp.ecdf_plot(wb, "stress", group="education")
+                                 + dp.scale_colour_depictr(order="contrast"))
+    verdicts = report.set_index("check")["verdict"]
+    assert list(verdicts[colour_rows]) == ["pass"] * len(colour_rows)
+
+
 def test_text_size_scales_with_the_printed_width():
     p = good_figure()
     full = measured_for(dp.check_figure(p), "text_size")

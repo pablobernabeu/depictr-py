@@ -107,7 +107,8 @@ the second colour, so every default figure that colours two or more groups uses
 it. The example above therefore fails `geometry_contrast`, as well as
 `redundant_encoding` and, at 8.9 cm, `text_size`. Opaque marks, the vermillion
 `#d55e00` in the orange's place and a redundant shape or line type clear the two
-colour rows.
+colour rows. Adding `dp.scale_colour_depictr(order="contrast")` to a plot puts
+the vermillion there.
 
 ## Installation
 

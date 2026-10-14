@@ -23,7 +23,13 @@ from plotnine import (
     theme_minimal,
 )
 
-from .palette import NA_VALUE, OKABE_ITO, depictr_brand, depictr_palette
+from .palette import (
+    _CONTRAST_KEPT,
+    NA_VALUE,
+    OKABE_ITO,
+    depictr_brand,
+    depictr_palette,
+)
 
 
 def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
@@ -78,24 +84,26 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
     return th
 
 
-def _sized_to_the_data(scale, n):
+def _sized_to_the_data(scale, n, order="default"):
     """Let a depictr manual scale size the palette to the levels it is given.
 
     A manual scale holds a fixed list of values, so plotnine draws every level
     past the eighth in the missing-value colour. With ``n`` unset, the palette
     here is asked for as many colours as the plot has levels, as in the R twin's
     ``function(k) depictr_palette(n %||% k)``. A ninth group is then
-    interpolated, and :func:`depictr.palette.depictr_palette` warns. Up to eight
-    levels, and whenever ``n`` is given, plotnine's own palette is kept, so
-    those figures are drawn exactly as before.
+    interpolated, and :func:`depictr.palette.depictr_palette` warns, as it
+    does for a fifth group in the contrast-first order. Up to eight levels,
+    four in that order, and whenever ``n`` is given, plotnine's own palette is
+    kept, so those figures are drawn exactly as before.
     """
     if n is not None:
         return scale
     manual = scale.palette
+    kept = _CONTRAST_KEPT if order == "contrast" else len(OKABE_ITO)
 
     def palette(k):
-        if k > len(OKABE_ITO):
-            return depictr_palette(k)
+        if k > kept:
+            return depictr_palette(k, order=order)
         return manual(k)
 
     scale.palette = palette
@@ -118,7 +126,8 @@ def _scale_fills(scale, values) -> list[str]:
     return [str(c) for c in probe.map(x)]
 
 
-def scale_colour_depictr(n: int | None = None, **kwargs):
+def scale_colour_depictr(n: int | None = None, order: str = "default",
+                         **kwargs):
     """A discrete colour scale drawn from :func:`depictr.palette.depictr_palette`.
 
     Parameters
@@ -131,6 +140,12 @@ def scale_colour_depictr(n: int | None = None, **kwargs):
         only, so :func:`depictr.palette.depictr_palette` warns past eight; facet
         the groups, or use the sequential ramp, when there are more. Pass ``n``
         to fix the palette's length whatever the number of groups.
+    order : {"default", "contrast"}
+        ``"contrast"`` draws the groups in the contrast-first order of
+        :func:`depictr.palette.depictr_palette`, with which two or three
+        groups pass every colour row of :func:`depictr.check_figure`. More than
+        four groups warn when the plot is drawn. Added to one of depictr's own
+        plots, the scale replaces the plot's colour scale.
     **kwargs
         Passed to :func:`plotnine.scale_color_manual` (for example ``name``).
 
@@ -141,13 +156,20 @@ def scale_colour_depictr(n: int | None = None, **kwargs):
     >>> cy = dp.crop_yield()
     >>> p = (ggplot(cy, aes("rainfall", "yield", colour="treatment"))
     ...      + geom_point() + dp.scale_colour_depictr())
+
+    The vermillion in the orange's place, at 3.87:1 against white:
+
+    >>> p = (ggplot(cy, aes("rainfall", "yield", colour="treatment",
+    ...                     shape="treatment"))
+    ...      + geom_point() + dp.scale_colour_depictr(order="contrast"))
     """
     kwargs.setdefault("na_value", NA_VALUE)
     return _sized_to_the_data(
-        scale_color_manual(values=depictr_palette(n), **kwargs), n)
+        scale_color_manual(values=depictr_palette(n, order=order), **kwargs),
+        n, order)
 
 
-def scale_fill_depictr(n: int | None = None, **kwargs):
+def scale_fill_depictr(n: int | None = None, order: str = "default", **kwargs):
     """A discrete fill scale drawn from :func:`depictr.palette.depictr_palette`.
 
     See :func:`scale_colour_depictr` for the parameters.
@@ -162,7 +184,8 @@ def scale_fill_depictr(n: int | None = None, **kwargs):
     """
     kwargs.setdefault("na_value", NA_VALUE)
     return _sized_to_the_data(
-        scale_fill_manual(values=depictr_palette(n), **kwargs), n)
+        scale_fill_manual(values=depictr_palette(n, order=order), **kwargs),
+        n, order)
 
 
 # American-spelling alias, matching the convention plotnine and matplotlib use.

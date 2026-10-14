@@ -58,7 +58,7 @@ from .diagnostics import (
     qq_plot,
 )
 from .models import coefficient_plot
-from .palette import BRAND
+from .palette import BRAND, REFERENCE
 from .theme import theme_depictr
 
 
@@ -82,7 +82,7 @@ def _residuals_vs_fitted(model, title=None):
         ggplot(df, aes("fitted", "resid"))
         + geom_hline(yintercept=0, linetype="dashed", color="#9e9e9e")
         + geom_point(color=BRAND, size=2, alpha=0.6)
-        + geom_smooth(method="lowess", se=False, color="#e69f00", size=0.9)
+        + geom_smooth(method="lowess", se=False, color=REFERENCE, size=0.9)
         + labs(x="Fitted values", y=label, title=title)
         + theme_depictr()
     )
@@ -101,7 +101,7 @@ def _scale_location(model, title=None):
     return (
         ggplot(df, aes("fitted", "root_abs"))
         + geom_point(color=BRAND, size=2, alpha=0.6)
-        + geom_smooth(method="lowess", se=False, color="#e69f00", size=0.9)
+        + geom_smooth(method="lowess", se=False, color=REFERENCE, size=0.9)
         + labs(x="Fitted values",
                y="√|Standardised residuals|", title=title)
         + theme_depictr()
@@ -124,7 +124,7 @@ def _residuals_vs_leverage(model, title=None):
         ggplot(df, aes("leverage", "studentised"))
         + geom_hline(yintercept=0, linetype="dashed", color="#9e9e9e")
         + geom_point(color=BRAND, size=2, alpha=0.6)
-        + geom_smooth(method="lowess", se=False, color="#e69f00", size=0.9)
+        + geom_smooth(method="lowess", se=False, color=REFERENCE, size=0.9)
         + labs(x="Leverage (hat value)", y="Studentised residuals", title=title)
         + theme_depictr()
     )

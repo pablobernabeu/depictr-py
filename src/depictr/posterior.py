@@ -159,7 +159,7 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
     overlap. The frequentist side shows the point estimate with its confidence
     interval; the Bayesian side shows the posterior median with the inner 66% and
     outer 95% credible intervals. The sources are told apart by colour (brand
-    blue for frequentist, accent orange for Bayesian).
+    blue for frequentist, the palette's orange for Bayesian).
 
     Only terms present in both sources are drawn. The frequentist confidence
     level is whatever :func:`depictr.models.tidy_estimates` reads from the model
@@ -210,7 +210,8 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
     both = pd.concat([freq[freq["term"].isin(shared)],
                       bayes[bayes["term"].isin(shared)]], ignore_index=True)
 
-    # First shared term at the top once flipped; sources keyed to brand vs accent.
+    # The first shared term sits at the top once flipped. The sources take the
+    # first two palette colours, the brand blue and the orange.
     both = both.assign(
         term=pd.Categorical(both["term"], categories=shared[::-1], ordered=True),
         source=pd.Categorical(both["source"],

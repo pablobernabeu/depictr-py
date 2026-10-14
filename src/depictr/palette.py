@@ -31,14 +31,22 @@ import numpy as np
 # (#005b96) in place of the lighter standard blue so the brand reads first.
 OKABE_ITO: list[str] = [
     "#005b96",  # blue (brand)
-    "#e69f00",  # orange (accent)
+    "#e69f00",  # orange
     "#009e73",  # bluish green
-    "#d55e00",  # vermillion
+    "#d55e00",  # vermillion (accent)
     "#cc79a7",  # reddish purple
     "#56b4e9",  # sky blue
     "#f0e442",  # yellow
     "#999999",  # grey
 ]
+
+# The contrast-first order of the same colours. The only three of the eight
+# that clear every colour row of check_figure() together lead, then the bluish
+# green, which keeps 3:1 against white, then the rest in their default order.
+# The R twin's depictr_palette(order = "contrast") gives the same order.
+CONTRAST_FIRST: list[str] = [OKABE_ITO[i] for i in (0, 3, 4, 2, 1, 5, 6, 7)]
+# How many colours of that order keep 3:1 against white.
+_CONTRAST_KEPT = 4
 
 # Anchors for the perceptual ramps, interpolated on demand to any length.
 _SEQUENTIAL_ANCHORS = ["#e6eff5", "#4a8fc0", "#005b96", "#08315a"]
@@ -51,8 +59,13 @@ _CYCLE_ANCHORS = _SEQUENTIAL_ANCHORS[1:]
 
 #: The depictr brand colour (the lead of the qualitative palette).
 BRAND = "#005b96"
-#: The accent colour, used for a single highlighted series or annotation.
-ACCENT = "#e69f00"
+#: The accent colour, used for a single highlighted series or annotation: the
+#: Okabe-Ito vermillion, as in the R twin. At 3.87:1 against white it clears
+#: the 3:1 that WCAG 2.2 asks of a graphical object (success criterion 1.4.11).
+ACCENT = "#d55e00"
+#: The reference grey of the residual smoothers: R's grey60, the default of
+#: the R twin's ``depictr_reference()``.
+REFERENCE = "#999999"
 #: Default colour for missing (``NA``) levels: the hex equivalent of R's
 #: grey80, since matplotlib does not know R colour names.
 NA_VALUE = "#cccccc"
@@ -73,11 +86,17 @@ def depictr_brand() -> str:
 def depictr_accent() -> str:
     """Return the depictr accent colour as a hex string.
 
+    The accent marks a single element against the brand blue, such as the
+    flagged points of :func:`depictr.outlier_plot` and the missing cells of
+    :func:`depictr.missingness_map`. It is the Okabe-Ito vermillion, as in the
+    R twin, which stays distinguishable from the brand blue under the common
+    colour-vision deficiencies and reaches 3.87:1 against white.
+
     Examples
     --------
     >>> import depictr as dp
     >>> dp.depictr_accent()
-    '#e69f00'
+    '#d55e00'
     """
     return ACCENT
 
@@ -97,8 +116,32 @@ def _cycle_palette(n: int) -> list[str]:
     return _ramp(_CYCLE_ANCHORS, n)
 
 
-def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str]:
+def depictr_palette(n: int | None = None, kind: str = "qualitative",
+                    order: str = "default") -> list[str]:
     """Return a depictr palette.
+
+    In the default order the second colour is the orange (``#e69f00``), at
+    2.25:1 against white. Any figure on white whose colour tells two or more
+    groups apart therefore fails the ``geometry_contrast`` row of
+    :func:`depictr.check_figure`. No more than three of the eight colours pass
+    every colour row of that audit together.
+
+    ``order="contrast"`` puts those three first: the brand blue, the vermillion
+    (``#d55e00``) and the reddish purple (``#cc79a7``), then the bluish green
+    (``#009e73``) and the other four in their default order. Up to three groups
+    then pass every colour row, contrast against white included. They stay at
+    least 14.01 apart in CIEDE2000 under every vision type, 6.86 apart in
+    lightness and 3.06:1 against white. Four groups keep 3:1 against white,
+    but the bluish green and the vermillion are 3.31 apart in lightness, which
+    fails ``greyscale_separability``. Under this order, the second group is
+    drawn in the vermillion, which is also :func:`depictr.depictr_accent`.
+    The default order is unchanged, and the R twin gives the same order.
+
+    The R twin can make the order the default for every plot through its
+    options. Python has none, so add
+    ``dp.scale_colour_depictr(order="contrast")``, or the fill scale, to each
+    plot that should use it. plotnine then says that it replaces the plot's
+    colour scale.
 
     Parameters
     ----------
@@ -109,11 +152,21 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
         are ramps and accept any ``n`` (defaulting to 7).
     kind : {"qualitative", "sequential", "diverging"}
         The palette family.
+    order : {"default", "contrast"}
+        The order of the qualitative palette. ``"contrast"`` gives the
+        contrast-first order described above. The ramps have an order of their
+        own and refuse ``"contrast"``.
 
     Returns
     -------
     list of str
         Hex colour codes.
+
+    Raises
+    ------
+    ValueError
+        For an unknown ``kind`` or ``order``, or ``order="contrast"`` with a
+        ramp.
 
     Warns
     -----
@@ -122,14 +175,25 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
         palette is therefore interpolated. The colourblind-safety guarantee
         covers the eight base colours only; an interpolated palette fails
         :func:`depictr.cvd.palette_safety`. Facet the groups, or use the
-        sequential ramp, when there are more than eight of them.
+        sequential ramp, when there are more than eight of them. Also when
+        ``order="contrast"`` and ``n`` exceeds four, since the fifth colour,
+        the orange, falls below 3:1 against white.
 
     Examples
     --------
     >>> import depictr as dp
     >>> dp.depictr_palette(3)
     ['#005b96', '#e69f00', '#009e73']
+    >>> dp.depictr_palette(3, order="contrast")
+    ['#005b96', '#d55e00', '#cc79a7']
     """
+    if order not in ("default", "contrast"):
+        raise ValueError("`order` must be 'default' or 'contrast'.")
+    if kind in ("sequential", "diverging") and order != "default":
+        raise ValueError(
+            f"`order` applies to the qualitative palette, not to the {kind} "
+            f"ramp."
+        )
     if kind == "sequential":
         return _ramp(_SEQUENTIAL_ANCHORS, n or 7)
     if kind == "diverging":
@@ -138,10 +202,17 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
         raise ValueError(
             "`kind` must be 'qualitative', 'sequential' or 'diverging'."
         )
+    base = CONTRAST_FIRST if order == "contrast" else OKABE_ITO
     if n is None:
-        return list(OKABE_ITO)
-    if n <= len(OKABE_ITO):
-        return OKABE_ITO[:n]
+        return list(base)
+    if order == "contrast" and n > _CONTRAST_KEPT:
+        warnings.warn(
+            "Past four colours the contrast-first order no longer keeps every "
+            "colour at 3:1 against white.",
+            stacklevel=2,
+        )
+    if n <= len(base):
+        return base[:n]
     # More categories than base colours: interpolate through the set so groups
     # stay as distinct as the space allows. "As the space allows" is no longer
     # far enough apart to be colourblind-safe, and the package says so rather
@@ -154,4 +225,4 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative") -> list[str
         f"deficiency.",
         stacklevel=2,
     )
-    return _ramp(OKABE_ITO, n)
+    return _ramp(base, n)

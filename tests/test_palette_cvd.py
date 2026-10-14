@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from depictr import depictr_palette, palette_safety, simulate_cvd
+from depictr import depictr_accent, depictr_palette, palette_safety, simulate_cvd
+from depictr.audit import _contrast_ratio
 from depictr.cvd import _ciede2000, _rgb_to_lab
 from depictr.palette import OKABE_ITO
 
@@ -68,6 +69,69 @@ def test_sequential_and_diverging_ramps():
 def test_unknown_kind_raises():
     with pytest.raises(ValueError):
         depictr_palette(kind="nonsense")
+
+
+# Pinned identically in the R twin's tests/testthat/test-t4-theming.R.
+CONTRAST_FIRST = ["#005b96", "#d55e00", "#cc79a7", "#009e73",
+                  "#e69f00", "#56b4e9", "#f0e442", "#999999"]
+
+
+def test_the_accent_is_the_r_twins_vermillion_and_clears_3_to_1():
+    # The accent was the orange #e69f00, at 2.25:1 against white, below the 3:1
+    # WCAG 2.2 asks of a graphical object. The R twin's accent is the vermillion
+    # (options.R), at 3.87:1.
+    assert depictr_accent() == "#d55e00"
+    assert _contrast_ratio([depictr_accent()], ["#ffffff"])[0] >= 3
+    # It stays a palette colour, in its place in the default order.
+    assert OKABE_ITO.index(depictr_accent()) == 3
+
+
+def test_contrast_first_order_puts_the_darker_colours_first():
+    assert depictr_palette(order="contrast") == CONTRAST_FIRST
+    assert depictr_palette(3, order="contrast") == CONTRAST_FIRST[:3]
+    # The same eight colours, so the guarantee about the set still holds, and
+    # the default order is unchanged.
+    assert sorted(depictr_palette(order="contrast")) == sorted(OKABE_ITO)
+    assert depictr_palette(order="default") == OKABE_ITO
+    assert depictr_palette(3) == ["#005b96", "#e69f00", "#009e73"]
+
+    # The figures the documentation quotes. Three colours stay 14.01 apart in
+    # CIEDE2000 under every vision type and 6.86 apart in lightness, and the
+    # first four clear 3:1 against white, which the fifth does not.
+    assert palette_safety(CONTRAST_FIRST[:3])["min_delta_e"] == 14.01
+    lightness = np.sort(_rgb_to_lab(CONTRAST_FIRST[:3])[:, 0])
+    assert round(float(np.min(np.diff(lightness))), 2) == 6.86
+    ratios = _contrast_ratio(CONTRAST_FIRST, ["#ffffff"] * 8)
+    assert np.all(ratios[:4] >= 3)
+    assert ratios[4] < 3
+
+    # Under this order the accent is the second group's colour.
+    assert depictr_palette(2, order="contrast")[1] == depictr_accent()
+
+
+def test_contrast_first_order_warns_past_four_colours():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        depictr_palette(4, order="contrast")
+        # The whole set names no number of groups.
+        depictr_palette(order="contrast")
+    message = ("^Past four colours the contrast-first order no longer keeps "
+               "every colour at 3:1 against white\\.$")
+    with pytest.warns(UserWarning, match=message):
+        five = depictr_palette(5, order="contrast")
+    assert five == CONTRAST_FIRST[:5]
+
+
+def test_only_the_qualitative_palette_takes_an_order():
+    for kind in ("sequential", "diverging"):
+        with pytest.raises(ValueError, match=(
+                f"^`order` applies to the qualitative palette, not to the "
+                f"{kind} ramp\\.$")):
+            depictr_palette(5, kind=kind, order="contrast")
+    assert len(depictr_palette(5, kind="sequential", order="default")) == 5
+    with pytest.raises(ValueError,
+                       match="^`order` must be 'default' or 'contrast'\\.$"):
+        depictr_palette(3, order="brightest")
 
 
 def test_simulate_cvd_validates_inputs():

@@ -171,6 +171,17 @@ print(table(dp.check_figure(mended)[["check", "measured", "threshold",
                                      "verdict"]]))
 ```
 
+The vermillion need not be typed by hand.
+`dp.scale_colour_depictr(order="contrast")` draws the groups in the
+contrast-first order of `dp.depictr_palette()`. It leads with the brand blue,
+the vermillion and the reddish purple, the only three of the eight colours that
+clear every colour row together. The bluish green comes fourth, and with it
+four groups still keep 3:1 against white. The R twin can make that order the
+default through its options. Python has none, so add the scale, or
+`dp.scale_fill_depictr(order="contrast")`, to each plot that should use it. In
+that order, the second group takes the vermillion, which is also
+`dp.depictr_accent()`.
+
 The audit does not measure a continuous colour or fill scale, such as a
 heatmap's: its colour rows abstain and say why, while the cell values are
 measured as text inside the panel. A ramp is read by its lightness, so prefer
