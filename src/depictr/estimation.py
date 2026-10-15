@@ -18,6 +18,7 @@ https://doi.org/10.3102/10769986006002107
 
 from __future__ import annotations
 
+import numbers
 import warnings
 
 import numpy as np
@@ -37,6 +38,7 @@ from plotnine import (
     theme,
 )
 
+from ._checks import _check_conf_level
 from .compose import arrange_plots
 from .palette import depictr_brand
 from .tables import _levels
@@ -123,10 +125,11 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         ``FutureWarning`` names both. Passing ``reference`` chooses the group
         and silences it.
     conf_level : float
-        Confidence level for the bootstrap difference intervals.
+        Confidence level for the bootstrap difference intervals, a single
+        number strictly between 0 and 1.
     n_boot : int
-        Number of bootstrap resamples for each difference interval. The default
-        of 5,000 is the R twin's.
+        Number of bootstrap resamples for each difference interval, a positive
+        whole number. The default of 5,000 is the R twin's.
     effsize : {"hedges_g", "cohens_d", "none"}
         Standardised effect size annotated beside each difference. Hedges' g is
         the small-sample corrected default; pass ``"none"`` to omit it.
@@ -160,8 +163,13 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         raise TypeError("`y` must be numeric.")
     if effsize not in {"hedges_g", "cohens_d", "none"}:
         raise ValueError("`effsize` must be 'hedges_g', 'cohens_d' or 'none'.")
-    if n_boot < 1:
+    _check_conf_level(conf_level)
+    # A fraction used to fail deep inside NumPy's sampler. A whole number held
+    # in a float, such as 1e4, is taken as the integer it is.
+    if (isinstance(n_boot, bool) or not isinstance(n_boot, numbers.Real)
+            or not float(n_boot).is_integer() or n_boot < 1):
         raise ValueError("`n_boot` must be a positive integer.")
+    n_boot = int(n_boot)
 
     d = data[[y, group]].dropna()
     # Levels in a categorical's declared order, otherwise sorted, leaving out

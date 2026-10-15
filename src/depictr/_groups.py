@@ -97,7 +97,9 @@ def _prepare_group(data, group):
     data = data.copy()
     data[group] = codes
     levels = list(codes.cat.categories)
-    palette = dict(zip(levels, depictr_palette(len(levels)), strict=True))
+    # No rows leave no levels, and depictr_palette() refuses n = 0.
+    colours = depictr_palette(len(levels)) if levels else []
+    palette = dict(zip(levels, colours, strict=True))
     return data, levels, palette
 
 

@@ -32,6 +32,7 @@ from plotnine import (
     scale_size_area,
 )
 
+from ._checks import _check_conf_level
 from .audit import _legible_text_colour
 from .palette import BRAND, depictr_palette
 from .theme import _scale_fills, scale_colour_depictr, theme_depictr
@@ -410,8 +411,7 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
         raise ValueError("`n_bins` must be a positive whole number.")
     if strategy not in ("quantile", "uniform"):
         raise ValueError('`strategy` must be "quantile" or "uniform".')
-    if conf_level is not None and not 0 < conf_level < 1:
-        raise ValueError("`conf_level` must lie strictly between 0 and 1.")
+    _check_conf_level(conf_level, allow_none=True)
 
     y_true, y_score = _outcome_and_score(y_true, y_score)
     try:

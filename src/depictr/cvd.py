@@ -219,6 +219,15 @@ def _to_rgb01(colours: list[str]) -> np.ndarray:
     return np.array([mcolors.to_rgb(c) for c in colours])
 
 
+def _as_colour_list(colours) -> list:
+    """A list of colours, reading a single string as one colour.
+
+    A string is iterable, so ``list("#005b96")`` splits it into characters:
+    the hex code then failed on ``"#"``, and ``"rgb"`` became three colours.
+    """
+    return [colours] if isinstance(colours, str) else list(colours)
+
+
 def _machado_matrix(deficiency: str, severity: float) -> np.ndarray:
     """The Machado transform for one deficiency and severity.
 
@@ -248,13 +257,16 @@ def _check_vision(deficiency, severity) -> None:
         raise ValueError("`severity` must lie in [0, 1].")
 
 
-def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> list[str]:
+def simulate_cvd(colours: str | list[str], deficiency: str,
+                 severity: float = 1.0) -> list[str]:
     """Simulate how a palette appears under a colour-vision deficiency.
 
     Parameters
     ----------
-    colours : list of str
-        Colours (any matplotlib-readable form) to transform.
+    colours : str or list of str
+        Colours (any matplotlib-readable form) to transform. A single string
+        is one colour, and an empty list gives an empty list back, as in the
+        R twin.
     deficiency : {"protan", "deutan", "tritan"}
         The deficiency to simulate (red-, green- or blue-weak vision).
     severity : float
@@ -280,6 +292,9 @@ def simulate_cvd(colours: list[str], deficiency: str, severity: float = 1.0) -> 
     depictr.simulate_figure : the same simulation applied to a whole figure.
     """
     _check_vision(deficiency, severity)
+    colours = _as_colour_list(colours)
+    if not colours:
+        return []
     matrix = _machado_matrix(deficiency, severity)
     linear = _srgb_to_linear(_to_rgb01(colours))
     simulated = _linear_to_srgb(linear @ matrix.T)
@@ -530,7 +545,7 @@ def _min_pairwise_delta_e(colours: list[str], groups=None,
     return best, pair
 
 
-def palette_safety(colours: list[str] | None = None, threshold: float = 5.0,
+def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.0,
                    metric: str = "ciede2000") -> dict:
     """Check that a palette stays distinguishable under each deficiency.
 
@@ -559,10 +574,11 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0,
 
     Parameters
     ----------
-    colours : list of str, optional
+    colours : str or list of str, optional
         The palette to test. Defaults to the depictr qualitative palette. Needs
         at least two colours: a pairwise distance over fewer than two has no
-        value, not an infinitely safe one.
+        value, not an infinitely safe one. A single string is one colour, so
+        it raises with that message.
     threshold : float
         The smallest acceptable colour difference, on the scale of ``metric``.
     metric : {"ciede2000", "cie76"}
@@ -610,7 +626,7 @@ def palette_safety(colours: list[str] | None = None, threshold: float = 5.0,
 
     # `colours or ...` would have swapped in the default palette for an empty
     # list, reporting on eight colours the caller never passed.
-    colours = depictr_palette() if colours is None else list(colours)
+    colours = depictr_palette() if colours is None else _as_colour_list(colours)
     if len(colours) < 2:
         # Otherwise the no-pair sentinel below survives to the result, which
         # then claims safe=True at an infinite distance and names one colour as

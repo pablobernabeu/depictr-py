@@ -30,6 +30,7 @@ from plotnine import (
     scale_y_continuous,
 )
 
+from ._checks import _check_conf_level
 from .theme import legend_inside as _legend_inside
 from .theme import scale_colour_depictr, theme_depictr
 
@@ -266,11 +267,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     # A level outside (0, 1), such as 95 meant as a percentage, has no normal
     # quantile, and _km_limits() would carry the origin's limits of 1 through
     # the whole curve.
-    if conf_level is not None and not 0 < conf_level < 1:
-        raise ValueError(
-            "`conf_level` must lie strictly between 0 and 1, or be None to "
-            "leave the limits out."
-        )
+    _check_conf_level(conf_level, allow_none=True)
 
     time = np.asarray(time, dtype=float)
     # A missing or infinite follow-up time has no place on a time axis, and it

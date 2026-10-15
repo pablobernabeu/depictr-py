@@ -22,6 +22,8 @@ https://jfly.uni-koeln.de/color/
 
 from __future__ import annotations
 
+import math
+import numbers
 import warnings
 
 import matplotlib.colors as mcolors
@@ -146,10 +148,12 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     Parameters
     ----------
     n : int, optional
-        Number of colours to return. For the qualitative palette ``None`` (the
-        default) returns the full Okabe-Ito set, and an ``n`` larger than the
-        available colours is interpolated. The sequential and diverging palettes
-        are ramps and accept any ``n`` (defaulting to 7).
+        Number of colours to return, a single number of at least 1. A
+        fraction is truncated, as in the R twin, so 2.7 gives two colours. For
+        the qualitative palette ``None`` (the default) returns the full
+        Okabe-Ito set, and an ``n`` larger than the available colours is
+        interpolated. The sequential and diverging palettes are ramps and
+        accept any ``n`` (defaulting to 7).
     kind : {"qualitative", "sequential", "diverging"}
         The palette family.
     order : {"default", "contrast"}
@@ -165,8 +169,8 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     Raises
     ------
     ValueError
-        For an unknown ``kind`` or ``order``, or ``order="contrast"`` with a
-        ramp.
+        For an ``n`` below 1 or not a number, an unknown ``kind`` or
+        ``order``, or ``order="contrast"`` with a ramp.
 
     Warns
     -----
@@ -187,6 +191,13 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     >>> dp.depictr_palette(3, order="contrast")
     ['#005b96', '#d55e00', '#cc79a7']
     """
+    if n is not None:
+        # depictr_palette(-1) gave seven colours and (0) none, and a fraction
+        # failed inside the slicing or the ramp. The R twin's check and message.
+        if (isinstance(n, bool) or not isinstance(n, numbers.Real)
+                or not math.isfinite(n) or n < 1):
+            raise ValueError("`n` must be a single positive number.")
+        n = int(n)
     if order not in ("default", "contrast"):
         raise ValueError("`order` must be 'default' or 'contrast'.")
     if kind in ("sequential", "diverging") and order != "default":

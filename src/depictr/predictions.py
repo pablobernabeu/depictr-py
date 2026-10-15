@@ -35,6 +35,7 @@ from plotnine import (
     theme,
 )
 
+from ._checks import _check_conf_level
 from .palette import BRAND
 from .terms import (
     _INTERCEPT_PATTERN,
@@ -322,7 +323,8 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
         The predictor to vary along the x-axis: a numeric column that the
         formula names.
     conf_level : float
-        Confidence level for the band.
+        Confidence level for the band, a single number strictly between 0 and
+        1.
     n : int
         Number of points across the predictor's range.
     title : str, optional
@@ -343,6 +345,7 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     _require_statsmodels()
     if not _is_fitted_model(model):
         raise TypeError("effects_plot needs a fitted statsmodels result.")
+    _check_conf_level(conf_level)
 
     frame = _estimation_frame(model)
     predictors = _predictor_columns(model, frame)
@@ -394,7 +397,8 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
         The categorical predictor whose levels are drawn as separate lines. A
         level that occurs only in rows the fit dropped is not drawn.
     conf_level : float
-        Confidence level for the bands.
+        Confidence level for the bands, a single number strictly between 0
+        and 1.
     n : int
         Number of points across the x range, per group.
     band : bool
@@ -417,6 +421,7 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     _require_statsmodels()
     if not _is_fitted_model(model):
         raise TypeError("interaction_plot needs a fitted statsmodels result.")
+    _check_conf_level(conf_level)
 
     frame = _estimation_frame(model)
     predictors = _predictor_columns(model, frame)
@@ -492,7 +497,8 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     intercept : bool
         Whether to keep the intercept term.
     conf_level : float
-        Confidence level passed to :func:`depictr.models.tidy_estimates`.
+        Confidence level passed to :func:`depictr.models.tidy_estimates`, a
+        single number strictly between 0 and 1.
     title : str, optional
         Plot title.
     reference_line : float, optional
@@ -542,6 +548,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
 
     if not isinstance(models, dict) or not models:
         raise ValueError("`models` must be a non-empty {name: model} dict.")
+    _check_conf_level(conf_level)
     _check_exponentiate(exponentiate)
     interaction_separator(interaction)
     _check_labels(labels)

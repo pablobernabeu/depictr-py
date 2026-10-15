@@ -30,6 +30,7 @@ from plotnine import (
     theme,
 )
 
+from ._checks import _check_conf_level
 from ._groups import _group_scales, _prepare_group
 from .palette import ACCENT, BRAND
 from .theme import (
@@ -325,7 +326,8 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     title : str, optional
         Plot title.
     conf_level : float
-        Confidence level for the t intervals, strictly between 0 and 1.
+        Confidence level for the t intervals, a single number strictly between
+        0 and 1.
 
     Returns
     -------
@@ -353,8 +355,7 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     for col in (x, group):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
-    if not 0 < conf_level < 1:
-        raise ValueError("`conf_level` must lie strictly between 0 and 1.")
+    _check_conf_level(conf_level)
 
     from scipy.stats import t as t_dist
 

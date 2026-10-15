@@ -20,6 +20,7 @@ from plotnine import (
     scale_x_log10,
 )
 
+from ._checks import _check_conf_level
 from .palette import depictr_brand
 from .terms import (
     _INTERCEPT_PATTERN,
@@ -35,6 +36,8 @@ from .theme import theme_depictr
 
 # Tidy columns every downstream function relies on.
 _TIDY = ["term", "estimate", "conf_low", "conf_high"]
+# The orders coefficient_plot() takes. "none" is the R twin's name for "model".
+_ORDERS = ("model", "none", "ascending", "descending")
 
 
 def tidy_estimates(model, conf_level: float = 0.95,
@@ -48,7 +51,8 @@ def tidy_estimates(model, conf_level: float = 0.95,
         statsmodels ``OLS``, ``GLM`` or ``MixedLM`` result, fitted from a formula
         or from arrays), or a data frame already carrying the estimates.
     conf_level : float
-        Confidence level for the interval when reading it from a model.
+        Confidence level for the interval when reading it from a model, a
+        single number strictly between 0 and 1.
     exponentiate : bool
         Whether to exponentiate the estimates and interval limits, which turns
         log-odds into odds ratios and log rates into rate ratios. A data frame
@@ -92,6 +96,7 @@ def tidy_estimates(model, conf_level: float = 0.95,
     >>> dp.tidy_estimates(model).columns.tolist()
     ['term', 'estimate', 'conf_low', 'conf_high']
     """
+    _check_conf_level(conf_level)
     _check_exponentiate(exponentiate)
     if isinstance(model, pd.DataFrame):
         return _exponentiate(_tidy_from_frame(model), exponentiate)
@@ -246,13 +251,16 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         See :func:`tidy_estimates`.
     intercept : bool
         Whether to include the intercept term.
-    order : {"model", "ascending", "descending"}
+    order : {"model", "none", "ascending", "descending"}
         Order of the terms. ``"ascending"`` puts the smallest estimate at the
         bottom and the largest at the top, so estimates increase up the axis.
         ``"descending"`` does the reverse, and ``"model"`` keeps the model's
-        order from top to bottom. The R twin reads ``order`` the same way.
+        order from top to bottom. ``"none"``, the R twin's name for model
+        order, is accepted as an alias. The R twin reads ``order`` the same
+        way. Any other value raises ``ValueError``.
     conf_level : float
-        Confidence level passed to :func:`tidy_estimates`.
+        Confidence level passed to :func:`tidy_estimates`, a single number
+        strictly between 0 and 1.
     title : str, optional
     reference_line : float, optional
         Position of the dashed vertical reference line. ``None``, the default,
@@ -305,6 +313,14 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     >>> logit = smf.logit("accuracy ~ word_frequency + condition", ld).fit(disp=0)
     >>> p = dp.coefficient_plot(logit, exponentiate=True)
     """
+    _check_conf_level(conf_level)
+    if not isinstance(order, str) or order not in _ORDERS:
+        # An unknown order, a typo among them, used to fall back to model
+        # order without a word. R's match.arg() refuses it.
+        raise ValueError(
+            "`order` must be one of 'model' (or its alias 'none'), "
+            "'ascending' or 'descending'."
+        )
     _check_exponentiate(exponentiate)
     interaction_separator(interaction)
     _check_labels(labels)

@@ -556,6 +556,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and reads a period within 0.00001 of a whole number as that number, as R's
   `ts()` reads a frequency. A period below 2, which drew every observation at
   one position, is now refused, as the R twin refuses such a frequency.
+- A `conf_level` given as a percentage, such as 95, gave NaN intervals in
+  `tidy_estimates()`, `coefficient_plot()`, `compare_models()`,
+  `effects_plot()` and `interaction_plot()`, and `estimation_plot()` failed
+  with NumPy's "Quantiles must be in the range [0, 1]". In the first five, a
+  level of 0 drew zero-width intervals and a level of 1 unbounded ones. Every
+  function that takes a `conf_level` now refuses a value outside (0, 1), or
+  one that is not a number, with the R twin's message: "`conf_level` must be a
+  single number strictly between 0 and 1." `survival_plot()` and
+  `calibration_plot()` still take `None` to leave the limits out.
+- `explore_distribution(group=..., alpha=...)` drew a grouped density at an
+  alpha of 0.2 whatever `alpha` said. An explicit `alpha` is now honoured.
+  The new default, `alpha=None`, keeps 0.2 for a grouped density and 0.6 for
+  every other fill, so a figure drawn with the defaults is unchanged. Over a
+  histogram (`kind="both"`), the grouped density is still an outline.
+- `depictr_palette()` gave seven colours for `n=-1`, none for `n=0` and seven
+  for `n=0` with a ramp, and a fraction failed inside the slicing or the ramp.
+  An `n` below 1, or one that is not a number, now raises the R twin's
+  "`n` must be a single positive number.", and a fraction is truncated, as R
+  truncates it.
+- `simulate_cvd()` and `palette_safety()` read a single colour string as a
+  list of characters: `simulate_cvd("#005b96", "deutan")` failed on `"#"`, and
+  `palette_safety("cmyk")` judged four one-letter colours safe. A string is
+  now one colour, so `palette_safety()` refuses it for having fewer than two.
+  `simulate_cvd([])` returns an empty list, where it failed inside NumPy.
+- `coefficient_plot()` drew an unknown `order`, a typo such as
+  `"descendng"` among them, in model order without a word. It now raises
+  `ValueError`, as R's `match.arg()` does, and takes `"none"`, the R twin's
+  name for model order, as an alias of `"model"`.
+- `estimation_plot()` failed inside NumPy's sampler when `n_boot` was a
+  fraction. It now raises "`n_boot` must be a positive integer.", the message
+  it already gave below 1, and takes a whole number held in a float, such as
+  `1e4`, as the integer it is.
 
 ## [0.3.0] - 2026-09-24
 

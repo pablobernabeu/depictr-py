@@ -221,7 +221,9 @@ A few known limitations remain. Compositions in plotnine have no figure-level
 title, so a grid carries its titles on each panel (the survival and estimation
 composites place the title on their top panel). `survival_plot` prints the
 log-rank test by default, where the R package leaves it out, and warns that
-its default will change to match. `power_curve_plot` reads the
+its default will change to match. `explore_distribution` fills a grouped
+density at an alpha of 0.2 by default, where the R function uses its default
+of 0.6, so pass `alpha` for the same fill in both. `power_curve_plot` reads the
 same tables as the R function, pilotr's included, but it has no `x_lab`,
 `x_breaks` or `x_expand`, and there is no simr object to read. Each
 classification curve shows a single model. The R package's ROC,

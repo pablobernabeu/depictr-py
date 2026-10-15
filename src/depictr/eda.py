@@ -55,7 +55,7 @@ class _geom_density_linekey(geom_density):
 
 
 def explore_distribution(data, x, group=None, kind="density", bins=30,
-                         alpha=0.6, legend_inside=False, title=None):
+                         alpha=None, legend_inside=False, title=None):
     """Plot the distribution of a numeric variable, optionally split by a group.
 
     Parameters
@@ -73,8 +73,13 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
         What to draw.
     bins : int
         Number of histogram bins.
-    alpha : float
-        Fill transparency, useful when groups overlap.
+    alpha : float, optional
+        Fill transparency, useful when groups overlap. ``None``, the default,
+        fills a grouped density at 0.2, light enough for overlapping curves to
+        stay distinct, and everything else at 0.6. The R twin's default is 0.6
+        throughout. Over a histogram (``kind="both"``), a grouped density is
+        drawn as an outline whatever ``alpha`` is, and the bars take the
+        transparency.
     legend_inside : bool
         When ``True`` and a ``group`` is given, place the legend inside the
         top-right of the panel (a unimodal distribution leaves it empty) rather
@@ -94,6 +99,10 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
+    # The grouped density's light default is kept apart from the 0.6 of every
+    # other fill, so that an explicit alpha reaches it too. It was fixed at 0.2.
+    density_alpha = 0.2 if alpha is None else alpha
+    alpha = 0.6 if alpha is None else alpha
     if group:
         # Rows missing x are not drawn, so they are left out before the groups
         # are formed, and the levels are those of the rows drawn.
@@ -113,11 +122,13 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
                                    position="identity", color="white", fill=BRAND)
     if kind in {"density", "both"}:
         if group:
-            # A light fill (0.2) keeps overlapping curves distinguishable
-            # without the muddy overlap a heavier fill makes; the coloured
-            # outline carries the comparison. For "both" the density fill is
-            # dropped so it does not muddy the histogram beneath it.
-            p = p + _geom_density_linekey(alpha=0 if kind == "both" else 0.2)
+            # A light fill (0.2 by default) keeps overlapping curves
+            # distinguishable without the muddy overlap a heavier fill makes;
+            # the coloured outline carries the comparison. For "both" the
+            # density fill is dropped so it does not muddy the histogram
+            # beneath it.
+            p = p + _geom_density_linekey(
+                alpha=0 if kind == "both" else density_alpha)
         else:
             p = p + geom_density(alpha=alpha, color=BRAND, fill=BRAND)
         # The density baseline sits at 0; drop the default lower pad so the
