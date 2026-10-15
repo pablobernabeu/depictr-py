@@ -1176,7 +1176,9 @@ def test_the_ceiling_measures_the_text_inside_the_panel_too():
 
 
 def test_each_panel_of_a_composite_is_held_to_the_ceiling():
-    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()),
+    # Untagged, as the R twin's tags are not measured (see the next test).
+    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure(),
+                                              tag_levels=None),
                              max_text_pt=7)
     assert len(report) == 22
     ceiling = report[report["check"] == "text_size_max"]
@@ -1185,14 +1187,35 @@ def test_each_panel_of_a_composite_is_held_to_the_ceiling():
     assert ceiling["verdict"].tolist() == ["fail", "pass"]
 
 
+def test_a_panel_tag_is_measured_with_its_panel():
+    # arrange_plots() tags each panel's own plot, so the tag is text the panel
+    # draws: at 1.2 times the base size it is the largest text of each panel
+    # here. The R twin's patchwork draws its tags around the panels, where its
+    # audit does not measure them.
+    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()),
+                             max_text_pt=7)
+    ceiling = report[report["check"] == "text_size_max"]
+    np.testing.assert_allclose(ceiling["measured"], [13.2, 6])
+    assert ceiling["verdict"].tolist() == ["fail", "pass"]
+    # At 7 pt, as tag_size can set it, the second panel's tag still clears
+    # Nature's ceiling.
+    small = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure(),
+                                             tag_size=7), max_text_pt=7)
+    assert small.loc[small["check"] == "text_size_max",
+                     "measured"].tolist() == [11, 7]
+
+
 # --- composites --------------------------------------------------------------
 
 
 def test_a_composite_is_audited_panel_by_panel_in_reading_order():
     # Pinned so the two engines cannot drift apart unnoticed: the R suite
     # audits the same two panels and pins the same vector. Each panel reports
-    # what its figure reports alone, under a leading panel column.
-    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure()))
+    # what its figure reports alone, under a leading panel column. The panels
+    # are untagged because a tag here is text its panel draws and is measured,
+    # where the R twin's tags are drawn around the panels and are not.
+    report = dp.check_figure(dp.arrange_plots(good_figure(), bad_figure(),
+                                              tag_levels=None))
     assert report.columns.tolist() == [
         "panel", "check", "measured", "threshold", "verdict", "detail"]
     assert len(report) == 20

@@ -189,7 +189,8 @@ print(show(p, width=9, height=8))
 ## Arranging plots
 
 Any plots can be placed in one figure with `arrange_plots`, the building block
-behind the composed reports above.
+behind the composed reports above. It tags the panels A, B and so on, as the R
+function does.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)

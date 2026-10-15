@@ -7,6 +7,7 @@ plotnine object you can extend with ``+``.
 
 from __future__ import annotations
 
+import numbers
 import warnings
 
 import pandas as pd
@@ -201,10 +202,11 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     return p + labs(x=x, y=y_lab, title=title) + theme_depictr()
 
 
-def correlation_heatmap(data, cols=None, title=None):
-    """Heatmap of pairwise Pearson correlations among numeric columns.
+def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
+                        digits=2, title=None):
+    """Heatmap of pairwise correlations among numeric columns.
 
-    Each cell is labelled with its correlation, drawn in black or white,
+    Each cell can be labelled with its correlation, drawn in black or white,
     whichever has the higher contrast against the cell.
 
     Parameters
@@ -214,6 +216,17 @@ def correlation_heatmap(data, cols=None, title=None):
         Columns to include; defaults to all numeric columns. A named column
         that is not numeric or boolean, such as text or a datetime, raises
         ``TypeError``.
+    method : {"pearson", "spearman", "kendall"}
+        The correlation coefficient, computed by
+        :meth:`pandas.DataFrame.corr` over the pairwise-complete
+        observations, as the R twin's default ``use =
+        "pairwise.complete.obs"`` computes it. Spearman's and Kendall's
+        coefficients measure monotone association, which suits skewed or
+        ordinal data. Kendall's is tau-b, as in R's ``cor()``.
+    show_values : bool
+        Whether to label each cell with its correlation.
+    digits : int
+        The number of decimal places in the labels.
     title : str, optional
 
     Returns
@@ -227,7 +240,16 @@ def correlation_heatmap(data, cols=None, title=None):
     >>> import depictr as dp
     >>> wb = dp.wellbeing_survey()
     >>> p = dp.correlation_heatmap(wb)
+    >>> q = dp.correlation_heatmap(wb, method="spearman", show_values=False)
     """
+    if method not in ("pearson", "spearman", "kendall"):
+        raise ValueError(
+            "`method` must be 'pearson', 'spearman' or 'kendall'.")
+    if not isinstance(show_values, bool):
+        raise TypeError("`show_values` must be True or False.")
+    if (isinstance(digits, bool) or not isinstance(digits, numbers.Integral)
+            or digits < 0):
+        raise ValueError("`digits` must be a whole number of 0 or more.")
     num = data[cols] if cols else data.select_dtypes("number")
     # Text failed inside pandas with "could not convert string to float", and a
     # datetime was correlated as the integers that store it. The wording is the
@@ -250,30 +272,34 @@ def correlation_heatmap(data, cols=None, title=None):
             stacklevel=2,
         )
         num = num.drop(columns=const)
-    corr = num.corr()
+    corr = num.corr(method=method)
     order = list(corr.columns)
     long = corr.reset_index().melt(id_vars="index", var_name="var2",
                                    value_name="r").rename(columns={"index": "var1"})
     long["var1"] = pd.Categorical(long["var1"], categories=order, ordered=True)
     long["var2"] = pd.Categorical(long["var2"], categories=order[::-1], ordered=True)
-    # Pairwise-complete overlap too small to correlate still leaves an NaN cell
-    # after the constant columns have gone, so label it rather than print "nan".
-    long["label"] = long["r"].map(lambda v: "n/a" if pd.isna(v) else f"{v:.2f}")
     fill_scale = scale_fill_gradientn(
         colors=depictr_palette(7, kind="diverging"), limits=(-1, 1),
         name="Correlation",
     )
-    # Each label is black or white, whichever contrasts more with its tile as
-    # the fill scale paints it, the scale's grey for an undefined correlation
-    # included. The r = 1 diagonal is the darkest tile on the ramp, where the
-    # near-black every label used to be drawn in sat at 2.4:1.
-    long["label_colour"] = _legible_text_colour(
-        _scale_fills(fill_scale, long["r"]))
+    p = ggplot(long, aes(x="var1", y="var2", fill="r")) + geom_tile(color="white")
+    if show_values:
+        # Pairwise-complete overlap too small to correlate still leaves an NaN
+        # cell after the constant columns have gone, so label it rather than
+        # print "nan".
+        long["label"] = long["r"].map(
+            lambda v: "n/a" if pd.isna(v) else f"{v:.{digits}f}")
+        # Each label is black or white, whichever contrasts more with its tile
+        # as the fill scale paints it, the scale's grey for an undefined
+        # correlation included. The r = 1 diagonal is the darkest tile on the
+        # ramp, where the near-black every label used to be drawn in sat at
+        # 2.4:1.
+        long["label_colour"] = _legible_text_colour(
+            _scale_fills(fill_scale, long["r"]))
+        p = (p + geom_text(aes(label="label", color="label_colour"), size=8)
+             + scale_color_identity())
     return (
-        ggplot(long, aes(x="var1", y="var2", fill="r"))
-        + geom_tile(color="white")
-        + geom_text(aes(label="label", color="label_colour"), size=8)
-        + scale_color_identity()
+        p
         + fill_scale
         + labs(x="", y="", title=title)
         + theme_depictr(grid="none")

@@ -19,18 +19,28 @@ _CM_PER_UNIT = {"in": 2.54, "cm": 1.0, "mm": 0.1}
 
 
 def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
-                  title: str | None = None):
+                  title: str | None = None, tag_levels="A",
+                  tag_size: float | None = None):
     """Arrange several plots into one composed figure.
 
     Builds a grid by joining plots side by side (plotnine's ``|``) into rows of
     ``ncol``, then stacking the rows (``/``). The result is a plotnine
     composition, so it still has ``.draw`` and ``.save``. This is the building
     block behind the multi-panel reports (for example
-    :func:`depictr.diagnostics.residual_diagnostics_plot`).
+    :func:`depictr.residual_diagnostics_plot`).
+
+    Each panel is tagged A, B, C and so on by default, in reading order, as
+    the R twin's patchwork annotation tags them. The tags run on through a
+    composition passed as one of the plots, and a ``plot_spacer()`` takes
+    none. A tag is drawn in the top-left corner of its panel at the theme's
+    ``plot_tag`` size, 1.2 times the base size, as in ggplot2. In this twin
+    each tag belongs to its panel's plot, so :func:`depictr.check_figure`
+    measures it with the rest of the panel's text, where the R twin's audit
+    leaves out the tags that patchwork draws around the panels.
 
     Parameters
     ----------
-    *plots : plotnine.ggplot
+    *plots : plotnine.ggplot or plotnine.composition.Compose
         The plots to arrange. ``None`` entries are dropped.
     ncol, nrow : int, optional
         The grid shape. Give one and the other is derived from the count; give
@@ -40,11 +50,22 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
         A title. Applied only when a single plot is passed: plotnine
         compositions cannot carry a figure-level title, so for a grid the
         title is dropped with a warning, and each panel should carry its own.
+    tag_levels : {"A", "a", "1", "I", "i"}, sequence of str or None
+        How to tag the panels: capital or lower-case letters, Arabic numerals,
+        or capital or lower-case Roman numerals, as patchwork's
+        ``tag_levels`` takes them. A sequence of strings gives the tags
+        themselves, one per panel in reading order. ``None`` leaves the panels
+        untagged, as before this argument existed. Letters run to 26 panels.
+    tag_size : float, optional
+        The size of the tags in points, such as the 8 pt that Nature asks of
+        panel labels. ``None``, the default, leaves it to each panel's theme.
+        Ignored when ``tag_levels`` is None.
 
     Returns
     -------
     plotnine.ggplot or plotnine.composition.Compose
-        A single plot when one is passed, otherwise a composition.
+        A single plot when one is passed, otherwise a composition. The plots
+        passed in are left untagged.
 
     Examples
     --------
@@ -53,12 +74,24 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
     >>> left = dp.ecdf_plot(ld, "RT")
     >>> right = dp.explore_distribution(ld, "RT")
     >>> panel = dp.arrange_plots(left, right, ncol=2)
+
+    Lower-case tags at 8 pt, or none at all:
+
+    >>> panel = dp.arrange_plots(left, right, tag_levels="a", tag_size=8)
+    >>> panel = dp.arrange_plots(left, right, tag_levels=None)
     """
     from plotnine import ggplot, ggtitle
 
+    tag_style = _check_tag_levels(tag_levels)
+    if tag_size is not None and (
+            isinstance(tag_size, bool) or not isinstance(tag_size, numbers.Real)
+            or not math.isfinite(tag_size) or tag_size <= 0):
+        raise ValueError("`tag_size` must be a single positive number.")
     items = [p for p in plots if p is not None]
     if not items:
         raise ValueError("arrange_plots needs at least one plot.")
+    if tag_style is not None:
+        items = _tagged(items, tag_style, tag_size)
     n = len(items)
     if ncol is None and nrow is None:
         ncol = 1 if n == 1 else (2 if n <= 4 else 3)
@@ -81,6 +114,110 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
                 stacklevel=2,
             )
     return composed
+
+
+# The tag styles patchwork's tag_levels takes, which arrange_plots() takes too.
+_TAG_STYLES = ("A", "a", "1", "I", "i")
+
+_TAG_LEVELS_MESSAGE = (
+    "`tag_levels` must be 'A', 'a', '1', 'I' or 'i', a sequence of tags, or "
+    "None.")
+
+
+def _check_tag_levels(tag_levels):
+    """A tag style, a tuple of custom tags, or None, from ``tag_levels``."""
+    if tag_levels is None:
+        return None
+    if isinstance(tag_levels, str):
+        if tag_levels not in _TAG_STYLES:
+            raise ValueError(_TAG_LEVELS_MESSAGE)
+        return tag_levels
+    try:
+        tags = tuple(tag_levels)
+    except TypeError:
+        raise ValueError(_TAG_LEVELS_MESSAGE) from None
+    if not all(isinstance(tag, str) for tag in tags):
+        raise ValueError(_TAG_LEVELS_MESSAGE)
+    return tags
+
+
+def _roman(number: int) -> str:
+    """A positive whole number in capital Roman numerals."""
+    numerals = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"),
+                (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"),
+                (5, "V"), (4, "IV"), (1, "I"))
+    out = []
+    for value, numeral in numerals:
+        count, number = divmod(number, value)
+        out.append(numeral * count)
+    return "".join(out)
+
+
+def _tag_sequence(style, n: int) -> list[str]:
+    """The first ``n`` tags of a style, or the custom tags given."""
+    if isinstance(style, tuple):
+        if len(style) < n:
+            raise ValueError(
+                f"`tag_levels` gives {len(style)} tags for {n} panels.")
+        return list(style[:n])
+    if style in ("A", "a"):
+        if n > 26:
+            raise ValueError(
+                f"`tag_levels = '{style}'` has 26 letters for {n} panels. "
+                "Pass '1' or a sequence of tags.")
+        start = ord(style)
+        return [chr(start + i) for i in range(n)]
+    if style == "1":
+        return [str(i) for i in range(1, n + 1)]
+    numerals = [_roman(i) for i in range(1, n + 1)]
+    return numerals if style == "I" else [r.lower() for r in numerals]
+
+
+def _tag_panels(plot):
+    """The tag-taking panels of a plot or composition, depth-first.
+
+    Yields each panel with the composition holding it and its index there, or
+    with None for a lone plot. A ``plot_spacer()`` is left out, as patchwork
+    gives a spacer no tag and :func:`depictr.check_figure` gives it no panel
+    number.
+    """
+    from plotnine.composition import Compose, plot_spacer
+
+    if isinstance(plot, Compose):
+        for index, item in enumerate(plot):
+            if isinstance(item, Compose):
+                yield from _tag_panels(item)
+            elif not isinstance(item, plot_spacer):
+                yield plot, index, item
+    elif not isinstance(plot, plot_spacer):
+        yield None, None, plot
+
+
+def _tagged(items, style, size):
+    """Copies of the plots to arrange, each panel carrying its tag.
+
+    A composition among them is copied and its panels tagged in place, through
+    the item assignment plotnine's own ``&`` operator uses, so the tags run on
+    through it in reading order. The caller's plots are left as they were.
+    """
+    from plotnine import element_text, labs, theme
+    from plotnine.composition import Compose
+
+    items = [copy.deepcopy(item) if isinstance(item, Compose) else item
+             for item in items]
+    slots = [(i, holder, index, panel)
+             for i, item in enumerate(items)
+             for holder, index, panel in _tag_panels(item)]
+    tags = _tag_sequence(style, len(slots))
+    for (i, holder, index, panel), tag in zip(slots, tags, strict=True):
+        tagged = panel + labs(tag=tag)
+        if size is not None:
+            tagged = tagged + theme(plot_tag=element_text(size=size))
+        if holder is None:
+            items[i] = tagged
+        else:
+            holder[index] = tagged
+    return items
 
 
 def save_plot(plot, filename, width: float = 7, height: float = 4.5,

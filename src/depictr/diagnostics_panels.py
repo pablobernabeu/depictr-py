@@ -250,6 +250,9 @@ def residual_diagnostics_plot(model, title=None, glm_panels=True, seed=None):
         _residuals_vs_leverage(model, title="Residuals vs leverage"),
         ncol=2,
         title=title,
+        # Untagged, as in the R twin, which composes these panels with
+        # patchwork directly.
+        tag_levels=None,
     )
 
 
@@ -287,7 +290,8 @@ def model_report(model, title=None, glm_panels=True, seed=None):
     Returns
     -------
     plotnine.composition.Compose
-        A composition with ``.draw`` and ``.save``.
+        A composition with ``.draw`` and ``.save``, its panels tagged A, B and
+        C, as the R twin tags its own.
 
     Examples
     --------
@@ -308,4 +312,5 @@ def model_report(model, title=None, glm_panels=True, seed=None):
         qq,
         ncol=3,
         title=title,
+        tag_levels="A",
     )

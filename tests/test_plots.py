@@ -130,6 +130,66 @@ def test_correlation_heatmap_labels_are_legible_on_their_tiles():
     assert (cells.loc[cells["label"] == "1.00", "colour"] == "#ffffff").all()
 
 
+# The R twin's correlation_heatmap(wellbeing_survey, method = m, digits = 3)
+# labels, in the order of its layer data, where both twins list var1 within
+# var2.
+R_SPEARMAN = [
+    "1.000", "0.031", "-0.060", "-0.003", "0.038", "0.229",
+    "0.031", "1.000", "-0.090", "0.006", "0.053", "0.227",
+    "-0.060", "-0.090", "1.000", "-0.415", "-0.342", "-0.695",
+    "-0.003", "0.006", "-0.415", "1.000", "0.121", "0.468",
+    "0.038", "0.053", "-0.342", "0.121", "1.000", "0.400",
+    "0.229", "0.227", "-0.695", "0.468", "0.400", "1.000",
+]
+R_KENDALL = [
+    "1.000", "0.020", "-0.040", "-0.001", "0.028", "0.159",
+    "0.020", "1.000", "-0.060", "0.004", "0.037", "0.156",
+    "-0.040", "-0.060", "1.000", "-0.288", "-0.248", "-0.514",
+    "-0.001", "0.004", "-0.288", "1.000", "0.085", "0.325",
+    "0.028", "0.037", "-0.248", "0.085", "1.000", "0.289",
+    "0.159", "0.156", "-0.514", "0.325", "0.289", "1.000",
+]
+
+
+@pytest.mark.parametrize(("method", "expected"),
+                         [("spearman", R_SPEARMAN), ("kendall", R_KENDALL)])
+def test_correlation_heatmap_takes_the_r_twins_method_and_digits(method,
+                                                                 expected):
+    p = dp.correlation_heatmap(WB, method=method, digits=3)
+    assert p.data["label"].tolist() == expected
+    _assert_legible(_label_contrasts(p))
+
+
+def test_correlation_heatmap_keeps_pearson_and_two_digits_by_default():
+    p = dp.correlation_heatmap(WB)
+    pearson = WB.select_dtypes("number").corr()
+    assert p.data["label"].tolist() == [
+        f"{v:.2f}" for v in pearson.to_numpy().T.ravel()]
+
+
+def test_correlation_heatmap_can_leave_the_values_out():
+    from plotnine import geom_text
+
+    p = dp.correlation_heatmap(WB, show_values=False)
+    assert not any(isinstance(layer.geom, geom_text) for layer in p.layers)
+    assert _builds(p)
+
+
+@pytest.mark.parametrize(("argument", "value", "error", "message"), [
+    ("method", "cosine", ValueError,
+     "`method` must be 'pearson', 'spearman' or 'kendall'."),
+    ("show_values", "yes", TypeError, "`show_values` must be True or False."),
+    ("digits", -1, ValueError, "`digits` must be a whole number of 0 or more."),
+    ("digits", 1.5, ValueError, "`digits` must be a whole number of 0 or more."),
+    ("digits", True, ValueError, "`digits` must be a whole number of 0 or more."),
+])
+def test_correlation_heatmap_refuses_settings_it_cannot_use(argument, value,
+                                                            error, message):
+    with pytest.raises(error) as excinfo:
+        dp.correlation_heatmap(WB, **{argument: value})
+    assert str(excinfo.value) == message
+
+
 def test_legend_inside_variants_build():
     # The opt-in inside-legend path builds for every function that offers it.
     assert _builds(dp.explore_distribution(LD, "RT", group="condition",

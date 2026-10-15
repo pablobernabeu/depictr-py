@@ -18,8 +18,9 @@ visualisation, built on [plotnine](https://plotnine.org).
 This is the Python twin of [the R
 package](https://pablobernabeu.github.io/depictr/) of the same name, which
 offers the same workflow on top of [ggplot2](https://ggplot2.tidyverse.org).
-The two share a design and nearly all of an API, and the Status section below
-records where this one has yet to catch up.
+The two share a design and most of their functions. Many of the R functions'
+arguments have yet to be ported, and the Status section below lists where the
+two differ.
 
 ## Gallery
 
@@ -216,26 +217,69 @@ accessibility check and most of the R package's plotting functions across every
 family (EDA, estimation, model estimates, diagnostics, classification,
 multivariate, survival and time series) are in place and tested. Multi-panel
 composites are built on `arrange_plots`, which uses plotnine's native plot
-composition, and they include the four-panel `residual_diagnostics_plot`, the
-`model_report` dashboard, the two-panel Cumming `estimation_plot`, the
-frequentist-over-Bayesian overlay and the survival number-at-risk table.
+composition. They are the four-panel `residual_diagnostics_plot`, the
+`model_report` dashboard, the two-panel Cumming `estimation_plot` and the
+`explore_pairs` matrix.
 
-A few known limitations remain. Compositions in plotnine have no figure-level
-title, so a grid carries its titles on each panel (the survival and estimation
-composites place the title on their top panel). `survival_plot` prints the
-log-rank test by default, where the R package leaves it out, and warns that
-its default will change to match. `explore_distribution` fills a grouped
-density at an alpha of 0.2 by default, where the R function uses its default
-of 0.6, so pass `alpha` for the same fill in both. `power_curve_plot` reads the
-same tables as the R function, pilotr's included, but it has no `x_lab`,
-`x_breaks` or `x_expand`, and there is no simr object to read. Each
-classification curve shows a single model. The R package's ROC,
-precision-recall, calibration, gains and lift functions also overlay
-several models given as a named list, and its gains chart adds a
-perfect-model line. Six functions
-from the R package have yet to be ported: `optimizer_fixef_plot` (there is no direct
-statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
-`model_fit_table`, `ts_forecast` and the session-wide settings of `depictr_options`.
+Six functions from the R package have yet to be ported: `optimizer_fixef_plot`
+(there is no direct statsmodels equivalent of `lme4::allFit`), `k_diagnostic`,
+`palette_preview`, `model_fit_table`, `ts_forecast` and the session-wide
+settings of `depictr_options`. Of those settings, the font has an equivalent in
+plotnine's own option, which every depictr theme reads, so
+`plotnine.options.base_family = "Arial"` sets the font of every plot drawn
+afterwards. `theme_depictr(base_family="Arial")` sets it for one plot.
+
+The functions the two packages share take many of the same arguments, though
+far from all. The
+[parity manifest](https://github.com/pablobernabeu/depictr-py/blob/main/tests/test_parity_manifest.py)
+accounts for every argument of the R functions. It names the arguments this
+package calls something else, such as `kind` for R's `type` and `event` for its
+`status`, the ones it has yet to take and the few that only it takes. Its tests
+fail when either package changes a signature the manifest does not record.
+Most of the missing arguments are cosmetic, such as a colour, a palette or an
+axis title, which a plotnine object takes with `+`. The differences below
+change what a figure shows or how it is computed.
+
+Among the model plots, `posterior_plot` draws each posterior as its median with
+66% and 95% intervals, the R function's default widths. It draws no half-eye
+density, which R draws by default when ggdist is installed, and it has none of
+R's `style`, `widths`, `rope` or `pd`. `model_report` draws the coefficients
+on their own scale beside a residual panel and a Q-Q plot, where the R function
+standardises the continuous predictors by default and adds an effects panel.
+`qq_plot` draws no confidence band, where the R function draws a pointwise 95%
+band by default, and `roc_curve_plot` has neither the confidence band nor the
+Youden point that R's `ci` and `youden` add.
+
+In the time-series family, `decompose_plot` decomposes a series classically,
+where the R function uses STL by default. `timeseries_plot` draws no forecast,
+which the R function adds with `forecast`. `acf_plot` refuses a series with a
+missing value inside it, while the R function computes the correlations across
+the gap from the pairs of observations present, with a warning.
+
+Some defaults differ too. `dumbbell_plot` orders the categories by the value of
+the group that appears first in the data, and the R function by the gap between
+the two groups. `explore_categorical` keeps the order of the levels and, with a
+group, shows proportions within each group, where the R function sorts the bars
+from most to least frequent and shows counts. `explore_distribution` fills a
+grouped density at an alpha of 0.2, where the R function uses its default of
+0.6, so pass `alpha` for the same fill in both. `survival_plot` prints the
+log-rank test by default, where the R package leaves it out, and warns that its
+default will change to match.
+
+Compositions in plotnine have no figure-level title, subtitle or collected
+legend, so a grid carries its titles on each panel (the two-panel
+`estimation_plot` places the title on its top panel). `arrange_plots` tags the
+panels A, B, C and so on, as the R function does. Among the package's own
+composites, only `model_report` is tagged, as in R. Each tag belongs to its
+panel's plot here, so `check_figure` measures it with the rest of the panel's
+text. The R function draws its tags around the panels, where they are not
+measured.
+
+`power_curve_plot` reads the same tables as the R function, pilotr's included,
+but it has no `x_lab`, `x_breaks` or `x_expand`, and there is no simr object to
+read. Each classification curve shows a single model. The R package's ROC,
+precision-recall, calibration, gains and lift functions also overlay several
+models given as a named list, and its gains chart adds a perfect-model line.
 
 ## Relationship to the R package
 

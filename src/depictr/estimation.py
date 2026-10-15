@@ -310,6 +310,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         + theme_depictr(grid="y")
         + theme(axis_text_x=element_text(weight="bold"))
     )
-    composed = arrange_plots(top, p, ncol=1)
+    # Untagged, as the R twin's two patchwork panels are.
+    composed = arrange_plots(top, p, ncol=1, tag_levels=None)
     composed.differences = diffs
     return composed

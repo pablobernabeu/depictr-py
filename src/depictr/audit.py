@@ -234,7 +234,11 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     figure of its own and takes no number. A panel's legend is measured with
     the panel. Only the panels are measured, so anything a composition draws
     around them is not. The R twin numbers the panels of a patchwork by the
-    same rule.
+    same rule. The panel tags :func:`depictr.arrange_plots` adds belong to the
+    panels' own plots in this twin, so each tag is measured with its panel,
+    by ``text_size_max`` too. The R twin's patchwork draws its tags around the
+    panels, where they are not measured, so a composition arranged with
+    ``tag_levels=None`` is the one whose report matches the R twin's.
 
     Parameters
     ----------

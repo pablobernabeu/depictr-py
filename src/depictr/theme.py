@@ -32,7 +32,8 @@ from .palette import (
 )
 
 
-def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
+def theme_depictr(base_size: float = 11, grid: str = "xy",
+                  base_family: str | None = None) -> theme:
     """Return the depictr plotnine theme.
 
     Parameters
@@ -41,6 +42,15 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
         Base font size in points.
     grid : {"xy", "x", "y", "none"}
         Which major gridlines to keep.
+    base_family : str, optional
+        Base font family, such as ``"Arial"`` for a journal that asks for it.
+        ``None``, the default, takes plotnine's ``plotnine.options.base_family``,
+        which is ``"sans-serif"`` unless it has been set. Setting that option
+        once, as in ``plotnine.options.base_family = "Arial"``, sets the font of
+        every depictr plot drawn afterwards, as ``depictr_options(base_family
+        =)`` does in the R twin. A family matplotlib cannot find is replaced by
+        its default, DejaVu Sans, with a message from matplotlib's
+        ``font_manager`` logger when the plot is drawn.
 
     Returns
     -------
@@ -52,11 +62,15 @@ def theme_depictr(base_size: float = 11, grid: str = "xy") -> theme:
     >>> import depictr as dp
     >>> ld = dp.lexical_decision()
     >>> p = dp.ecdf_plot(ld, "RT") + dp.theme_depictr(base_size=13, grid="y")
+    >>> p = dp.ecdf_plot(ld, "RT") + dp.theme_depictr(base_family="serif")
     """
     if grid not in {"xy", "x", "y", "none"}:
         raise ValueError("`grid` must be 'xy', 'x', 'y' or 'none'.")
+    if base_family is not None and (not isinstance(base_family, str)
+                                    or not base_family.strip()):
+        raise ValueError("`base_family` must be a font family name, or None.")
 
-    th = theme_minimal(base_size=base_size) + theme(
+    th = theme_minimal(base_size=base_size, base_family=base_family) + theme(
         plot_title=element_text(
             color=depictr_brand(), weight="bold", ha="center",
             size=base_size * 1.15, margin={"b": base_size * 0.5},

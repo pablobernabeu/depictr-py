@@ -47,6 +47,44 @@ def test_theme_returns_a_theme_and_validates_grid():
         theme_depictr(grid="diagonal")
 
 
+def _font_families(p):
+    """The font family of every text the drawn figure carries."""
+    import matplotlib.text as mtext
+
+    built = copy.deepcopy(p)
+    figure = built.draw(show=False)
+    try:
+        return {tuple(t.get_fontfamily()) for t in figure.findobj(mtext.Text)
+                if t.get_text().strip()}
+    finally:
+        plt.close(figure)
+
+
+def test_theme_takes_a_base_family_as_the_r_twin_does():
+    p = ecdf_plot(wellbeing_survey(), "age")
+    assert _font_families(p + theme_depictr(base_family="serif")) == {
+        ("serif",)}
+    # Left unset, the family is plotnine's session-wide base_family, the
+    # equivalent here of depictr_options(base_family =) in R.
+    assert _font_families(p + theme_depictr()) == {("sans-serif",)}
+
+
+def test_theme_without_a_base_family_follows_plotnines_option(monkeypatch):
+    import plotnine.options
+
+    monkeypatch.setattr(plotnine.options, "base_family", "monospace")
+    p = ecdf_plot(wellbeing_survey(), "age")
+    assert _font_families(p) == {("monospace",)}
+
+
+@pytest.mark.parametrize("family", ["", 1, ["serif"]])
+def test_theme_refuses_a_base_family_that_is_not_a_name(family):
+    with pytest.raises(ValueError) as excinfo:
+        theme_depictr(base_family=family)
+    assert str(excinfo.value) == (
+        "`base_family` must be a font family name, or None.")
+
+
 def test_scales_return_scale_objects():
     assert isinstance(scale_colour_depictr(), scale)
     assert isinstance(scale_fill_depictr(3), scale)

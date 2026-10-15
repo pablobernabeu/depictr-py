@@ -150,7 +150,9 @@ dp.roc_curve_plot(
 ) + labs(title="Adverse event")
 ```
 
-To place several plots in one figure, use `arrange_plots`:
+To place several plots in one figure, use `arrange_plots`. It tags the panels
+A, B and so on, as the R function does, and `tag_levels=None` leaves them
+untagged:
 
 ```python
 dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)
@@ -166,6 +168,16 @@ from plotnine import ggplot, aes, geom_point
  + geom_point(alpha=0.7)
  + dp.scale_colour_depictr()
  + dp.theme_depictr())
+```
+
+For a journal that names a font, `dp.theme_depictr(base_family="Arial")` sets
+it on one plot. plotnine's own option sets it on every plot drawn afterwards,
+depictr's included, as `depictr_options(base_family = )` does in R:
+
+```python
+import plotnine
+
+plotnine.options.base_family = "Arial"
 ```
 
 ## Where next

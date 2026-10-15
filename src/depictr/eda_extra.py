@@ -188,4 +188,5 @@ def explore_pairs(data, cols=None, title=None):
                 cell = cell + theme(**edge)
             panels.append(cell)
 
-    return arrange_plots(*panels, ncol=n, title=title)
+    # Untagged, as the R twin's patchwork grid is.
+    return arrange_plots(*panels, ncol=n, title=title, tag_levels=None)

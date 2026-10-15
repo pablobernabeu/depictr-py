@@ -93,9 +93,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in model order, whatever `order` is, and `compare_models()` in the order the
   terms first appear, as the R twin reads an unnamed vector. `interaction`
   sets how an interaction is written.
+- `theme_depictr()` gains `base_family`, the font family, as in the R twin,
+  for a journal that names a font. Left as `None`, it takes
+  `plotnine.options.base_family`, which every depictr plot reads, so setting
+  that option once is the equivalent of the R twin's
+  `depictr_options(base_family = )`. The README and the getting-started guide
+  say so.
+- `correlation_heatmap()` gains the R twin's `method`, `show_values` and
+  `digits`, after `cols` as in R. Spearman's and Kendall's coefficients give
+  the same labels as the R twin on `wellbeing_survey()`, and
+  `show_values=False` leaves the labels out. A title passed as the third
+  positional argument now goes to `method` and is refused.
+- A parity manifest accounts for every argument of the R twin's functions.
+  `dev/r_formals.R` writes their signatures from a checkout of the R package to
+  `tests/data/r_formals.json`, and `tests/test_parity_manifest.py` matches each
+  R argument with a Python parameter, through an explicit list of renamed
+  arguments, or lists it as not yet ported, and lists the parameters only this
+  package has. A signature change in either package fails those tests until
+  the manifest records it.
 
 ### Changed
 
+- `arrange_plots()` tags the panels A, B, C and so on, as the R twin's
+  `arrange_plots()` does by default. The new `tag_levels` takes patchwork's
+  styles, `"A"`, `"a"`, `"1"`, `"I"` and `"i"`, or the tags themselves, and
+  `tag_levels=None` keeps the untagged panels of earlier versions. The new
+  `tag_size` sets their size in points, such as the 8 pt Nature asks of panel
+  labels. The tags run on through a composition passed in, and a
+  `plot_spacer()` takes none. Among the package's own composites,
+  `model_report()` is tagged and `residual_diagnostics_plot()`,
+  `explore_pairs()` and the two-panel `estimation_plot()` are not, as in the R
+  twin. Each tag belongs to its panel's plot, so `check_figure()` measures it
+  with the panel's text, `text_size_max` included, where the R twin's audit
+  leaves out the tags patchwork draws around the panels.
+- The README no longer says that the twins share "nearly all of an API". They
+  share most of their functions, while many of the R functions' arguments are
+  not yet ported. The Status section now lists the differences that change
+  what a figure shows or how it is computed, among them the STL decomposition,
+  the posterior options, the Q-Q band, the ROC confidence band and Youden
+  point, the forecast, the order of the dumbbell categories and the handling
+  of a gap in `acf_plot()`. It no longer counts the frequentist-over-Bayesian
+  overlay and the survival number-at-risk table among the composites, since
+  each is a single plot.
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R
   twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
   repository, which holds the Python package alone, since PyPI assigns no DOI.
