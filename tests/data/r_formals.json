@@ -40,7 +40,7 @@
     "palette_safety": ["colours", "threshold", "metric"],
     "pca_plot": ["x", "cols", "group", "components", "scale", "loadings", "point_alpha", "palette", "title"],
     "posterior_plot": ["draws", "style", "point", "widths", "interaction", "labels", "reference_line", "rope", "pd", "facet", "scales", "colour", "fill", "rope_fill", "rope_alpha", "title", "x_lab", "caption"],
-    "power_curve_plot": ["x", "target", "x_lab", "x_breaks", "x_expand", "ribbon", "title", "interaction", "n", "power", "group", "lower", "upper", "y_lab"],
+    "power_curve_plot": ["x", "target", "x_lab", "x_breaks", "x_expand", "ribbon", "title", "interaction", "n", "power", "group", "lower", "upper", "y_lab", "solved"],
     "pr_curve_plot": ["x", "score", "colour", "f1", "title"],
     "qq_plot": ["x", "colour", "title", "x_lab", "y_lab", "band", "band_type", "level", "n_sim", "band_fill", "seed"],
     "raincloud_plot": ["data", "y", "group", "width", "point_alpha", "palette", "title", "x_lab", "y_lab"],

@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is how pilotr returns a power curve in Python, and recognises `n_subject` and
   `<power>_lo`/`<power>_hi` columns, so pilotr's output plots as it is, with
   its band.
+- `power_curve_plot()` gains `solved`, which marks a solved sample size and its
+  interval, such as the result of pilotr's `target_n()`. The value is drawn as
+  a dashed vertical line and the interval as a grey band behind the curve. The
+  R twin gains the same argument.
 - `check_figure()` gains an `annotation_text_size` row for the text drawn
   inside the panel: annotations, the labels of layers such as `geom_text()` and
   `geom_label()`, and the cell values and labels of depictr's own plots, the

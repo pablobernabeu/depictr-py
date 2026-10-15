@@ -9,22 +9,27 @@ paper); it does no power calculation of its own.
 
 from __future__ import annotations
 
+import math
+import numbers
 import warnings
+from collections.abc import Mapping
 
 import pandas as pd
 from plotnine import (
     aes,
+    annotate,
     geom_hline,
     geom_line,
     geom_linerange,
     geom_point,
     geom_ribbon,
+    geom_vline,
     ggplot,
     labs,
     scale_y_continuous,
 )
 
-from .palette import BRAND
+from .palette import BRAND, REFERENCE
 from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
 
 # The conventional target power: an 80% chance of detecting a true effect
@@ -48,9 +53,44 @@ _UPPER_CANDIDATES = ("upper", "ci_high", "conf.high")
 _BAND_FILL = "#e0e0e0"
 _BAR_COLOUR = "#7f7f7f"
 
+# The fields of pilotr's target_n() and solve_curve() that `solved` reads.
+_SOLVED_FIELDS = ("value", "lo", "hi")
+
 
 def _pick(data, candidates):
     return next((c for c in candidates if c in data.columns), None)
+
+
+def _is_finite_number(value):
+    # A bool is an int to Python, but a flag is not a sample size, and the R
+    # twin's is.numeric() refuses TRUE.
+    return (isinstance(value, numbers.Real) and not isinstance(value, bool)
+            and math.isfinite(value))
+
+
+def _solved_marks(solved):
+    """The solved value and its bounds, as a dict of floats.
+
+    pilotr's ``target_n()`` and ``solve_curve()`` return a dict with the solved
+    value in ``value`` and its confidence bounds in ``lo`` and ``hi``, among
+    other keys. A one-row DataFrame holding the three is read alike, and
+    anything else is refused, a Series included, as the R twin refuses a named
+    vector.
+    """
+    if solved is None:
+        return None
+    if isinstance(solved, pd.DataFrame):
+        marks = ({f: solved[f].iloc[0] for f in _SOLVED_FIELDS
+                  if f in solved.columns} if len(solved) == 1 else {})
+    elif isinstance(solved, Mapping):
+        marks = {f: solved[f] for f in _SOLVED_FIELDS if f in solved}
+    else:
+        marks = {}
+    if (len(marks) != len(_SOLVED_FIELDS)
+            or not all(_is_finite_number(v) for v in marks.values())):
+        raise ValueError("`solved` needs numeric `value`, `lo` and `hi`, as "
+                         "pilotr's target_n() returns.")
+    return {f: float(v) for f, v in marks.items()}
 
 
 def _check_column(data, col, arg):
@@ -61,7 +101,7 @@ def _check_column(data, col, arg):
 
 def power_curve_plot(data, n=None, power=None, group=None, title=None,
                      target=_TARGET_POWER, lower=None, upper=None,
-                     ribbon=True, y_lab=None):
+                     ribbon=True, y_lab=None, solved=None):
     """Line plot of statistical power against sample size.
 
     Reads a precomputed tidy table and draws power as a function of sample size,
@@ -74,7 +114,9 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     ``n_subject``, ``effect``, ``power``, ``power_lo`` and ``power_hi``, and
     ``precision_curve()`` gives ``n_subject``, ``param`` and the decision
     probabilities ``p_meaningful`` and ``p_equivalent`` with their own ``_lo``
-    and ``_hi`` bounds, which ``power`` can name.
+    and ``_hi`` bounds, which ``power`` can name. The sample size that pilotr's
+    ``target_n()`` solves from such a curve, and its interval, can be marked on
+    the plot with ``solved``.
 
     Parameters
     ----------
@@ -109,6 +151,14 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     y_lab : str, optional
         Y-axis label. By default, "Power" when the power column is one of the
         default names, and the column's name otherwise.
+    solved : dict or pandas.DataFrame, optional
+        A sample size solved from the curve, with its confidence interval: a
+        dict with numeric ``value``, ``lo`` and ``hi``, as pilotr's
+        ``target_n()`` and ``solve_curve()`` return, or a one-row DataFrame
+        with the same columns. Other keys are ignored. The solved value is
+        drawn as a dashed vertical line and its interval as a grey band behind
+        the curve. An interval that reaches past the swept sizes widens the
+        x-axis to show it. Anything else raises ``ValueError``.
 
     Returns
     -------
@@ -130,6 +180,12 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     ...                   for n in power["n"]]
     >>> p = dp.power_curve_plot(power)
 
+    The sample size at which the curve reaches 80% power, with its interval,
+    in the form pilotr's ``target_n()`` returns. The interval here is
+    illustrative:
+
+    >>> p = dp.power_curve_plot(power, solved={"value": 64, "lo": 57, "hi": 72})
+
     Two curves in one table, laid out as pilotr's ``power_curve_mixed()``
     returns them, one row per sample size and effect:
 
@@ -142,6 +198,7 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     ... ]
     >>> p = dp.power_curve_plot(rows, group="effect")
     """
+    marks = _solved_marks(solved)
     if not isinstance(data, pd.DataFrame):
         data = pd.DataFrame(data)
 
@@ -201,6 +258,14 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
                if group else aes(x=n, y=power))
     p = ggplot(data, mapping)
 
+    if marks is not None:
+        # First, so that the interval lies behind the confidence band and the
+        # curve. The fill and opacity are those of the R twin's ROPE band in
+        # posterior_plot().
+        p = p + annotate("rect", xmin=marks["lo"], xmax=marks["hi"],
+                         ymin=-math.inf, ymax=math.inf, fill=REFERENCE,
+                         alpha=0.15)
+
     if has_band:
         if ribbon and group:
             # Translucent, so that overlapping bands stay visible, and without
@@ -221,6 +286,9 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     if target is not None and not pd.isna(target):
         p = p + geom_hline(yintercept=target, linetype="dashed",
                            color="#9e9e9e")
+    if marks is not None:
+        p = p + geom_vline(xintercept=marks["value"], linetype="dashed",
+                           color=REFERENCE)
     if group:
         p = (p + geom_line(size=0.9) + geom_point(size=2)
              + scale_colour_depictr())
