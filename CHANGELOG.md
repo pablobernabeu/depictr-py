@@ -203,6 +203,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under tritan, so under a red-green deficiency they looked further apart than
   the model predicts. The R twin makes the same change, and the two test
   suites pin the same colours.
+- `ridgeline_plot()` draws in a fraction of the time, about a twentieth on the
+  bundled datasets, and the figure is unchanged. Each ridge sits in a panel of
+  its own, so the stacking that `geom_area()` applies by default had nothing to
+  stack. The ridges are now drawn unstacked.
 
 ### Deprecated
 

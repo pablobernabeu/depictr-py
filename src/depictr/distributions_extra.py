@@ -147,7 +147,10 @@ def ridgeline_plot(data, x, group, title=None):
 
     return (
         ggplot(df, aes(x=x, fill=group))
-        + geom_area(stat="density", alpha=0.8, color="white", size=0.3)
+        # Each facet row holds one level, so there is nothing to stack, and
+        # geom_area's default stacking made the plot many times slower to draw.
+        + geom_area(stat="density", position="identity", alpha=0.8,
+                    color="white", size=0.3)
         + facet_grid(f"{group} ~ .", scales="free_y")
         + _group_scales(palette, ("fill",))
         # Negative panel spacing makes neighbouring ridges overlap; the y-axis

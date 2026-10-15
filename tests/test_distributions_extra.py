@@ -1,6 +1,7 @@
 """Every grouped-distribution plot builds a figure without error, and the group
 comparison draws t intervals for the mean."""
 
+import copy
 import re
 import warnings
 
@@ -43,6 +44,22 @@ def test_ecdf_plot_bad_column():
 def test_ridgeline_plot():
     assert _builds(ridgeline_plot(WB, "life_satisfaction", "region"))
     assert _builds(ridgeline_plot(LD, "RT", "condition"))
+
+
+def test_ridgeline_plot_draws_each_ridge_unstacked():
+    # Each facet row holds a single level, so the stacking that geom_area does
+    # by default had nothing to stack and took most of the drawing time. Every
+    # ridge still rises from zero to its own density.
+    from plotnine.positions import position_identity
+
+    p = ridgeline_plot(WB, "life_satisfaction", "region")
+    (layer,) = p.layers
+    assert isinstance(layer.position, position_identity)
+    built = copy.deepcopy(p)
+    built._build()
+    drawn = built.layers[0].data
+    assert (drawn["ymin"] == 0).all()
+    assert np.allclose(drawn["ymax"], drawn["density"])
 
 
 def test_dumbbell_plot():

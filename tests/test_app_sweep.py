@@ -2,9 +2,9 @@
 
 The app is driven headless through Streamlit's AppTest with each pane's default
 choices, as a visitor first meets it. A pane that cannot draw shows an error
-through the handler at the foot of the app. The sweep is slow (a few minutes,
-most of it in the ridgeline and pairs panes), so it carries the ``slow`` marker:
-it runs with the full suite, and ``-m "not slow"`` leaves it out of a quick run.
+through the handler at the foot of the app. The sweep is slow (a few minutes),
+so it carries the ``slow`` marker: it runs with the full suite, and
+``-m "not slow"`` leaves it out of a quick run.
 """
 
 from pathlib import Path
