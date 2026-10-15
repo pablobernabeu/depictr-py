@@ -283,6 +283,32 @@ def test_quoted_and_transformed_predictors_are_found_in_the_formula():
     assert _builds(effects_plot(logged, "rainfall"))
 
 
+def test_a_categorical_is_held_at_its_mode_not_at_its_reference_level():
+    # The docstrings called the held level the reference (most common) level,
+    # and said the mode was the treatment-coded reference. The reference is the
+    # first level in sorted or declared order, and in five of the six bundled
+    # categorical columns it is not the mode. The R twin documents the most
+    # frequent level, which is what both twins hold.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    rng = np.random.default_rng(48)
+    d = pd.DataFrame({"x": rng.normal(size=60),
+                      "g": ["a_rare"] * 10 + ["b_common"] * 50})
+    shift = np.where(d["g"] == "a_rare", 2.0, 0.0)
+    d["y"] = 1 + 0.5 * d["x"] + shift + rng.normal(scale=0.1, size=60)
+    model = smf.ols("y ~ x + g", d).fit()
+    assert "g[T.b_common]" in model.params  # a_rare is the reference level
+    p = effects_plot(model, "x")
+    held = model.predict(pd.DataFrame({"x": p.data["x"], "g": "b_common"}))
+    np.testing.assert_allclose(p.data["fit"], held, rtol=1e-10)
+
+    import depictr.predictions as predictions
+
+    for doc in (predictions.__doc__, effects_plot.__doc__, interaction_plot.__doc__):
+        doc = " ".join(doc.split())
+        assert "most common level (the mode)" in doc
+        assert not re.search(r"reference level|reference \(|\(reference\)", doc)
+
+
 @pytest.fixture(scope="module")
 def counts():
     rng = np.random.default_rng(1)

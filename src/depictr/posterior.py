@@ -4,13 +4,17 @@ A Bayesian fit or a bootstrap gives a sample of draws for each parameter rather
 than a single estimate and a closed-form interval. These two functions summarise
 that sample as a forest: the median as a point, with a thick inner band and a
 thin outer band for two credible intervals. The default bands are the central
-66% and 95%, the pair the ``bayesplot`` and ``brms`` packages draw, chosen so the
-eye reads the bulk of the posterior (the inner band) without losing the tails
-(the outer band).
+66% and 95%, chosen so the eye reads the bulk of the posterior (the inner band)
+without losing the tails (the outer band). The pair is the default ``.width``
+of the R package ggdist (Kay, 2024), which the R twin draws with.
 
 :func:`frequentist_bayesian_plot` puts a frequentist estimate alongside the
 posterior, one row per shared term, so the two ways of quantifying uncertainty
 sit side by side for the same model.
+
+Kay, M. (2024). ggdist: Visualizations of distributions and uncertainty in the
+grammar of graphics. IEEE Transactions on Visualization and Computer Graphics,
+30(1), 414-424. https://doi.org/10.1109/TVCG.2023.3327195
 """
 
 from __future__ import annotations
@@ -33,7 +37,8 @@ from plotnine import (
 from .palette import BRAND
 from .theme import scale_colour_depictr, theme_depictr
 
-# Inner and outer credible-interval masses, as the bayesplot/brms defaults.
+# Inner and outer credible-interval masses: ggdist's default .width, which the
+# R twin's posterior_plot() uses.
 _INNER = 0.66
 _OUTER = 0.95
 
@@ -103,8 +108,9 @@ def posterior_plot(draws, labels=None, title=None):
     """Forest plot of posterior (or bootstrap) draws.
 
     Each parameter is one row: the median as a point, a thick inner band for the
-    central 66% credible interval and a thin outer band for the central 95%. The
-    first parameter reads at the top.
+    central 66% credible interval and a thin outer band for the central 95%.
+    Both are equal-tailed (quantile) intervals, which leave the same share of
+    the draws in either tail. The first parameter reads at the top.
 
     Parameters
     ----------

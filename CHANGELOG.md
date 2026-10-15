@@ -702,6 +702,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and on a `pip install` line in a shell block that carries a `#` comment, in
   the README, the contributing guide, the documentation, the sources and the
   app.
+- `threshold_plot()` evaluated the metrics at 200 quantiles of the scores once
+  there were more than 200 distinct scores, so the curves were read between
+  the points where the confusion matrix changes, and it joined them with
+  straight lines through values that no threshold gives. The metrics are now
+  evaluated at every distinct score from cumulative counts, as in the R twin,
+  and drawn as steps. Every threshold between two adjacent scores predicts
+  what the upper score predicts, so each step changes at a score and runs flat
+  below it. Where no positive case is predicted positive, F1 was missing and
+  is now 0, as in the R twin. A missing outcome or score now raises
+  `ValueError`, as in `gain_plot()` and `lift_plot()`, and so do vectors of
+  different lengths.
+- Documentation. The posterior forest plots credited their default 66% and 95%
+  bands to bayesplot and brms, whose defaults are 50% and 90%. The pair is the
+  default `.width` of the R package ggdist, which the R twin draws with. The
+  docstrings now say so, cite the ggdist paper and say that both bands are
+  equal-tailed (quantile) intervals. `scatter_trend()` promised a confidence band and
+  suggested `method="lowess"`, which, like `"rlm"`, draws the line alone. Its
+  docstring now says which smoothers give a band. `effects_plot()` and
+  `interaction_plot()` said a categorical predictor is held at its reference
+  level. It is held at its most common level, as the R twin documents, and
+  that level need not be the reference. The docstrings now say so.
 
 ## [0.3.0] - 2026-09-24
 

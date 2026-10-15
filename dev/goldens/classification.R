@@ -1,5 +1,5 @@
-# R-derived values pinned in tests/test_plots.py (the gains, lift and
-# calibration parity tests).
+# R-derived values pinned in tests/test_plots.py (the gains, lift,
+# calibration and threshold parity tests).
 #
 # Run from the root of depictr-py against a checkout of the R package:
 #
@@ -10,8 +10,10 @@
 # without a random number generator. The script prints the R twin's gains
 # table and lift points for a vector with four tied scores, then the bins and
 # Wilson limits that calibration_plot() draws for a continuous and for the
-# tied vector. Needs pkgload and ggplot2, because gain_table() is internal to
-# the R package.
+# tied vector, then the metrics that threshold_plot() draws for the tied
+# vector, for a short vector whose highest score is a negative case, and at
+# seven of the continuous vector's 300 distinct scores. Needs pkgload and
+# ggplot2, because gain_table() is internal to the R package.
 
 args <- commandArgs(trailingOnly = TRUE)
 r_twin <- if (length(args) >= 1) args[[1]] else "../depictr"
@@ -67,3 +69,30 @@ show_bins("calibration, continuous vector, bins = 4, conf_level = 0.9",
           calibration_plot(cont_actual, cont_score, bins = 4, conf_level = 0.9))
 show_bins("calibration, tied vector, bins = 10, conf_level = 0.95",
           calibration_plot(tied_actual, tied_score))
+
+# threshold_plot() evaluates the metrics at every distinct score. Each metric
+# is printed in increasing order of threshold, the order the Python test reads.
+show_thresholds <- function(heading, actual, score, at = NULL) {
+  d <- threshold_plot(actual, score, mark = NULL)$data
+  d <- d[order(d$threshold), ]
+  thr <- sort(unique(d$threshold))
+  cat(heading, "\n")
+  cat("  distinct thresholds:", length(thr), "\n")
+  if (!is.null(at)) {
+    thr <- thr[at]
+    d <- d[d$threshold %in% thr, ]
+  }
+  cat("  threshold:  ", values(thr), "\n")
+  for (m in levels(d$metric)) {
+    cat(sprintf("  %-22s", paste0(m, ":")), values(d$value[d$metric == m]), "\n")
+  }
+}
+show_thresholds("threshold, tied vector", tied_actual, tied_score)
+# The highest score belongs to a negative case, so at that threshold no
+# positive case is predicted positive: precision and recall are 0, and F1 is
+# taken as 0.
+short_actual <- c(0, 1, 0, 1, 1, 0, 0, 1, 0, 0)
+short_score <- c(0.9, 0.8, 0.8, 0.7, 0.5, 0.5, 0.3, 0.2, 0.2, 0.1)
+show_thresholds("threshold, short vector", short_actual, short_score)
+show_thresholds("threshold, continuous vector, distinct scores 1, 50, ..., 300",
+                cont_actual, cont_score, at = c(1, 50, 100, 150, 200, 250, 300))

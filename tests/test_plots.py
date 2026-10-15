@@ -548,6 +548,104 @@ def test_gains_lift_and_calibration_need_no_scikit_learn(monkeypatch):
         assert _builds(p)
 
 
+# ---- threshold sweep: parity with the R twin --------------------------------
+# The R values below are printed by dev/goldens/classification.R from the R
+# twin's threshold_plot() for change set CS48, whose metric code is that of the
+# 0.3.0 release. The R twin labels the first metric "Sensitivity (recall)".
+
+
+def _short_scores():
+    """Ten cases with ties, whose highest score belongs to a negative case."""
+    y = np.array([0, 1, 0, 1, 1, 0, 0, 1, 0, 0])
+    score = np.array([0.9, 0.8, 0.8, 0.7, 0.5, 0.5, 0.3, 0.2, 0.2, 0.1])
+    return y, score
+
+
+_R_THRESHOLDS = {
+    "tied scores": (_tied_scores, None, {
+        "threshold": [0.1, 0.3, 0.55, 0.85],
+        "Sensitivity": [1, 0.890625, 0.609375, 0.265625],
+        "Specificity": [0, 0.5294117647, 0.8161764706, 0.9558823529],
+        "Precision": [0.32, 0.4710743802, 0.609375, 0.7391304348],
+        "F1": [0.4848484848, 0.6162162162, 0.609375, 0.3908045977],
+    }),
+    # At 0.9 no positive case is predicted positive, so precision and recall
+    # are 0, and the R twin takes F1 as 0.
+    "top score negative": (_short_scores, None, {
+        "threshold": [0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9],
+        "Sensitivity": [1, 1, 0.75, 0.75, 0.5, 0.25, 0],
+        "Specificity": [0, 0.1666666667, 0.3333333333, 0.5, 0.6666666667,
+                        0.6666666667, 0.8333333333],
+        "Precision": [0.4, 0.4444444444, 0.4285714286, 0.5, 0.5, 0.3333333333,
+                      0],
+        "F1": [0.5714285714, 0.6153846154, 0.5454545455, 0.6, 0.5, 0.2857142857,
+               0],
+    }),
+    # 300 distinct scores, of which the 1st, 50th, 100th, ... 300th.
+    "continuous scores": (_continuous_scores, [0, 49, 99, 149, 199, 249, 299], {
+        "threshold": [0.00001, 0.025, 0.1, 0.225, 0.4, 0.625, 0.9],
+        "Sensitivity": [1, 1, 0.9677419355, 0.8602150538, 0.6881720430,
+                        0.4086021505, 0],
+        "Specificity": [0, 0.2367149758, 0.4637681159, 0.6570048309,
+                        0.8212560386, 0.9371980676, 0.9951690821],
+        "Precision": [0.31, 0.3705179283, 0.4477611940, 0.5298013245,
+                      0.6336633663, 0.7450980392, 0],
+        "F1": [0.4732824427, 0.5406976744, 0.6122448980, 0.6557377049,
+               0.6597938144, 0.5277777778, 0],
+    }),
+}
+
+
+@pytest.mark.parametrize("case", list(_R_THRESHOLDS))
+def test_threshold_metrics_match_the_r_twin(case):
+    # Regression: past 200 distinct scores the sweep moved to 200 quantiles of
+    # the scores, which fall between the scores where the confusion matrix
+    # changes, and F1 was missing where no positive case was predicted
+    # positive. The R twin evaluates the metrics at every distinct score, with
+    # F1 taken as 0 there.
+    pytest.importorskip("sklearn")
+    data, at, expected = _R_THRESHOLDS[case]
+    y, score = data()
+    wide = (dp.threshold_plot(y, score).data
+            .pivot(index="threshold", columns="metric", values="value"))
+    np.testing.assert_array_equal(wide.index, np.unique(score))
+    if at is not None:
+        wide = wide.iloc[at]
+    np.testing.assert_allclose(wide.index, expected["threshold"], atol=1e-10)
+    for metric in ("Sensitivity", "Specificity", "Precision", "F1"):
+        np.testing.assert_allclose(wide[metric], expected[metric], atol=1e-9,
+                                   err_msg=metric)
+
+
+def test_threshold_plot_draws_each_metric_as_a_step():
+    # The metrics change only at a score. A case is predicted positive when its
+    # score is at or above the threshold, so between two adjacent scores every
+    # metric keeps its value at the upper one: a "vh" step, as in the R twin,
+    # where a line drew slopes through values no threshold gives.
+    pytest.importorskip("sklearn")
+    y, score = _short_scores()
+    p = dp.threshold_plot(y, score)
+    assert isinstance(p.layers[-1].geom, geom_step)
+    assert p.layers[-1].geom.params["direction"] == "vh"
+    assert _builds(p)
+
+
+def test_threshold_plot_refuses_a_missing_value_or_a_length_mismatch():
+    # The counts are cumulative over the cases ranked by score, so a missing
+    # score or outcome would be ranked or counted as if it were a value, and
+    # vectors of different lengths have no pairing.
+    pytest.importorskip("sklearn")
+    y, score = _short_scores()
+    score_missing = score.copy()
+    score_missing[3] = np.nan
+    with pytest.raises(ValueError, match="`y_score` holds a missing value"):
+        dp.threshold_plot(y, score_missing)
+    with pytest.raises(ValueError, match="`y_true` holds a missing value"):
+        dp.threshold_plot(np.where(y == 1, 1.0, np.nan), score)
+    with pytest.raises(ValueError, match="must have the same length"):
+        dp.threshold_plot(y, score[:-1])
+
+
 def test_survival_plot_rejects_non_finite_times():
     # A NaN follow-up time used to surface as a bare StopIteration from the
     # axis-break search, naming neither the argument nor the problem.

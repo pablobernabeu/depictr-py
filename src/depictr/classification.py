@@ -23,6 +23,7 @@ from plotnine import (
     geom_hline,
     geom_line,
     geom_point,
+    geom_step,
     geom_text,
     geom_tile,
     ggplot,
@@ -557,19 +558,51 @@ def lift_plot(y_true, y_score, title=None):
     )
 
 
+def _threshold_counts(y_true, y_score):
+    """True and false positives at every distinct score, as a threshold.
+
+    The twin of the R package's internal ``threshold_counts()``. Cases are
+    ranked by score, best first, and the cumulative counts are read at the last
+    case of each run of tied scores, where every case at or above that score is
+    predicted positive.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        The distinct scores in decreasing order, and the true and false
+        positives with each one as the threshold.
+    """
+    order = np.argsort(-y_score, kind="stable")
+    ranked = y_score[order]
+    last_of_run = np.append(ranked[1:] != ranked[:-1], True)
+    tp = np.cumsum(y_true[order] == 1)[last_of_run]
+    fp = np.cumsum(y_true[order] == 0)[last_of_run]
+    return ranked[last_of_run], tp, fp
+
+
 def threshold_plot(y_true, y_score, title=None):
     """Sensitivity, specificity, precision and F1 across the decision threshold.
 
     Sweeps the probability cut-off and plots each metric, so the trade-off when
     choosing an operating point can be read straight off the curves.
 
+    A case is predicted positive when its score is at or above the threshold.
+    The metrics are evaluated at every distinct score, the points at which the
+    confusion matrix can change, so the curves are exact step functions. Between
+    two adjacent scores, each metric keeps its value at the upper one, so each
+    step changes at a score and runs flat below it. Where no positive case is
+    predicted positive, precision and recall are 0 and F1 is taken as 0. The R
+    twin computes and draws the same values.
+
     Parameters
     ----------
     y_true : array-like
         Binary outcomes (0/1). Both classes must be present: with only one,
-        sensitivity or specificity has no denominator at any threshold.
+        sensitivity or specificity has no denominator at any threshold. A
+        missing outcome raises ``ValueError``.
     y_score : array-like
-        Predicted scores or probabilities for the positive class.
+        Predicted scores or probabilities for the positive class, one per
+        outcome. A missing score raises ``ValueError``.
     title : str, optional
 
     Returns
@@ -585,32 +618,45 @@ def threshold_plot(y_true, y_score, title=None):
     >>> p = dp.threshold_plot(ct["adverse_event"], score)
     """
     _require_sklearn()
-    y_true = np.asarray(y_true)
-    y_score = np.asarray(y_score)
+    y_true, y_score = _outcome_and_score(y_true, y_score)
+    # A missing score would rank as a run of its own and a missing outcome
+    # would count as neither class, so the cumulative counts need both.
+    for name, values in (("y_true", y_true), ("y_score", y_score)):
+        if pd.isna(values).any():
+            raise ValueError(
+                f"`{name}` holds a missing value. A threshold sweep needs an "
+                "outcome and a score for every case, so drop incomplete cases "
+                "first."
+            )
     _positive_count(y_true,
                     "A threshold sweep needs both positive and negative outcomes.")
-    thresholds = np.unique(y_score)
-    if len(thresholds) > 200:  # keep the sweep cheap on large score sets
-        thresholds = np.quantile(y_score, np.linspace(0, 1, 200))
+    # Every distinct score, as in the R twin. Past 200 distinct scores the
+    # sweep used to move to 200 quantiles of the scores, which fall between
+    # the points where the metrics change.
+    thresholds, tp, fp = _threshold_counts(y_true, y_score)
     n_pos = int((y_true == 1).sum())
     n_neg = int((y_true == 0).sum())
-    rows = []
-    for t in thresholds:
-        pred = y_score >= t
-        tp = int(np.sum(pred & (y_true == 1)))
-        fp = int(np.sum(pred & (y_true == 0)))
-        sens = tp / n_pos if n_pos else np.nan
-        spec = (n_neg - fp) / n_neg if n_neg else np.nan
-        prec = tp / (tp + fp) if (tp + fp) else np.nan
-        denom = (prec + sens) if (prec + sens) > 0 else np.nan
-        f1 = 2 * prec * sens / denom
-        rows.append({"threshold": float(t), "Sensitivity": sens,
-                     "Specificity": spec, "Precision": prec, "F1": f1})
-    long = (pd.DataFrame(rows)
-            .melt(id_vars="threshold", var_name="metric", value_name="value"))
+    sens = tp / n_pos
+    spec = (n_neg - fp) / n_neg
+    # With outcomes coded 0/1, the highest score predicts at least one
+    # positive, so precision is defined at every threshold.
+    predicted = tp + fp
+    prec = np.divide(tp, predicted, out=np.full(len(tp), np.nan),
+                     where=predicted > 0)
+    total = prec + sens
+    f1 = np.divide(2 * prec * sens, total, out=np.zeros_like(total),
+                   where=total > 0)
+    wide = pd.DataFrame({"threshold": thresholds[::-1], "Sensitivity": sens[::-1],
+                         "Specificity": spec[::-1], "Precision": prec[::-1],
+                         "F1": f1[::-1]})
+    long = wide.melt(id_vars="threshold", var_name="metric", value_name="value")
+    # A line would join adjacent thresholds with slopes through values that no
+    # threshold gives. Every threshold between two adjacent scores predicts what
+    # the upper score predicts. geom_step() orders the points by threshold, and
+    # direction "vh" changes at each score and runs flat below it.
     return (
         ggplot(long, aes("threshold", "value", color="metric"))
-        + geom_line(size=0.8, na_rm=True)
+        + geom_step(direction="vh", size=0.8, na_rm=True)
         + scale_colour_depictr()
         + labs(x="Decision threshold", y="Metric value", color="", title=title)
         + theme_depictr()

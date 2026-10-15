@@ -29,7 +29,13 @@ from .theme import scale_fill_depictr, theme_depictr
 
 
 def scatter_trend(data, x, y, group=None, method="lm", title=None):
-    """Scatter plot with a fitted trend line and confidence band.
+    """Scatter plot with a fitted trend line, and a confidence band where the smoother gives one.
+
+    The band appears only when the smoother computes one, as ``"lm"``,
+    ``"glm"``, ``"gls"`` and ``"mavg"`` do, and ``"loess"`` once scikit-misc is
+    installed (plotnine raises an error for it otherwise). ``"lowess"`` and
+    ``"rlm"`` draw the line alone, and plotnine warns that it has no interval
+    for them.
 
     Parameters
     ----------
@@ -45,7 +51,8 @@ def scatter_trend(data, x, y, group=None, method="lm", title=None):
         and categories without rows are left out of the plot and its palette.
     method : str
         Smoothing method passed to :func:`plotnine.geom_smooth`, for example
-        ``"lm"`` for a straight line or ``"lowess"`` for a local fit.
+        ``"lm"`` for a straight line with a band, or ``"lowess"`` for a local
+        fit that needs no extra dependency and draws no band.
     title : str, optional
         Plot title.
 

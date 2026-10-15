@@ -8,8 +8,8 @@ statsmodels' ``get_prediction``; the figures are re-drawn under the depictr them
 so a prediction plot sits in the same visual language as the rest of a report.
 
 For a single-predictor effect the other numeric predictors are held at their mean
-and categoricals at their most common (reference) level, the usual convention for
-an "effects" plot, so the line shows the partial relationship rather than a
+and each categorical at its most common level (the mode), the usual convention
+for an "effects" plot, so the line shows the partial relationship rather than a
 marginal average over the sample. The predictors are the columns the formula
 names, and their means, levels and ranges are taken over the rows the model was
 fitted to. A model fitted with an ``offset`` or ``exposure`` is predicted at the
@@ -263,8 +263,9 @@ def _prediction_label(model) -> str:
 def _reference_row(frame: pd.DataFrame, predictors: list[str]) -> dict:
     """Hold each predictor at a single value: numeric at its mean, else the mode.
 
-    The mode is the most common observed level, which for a treatment-coded
-    categorical is its reference unless one level happens to be rarer.
+    The mode is the most common observed level, as in the R twin. It need not be
+    the reference level of a treatment-coded categorical, which is the first
+    level in sorted or declared order.
     """
     row = {}
     for col in predictors:
@@ -297,8 +298,8 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     """Predicted response as one predictor varies, with a confidence band.
 
     The predictor ``var`` is swept across its observed range while every other
-    numeric predictor is held at its mean and every categorical at its reference
-    (most common) level. The line is the predicted response and the ribbon its
+    numeric predictor is held at its mean and every categorical at its most
+    common level (the mode). The line is the predicted response and the ribbon its
     confidence band, both read from statsmodels' ``get_prediction``. The band
     takes t or z as the result's ``use_t`` says, so a GLM whose dispersion is
     estimated, fitted with ``use_t=True``, gets the t band of the R twin.
@@ -381,11 +382,12 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
 
     One coloured line per group shows how the predicted response changes with
     ``x`` within that group, so a fan of non-parallel lines is the visible mark of
-    an interaction. The remaining predictors are held at their mean (numeric) or
-    reference level (categorical). As in :func:`effects_plot`, the predictors are
-    the columns the formula names, the range, means and levels come from the
-    rows the model was fitted to, a term computed from statistics of its rows is
-    refused, and an offset or exposure is held at its mean.
+    an interaction. The remaining predictors are held at their mean if numeric,
+    and at their most common level (the mode) if categorical. As in
+    :func:`effects_plot`, the predictors are the columns the formula names, the
+    range, means and levels come from the rows the model was fitted to, a term
+    computed from statistics of its rows is refused, and an offset or exposure
+    is held at its mean.
 
     Parameters
     ----------

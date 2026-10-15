@@ -83,6 +83,24 @@ def test_summary_bands_are_nested_and_ordered():
     assert abs(row["outer_high"] - 1.96) < 0.1
 
 
+def test_bands_are_equal_tailed_and_credited_to_ggdist():
+    # The docstrings credited the 66% and 95% pair to bayesplot and brms, whose
+    # defaults are 50% and 90%. The pair is ggdist's default .width, which the R
+    # twin draws with. Each band leaves the same share of the draws in either
+    # tail, which on a skewed sample is not the narrowest band of that mass.
+    import depictr.posterior as posterior
+
+    draws = np.arange(1, 1001, dtype=float) ** 2
+    row = posterior._summarise_draws({"x": draws}).iloc[0]
+    got = row[["outer_low", "inner_low", "inner_high", "outer_high"]]
+    np.testing.assert_allclose(got.to_numpy(dtype=float),
+                               np.quantile(draws, [0.025, 0.17, 0.83, 0.975]))
+    module = " ".join(posterior.__doc__.split())
+    assert "ggdist" in module
+    assert "bayesplot" not in module
+    assert "equal-tailed (quantile)" in " ".join(posterior_plot.__doc__.split())
+
+
 def test_frequentist_bayesian_plot_with_model(ols):
     rng = np.random.default_rng(3)
     params = ols.params
