@@ -245,8 +245,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `coefficient_plot()` and `compare_models()` label their terms for a reader,
   where they printed patsy's names. A factor's coefficient names its variable
   and level, so `treatment[T.enhanced]` is drawn as `treatment: enhanced`,
-  `rainfall:treatment[T.enhanced]` as `rainfall × treatment: enhanced` and the
-  web app's `Q("region")[T.North]` as `region: North`. For a formula fit, the
+  `rainfall:treatment[T.enhanced]` as `rainfall × treatment: enhanced` and a
+  quoted `Q("region")[T.North]` as `region: North`. For a formula fit, the
   levels are read from the model's design. The R twin labels its terms the
   same way, and the two test suites pin the same labels. Terms that take the
   same label share a row in `compare_models()`, and both functions drop
@@ -318,6 +318,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   two-level column other than its category and value. It used to fall back to
   any other category, or to the category itself, and so opened on a column the
   plot refuses on `crop_yield` and `wellbeing_survey`.
+- The web app's 'exact call' did not reproduce several figures. The model
+  panes referred to `data`, `smf` and `model`, which the call never defined,
+  and wrote the formula unquoted, so a model of `yield`, a Python keyword,
+  failed to parse. The estimation call left out its seed and the PCA call its
+  grouping, and the survival call carried a literal `group=...`, which raised
+  a `TypeError` when pasted. Each call is now written from the arguments the
+  plot receives, and a model pane shows the import and the fit before its
+  call. The fitted model quotes with `Q()` only the names that need it, such
+  as `yield`, where it quoted every name. A new test opens every pane but the
+  calibration curve, which no bundled dataset can score, runs the call it
+  shows and compares the figure with the app's, pixel for pixel.
 - `save_plot()` wrote files that journals reject. A PDF or EPS carried Type 3
   fonts, which Nature refuses. An EPS drew its translucent layers opaque, which
   matplotlib reported only in its log. A TIFF was uncompressed RGBA, 10.8 MiB at

@@ -11,6 +11,9 @@ Run with:  streamlit run app/streamlit_app.py
 from __future__ import annotations
 
 import io
+import json
+import keyword
+import unicodedata
 
 import matplotlib
 
@@ -39,6 +42,43 @@ def show(plot, code: str, deficiency: str):
     with right:
         st.caption("The exact call")
         st.code(code, language="python")
+
+
+class _Source:
+    """An argument whose value is passed to the plot and whose code is shown.
+
+    The data, its columns, a series and a fitted model are shown as the code
+    that makes them, such as ``dp.crop_yield()['yield']``, where any other
+    argument is shown as its repr.
+    """
+
+    def __init__(self, value, code: str):
+        self.value, self.code = value, code
+
+
+def _value(arg):
+    return arg.value if isinstance(arg, _Source) else arg
+
+
+def _code(arg):
+    return arg.code if isinstance(arg, _Source) else repr(arg)
+
+
+def draw(fn: str, *args, setup: str = "", **kwargs):
+    """Call ``dp.<fn>`` and show its figure beside the call that made it.
+
+    The call is written from the arguments the function receives, so the two
+    cannot drift apart. Each call used to be typed out beside its plot, and
+    several no longer matched it. The estimation call left out its seed and
+    the PCA call its grouping, and the survival call carried a literal
+    ``group=...``. ``setup`` holds any lines the call needs first, such as a
+    model fit.
+    """
+    plot = getattr(dp, fn)(*map(_value, args),
+                           **{name: _value(arg) for name, arg in kwargs.items()})
+    call = ", ".join([*map(_code, args),
+                      *(f"{name}={_code(arg)}" for name, arg in kwargs.items())])
+    show(plot, f"{setup}dp.{fn}({call})", deficiency)
 
 
 def _read_upload(upload):
@@ -156,6 +196,12 @@ binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # why, and the visitor met the misleading refusal.
 binary01_cols = [c for c in binary_cols
                  if set(pd.unique(data[c].dropna())) <= {0, 1}]
+DATA = _Source(data, data_call)
+
+
+def _column(name):
+    """A column of the data, shown as the code that selects it."""
+    return _Source(data[name], f"{data_call}[{name!r}]")
 
 
 def _opt(label, options):
@@ -164,12 +210,31 @@ def _opt(label, options):
     return None if choice == "(none)" else choice
 
 
+def _term(name):
+    """A column name as a formula term, quoted with Q() only where it must be.
+
+    patsy reads a bare name as Python, so a keyword (crop_yield's ``yield``)
+    or a name that is not an identifier (one with a space) must be quoted. A
+    name that NFKC normalisation changes must be quoted too, since Python
+    normalises identifiers when it compiles them, and a bare "ﬁeld" would look
+    up a column "field". Any other name stays bare, keeping the model's term
+    names and the call free of quoting. A JSON string is also a valid Python
+    string literal, escapes included, so ``json.dumps`` quotes any name safely.
+    """
+    if (name.isidentifier() and not keyword.iskeyword(name)
+            and unicodedata.normalize("NFKC", name) == name):
+        return name
+    return f"Q({json.dumps(name, ensure_ascii=False)})"
+
+
 def _fit_ols(outcome, predictors):
-    """Fit a quick OLS; Q() quotes names that are keywords or contain spaces."""
+    """A quick OLS fit, with the two lines of code that make it."""
     import statsmodels.formula.api as smf
 
-    rhs = " + ".join(f'Q("{p}")' for p in predictors)
-    return smf.ols(f'Q("{outcome}") ~ {rhs}', data).fit()
+    formula = f"{_term(outcome)} ~ {' + '.join(map(_term, predictors))}"
+    setup = ("import statsmodels.formula.api as smf\n"
+             f"model = smf.ols({formula!r}, {data_call}).fit()\n")
+    return _Source(smf.ols(formula, data).fit(), "model"), setup
 
 
 FAMILIES = {
@@ -195,32 +260,24 @@ try:
     if stage == "Distribution":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.explore_distribution(data, x, group=g, kind="both",
-                                     legend_inside=legend_in),
-             f"dp.explore_distribution({data_call}, {x!r}, group={g!r}, "
-             f"kind='both', legend_inside={legend_in})",
-             deficiency)
+        draw("explore_distribution", DATA, x, group=g, kind="both",
+             legend_inside=legend_in)
     elif stage == "Categorical":
         x = _choose("Category", cat_cols, NEEDS_GROUP)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.explore_categorical(data, x, group=g),
-             f"dp.explore_categorical({data_call}, {x!r}, group={g!r})", deficiency)
+        draw("explore_categorical", DATA, x, group=g)
     elif stage == "ECDF":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.ecdf_plot(data, x, group=g, legend_inside=legend_in),
-             f"dp.ecdf_plot({data_call}, {x!r}, group={g!r}, "
-             f"legend_inside={legend_in})", deficiency)
+        draw("ecdf_plot", DATA, x, group=g, legend_inside=legend_in)
     elif stage == "Ridgeline":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _choose("Group", cat_cols, NEEDS_GROUP)
-        show(dp.ridgeline_plot(data, x, g),
-             f"dp.ridgeline_plot({data_call}, {x!r}, {g!r})", deficiency)
+        draw("ridgeline_plot", DATA, x, g)
     elif stage == "Raincloud":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
-        show(dp.raincloud_plot(data, x, group=g),
-             f"dp.raincloud_plot({data_call}, {x!r}, group={g!r})", deficiency)
+        draw("raincloud_plot", DATA, x, group=g)
     elif stage == "Dumbbell":
         cat = _choose("Category", cat_cols, NEEDS_GROUP)
         val = _choose("Value", num_cols, NEEDS_NUMERIC)
@@ -232,52 +289,42 @@ try:
         g = _choose("Two-level group", [c for c in binary_cols if c not in (cat, val)],
                     "This plot needs a two-level column other than its category "
                     "and value, and this dataset has none.")
-        show(dp.dumbbell_plot(data, cat, val, g, legend_inside=legend_in),
-             f"dp.dumbbell_plot({data_call}, {cat!r}, {val!r}, {g!r}, "
-             f"legend_inside={legend_in})", deficiency)
+        draw("dumbbell_plot", DATA, cat, val, g, legend_inside=legend_in)
     elif stage == "Outliers":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
-        show(dp.outlier_plot(data, x),
-             f"dp.outlier_plot({data_call}, {x!r})", deficiency)
+        draw("outlier_plot", DATA, x)
     elif stage == "Group comparison":
         x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _choose("Group", cat_cols, NEEDS_GROUP)
-        show(dp.group_comparison_plot(data, x, g),
-             f"dp.group_comparison_plot({data_call}, {x!r}, {g!r})", deficiency)
+        draw("group_comparison_plot", DATA, x, g)
     elif stage == "Scatter + trend":
         x = _choose("x", num_cols, NEEDS_NUMERIC)
         y = _choose("y", [c for c in num_cols if c != x],
                     "This plot needs a second numeric column, and this dataset "
                     "has none.")
         g = _opt("Group (optional)", cat_cols)
-        show(dp.scatter_trend(data, x, y, group=g),
-             f"dp.scatter_trend({data_call}, {x!r}, {y!r}, group={g!r})", deficiency)
+        draw("scatter_trend", DATA, x, y, group=g)
     elif stage == "Correlation heatmap":
-        show(dp.correlation_heatmap(data),
-             f"dp.correlation_heatmap({data_call})", deficiency)
+        draw("correlation_heatmap", DATA)
     elif stage == "Pairs matrix":
         cols = st.multiselect("Numeric columns (2-5)", num_cols, default=num_cols[:4])
-        show(dp.explore_pairs(data, cols=cols or None),
-             f"dp.explore_pairs({data_call}, cols={cols!r})", deficiency)
+        draw("explore_pairs", DATA, cols=cols or None)
     elif stage == "Missingness map":
-        show(dp.missingness_map(data, legend_inside=legend_in),
-             f"dp.missingness_map({data_call}, legend_inside={legend_in})",
-             deficiency)
+        draw("missingness_map", DATA, legend_inside=legend_in)
     elif stage == "Estimation plot":
         y = _choose("Outcome", num_cols, NEEDS_NUMERIC)
         g = _choose("Group", cat_cols, NEEDS_GROUP)
         two = st.checkbox("Two-panel (Cumming)", value=True)
-        show(dp.estimation_plot(data, y, g, two_panel=two, seed=1),
-             f"dp.estimation_plot({data_call}, {y!r}, {g!r}, two_panel={two})",
-             deficiency)
-    elif stage in {"PCA biplot", "Scree", "Clusters", "Dendrogram", "Silhouette"}:
-        g = _opt("Colour by (optional)", cat_cols) if stage == "PCA biplot" else None
-        fn = {"PCA biplot": "pca_plot", "Scree": "scree_plot",
-              "Clusters": "cluster_plot", "Dendrogram": "dendrogram_plot",
-              "Silhouette": "silhouette_plot"}[stage]
-        plot = (dp.pca_plot(data, group=g) if stage == "PCA biplot"
-                else getattr(dp, fn)(data))
-        show(plot, f"dp.{fn}({data_call})", deficiency)
+        # The seed fixes the bootstrap and the jitter, so the call shown
+        # redraws this figure.
+        draw("estimation_plot", DATA, y, g, two_panel=two, seed=1)
+    elif stage == "PCA biplot":
+        g = _opt("Colour by (optional)", cat_cols)
+        draw("pca_plot", DATA, group=g)
+    elif stage in {"Scree", "Clusters", "Dendrogram", "Silhouette"}:
+        fn = {"Scree": "scree_plot", "Clusters": "cluster_plot",
+              "Dendrogram": "dendrogram_plot", "Silhouette": "silhouette_plot"}[stage]
+        draw(fn, DATA)
     elif stage in {"ROC curve", "PR curve", "Gains", "Lift", "Calibration",
                    "Threshold"}:
         target = _choose("Binary outcome (0/1)", binary01_cols,
@@ -287,16 +334,12 @@ try:
         fn = {"ROC curve": "roc_curve_plot", "PR curve": "pr_curve_plot",
               "Gains": "gain_plot", "Lift": "lift_plot",
               "Calibration": "calibration_plot", "Threshold": "threshold_plot"}[stage]
-        show(getattr(dp, fn)(data[target], data[score]),
-             f"dp.{fn}({data_call}[{target!r}], {data_call}[{score!r}])", deficiency)
+        draw(fn, _column(target), _column(score))
     elif stage == "Confusion matrix":
         needs = "This plot needs a two-level column, and this dataset has none."
         target = _choose("Binary outcome", binary_cols, needs)
         pred = _choose("Predicted label", binary_cols, needs)
-        show(dp.confusion_matrix_plot(data[target], data[pred], normalise="true"),
-             f"dp.confusion_matrix_plot({data_call}[{target!r}], "
-             f"{data_call}[{pred!r}], normalise='true')",
-             deficiency)
+        draw("confusion_matrix_plot", _column(target), _column(pred), normalise="true")
     elif stage == "Kaplan-Meier":
         # survival_plot reads the event under the 0/1 coding (0 = censored) or
         # the survival::Surv() 1/2 coding (1 = censored) and refuses any other,
@@ -321,14 +364,9 @@ try:
                      "coding, 1 = censored and 2 = event.")
             g = _opt("Group (optional)", cat_cols)
             rt = st.checkbox("Number-at-risk table", value=True)
-            gv = None if g is None else data[g]
-            show(dp.survival_plot(data[time], data[event], group=gv,
-                                  risk_table=rt, legend_inside=legend_in,
-                                  logrank=True),
-                 f"dp.survival_plot({data_call}[{time!r}], "
-                 f"{data_call}[{event!r}], group=..., risk_table={rt}, "
-                 f"legend_inside={legend_in}, logrank=True)",
-                 deficiency)
+            group = {} if g is None else {"group": _column(g)}
+            draw("survival_plot", _column(time), _column(event), **group,
+                 risk_table=rt, legend_inside=legend_in, logrank=True)
     elif family == "Time series":
         # None of the datasets offered here is temporal (monthly_sales, which
         # holds two series in long format, is not among them), so this family
@@ -349,7 +387,7 @@ try:
                 + np.random.default_rng(0).normal(0, 3, 120),
                 index=pd.period_range("2016-01", periods=120, freq="M"),
             )
-            series_call = "series"
+            series = _Source(series, "series")
             # The mirror must show how the demo series was built, or the
             # displayed call would not be reproducible.
             code_prefix = (
@@ -360,8 +398,7 @@ try:
                 "    index=pd.period_range('2016-01', periods=120, freq='M'))\n"
             )
         else:
-            series = data[pick]
-            series_call = f"{data_call}[{pick!r}]"
+            series = _column(pick)
             code_prefix = ""
         if stage == "Series":
             roll = st.checkbox(
@@ -369,14 +406,10 @@ try:
                 help="A window of one seasonal period smooths the season "
                      "away, leaving the trend.")
             window = 12 if roll else None
-            show(dp.timeseries_plot(series, rolling=window),
-                 code_prefix + f"dp.timeseries_plot({series_call}, "
-                 f"rolling={window})", deficiency)
+            draw("timeseries_plot", series, rolling=window, setup=code_prefix)
         elif stage == "ACF / PACF":
             kind = st.selectbox("Kind", ["acf", "pacf"])
-            show(dp.acf_plot(series, kind=kind),
-                 code_prefix + f"dp.acf_plot({series_call}, kind={kind!r})",
-                 deficiency)
+            draw("acf_plot", series, kind=kind, setup=code_prefix)
         else:
             # seasonal_plot and decompose_plot need the cycle length. The demo
             # series' monthly index would let it be inferred, but a plain data
@@ -385,9 +418,7 @@ try:
                                          value=12))
             fn = {"Seasonal plot (one line per cycle)": "seasonal_plot",
                   "Decomposition": "decompose_plot"}[stage]
-            show(getattr(dp, fn)(series, period=period),
-                 code_prefix + f"dp.{fn}({series_call}, period={period})",
-                 deficiency)
+            draw(fn, series, period=period, setup=code_prefix)
     elif family.startswith("Models"):
         outcome = _choose("Outcome (numeric)", num_cols, NEEDS_NUMERIC)
         # Identifiers are left out, as for the grouping choices: one dummy per
@@ -397,22 +428,19 @@ try:
         predictors = st.multiselect("Predictors", candidates,
                                     default=candidates[:2])
         if predictors:
-            model = _fit_ols(outcome, predictors)
-            rhs = " + ".join(predictors)
+            # Each model pane shows the import and the fit before its call, so
+            # the snippet runs as it stands.
+            model, fit_code = _fit_ols(outcome, predictors)
             if stage == "Coefficients":
-                show(dp.coefficient_plot(model),
-                     f"dp.coefficient_plot(smf.ols('{outcome} ~ {rhs}', data).fit())",
-                     deficiency)
+                draw("coefficient_plot", model, setup=fit_code)
             elif stage == "Residual diagnostics":
-                show(dp.residual_diagnostics_plot(model),
-                     "dp.residual_diagnostics_plot(model)", deficiency)
+                draw("residual_diagnostics_plot", model, setup=fit_code)
             elif stage == "Effect of a predictor":
                 var = _choose("Predictor to vary",
                               [p for p in predictors if p in num_cols],
                               "This plot varies a numeric predictor, and none of "
                               "the predictors chosen is numeric.")
-                show(dp.effects_plot(model, var),
-                     f"dp.effects_plot(model, {var!r})", deficiency)
+                draw("effects_plot", model, var, setup=fit_code)
         else:
             st.info("Choose at least one predictor.")
 except _NothingToOffer as why:

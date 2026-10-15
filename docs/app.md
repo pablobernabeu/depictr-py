@@ -17,6 +17,19 @@ cumulative distribution split by treatment.
 
 The call beside the figure is the point of the whole pane. Whatever you arrive
 at by clicking, you can paste into a script and get the same figure back.
+The app writes each call from the arguments it passes to the plot, so the two
+always agree. The calls assume `import depictr as dp`, and the demo time series
+also numpy as `np` and pandas as `pd`. A model pane shows the lines that fit the
+model before its call, so the snippet runs as it stands:
+
+```python
+import statsmodels.formula.api as smf
+model = smf.ols('Q("yield") ~ treatment + rainfall', dp.crop_yield()).fit()
+dp.coefficient_plot(model)
+```
+
+The formula quotes `yield` with `Q()` because it is a Python keyword, and
+leaves bare every name that needs no quoting.
 
 ## The colour-vision selector
 

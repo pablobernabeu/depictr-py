@@ -171,6 +171,25 @@ def test_a_pane_with_nothing_to_offer_says_what_it_needs(dataset, family, stage,
     assert not _images(at)
 
 
+def test_the_model_formula_quotes_only_the_names_that_need_it():
+    # Regression: the app quoted every name with Q(), against its own
+    # docstring, while the call it showed quoted none and so failed on a
+    # keyword. A name that is a keyword, is not an identifier, or is one only
+    # after Python's NFKC normalisation (the ligature in "ﬁeld" becomes "fi",
+    # naming a column that does not exist) is quoted, and any other left bare.
+    rows = "".join(f"{i * 1.5 + i % 3},{(i * 7) % 5 + 0.5},{(i * 3) % 7},{i ** 0.5:.3f}\n"
+                   for i in range(12))
+    at = _upload(("lambda,dose mg,ﬁeld,rate\n" + rows).encode("utf-8"))
+    _selectbox(at, "Family").select("Models (fits an OLS)").run()
+    predictors = next(m for m in at.multiselect if m.label == "Predictors")
+    predictors.set_value(["dose mg", "ﬁeld", "rate"]).run()
+    assert not at.exception
+    assert not at.error
+    assert len(_images(at)) == 1
+    assert ("""smf.ols('Q("lambda") ~ Q("dose mg") + Q("ﬁeld") + rate', """
+            "pd.read_csv(your_file)).fit()") in at.code[0].value
+
+
 def test_the_app_uses_the_width_api_its_streamlit_floor_provides():
     # use_container_width is deprecated, and Streamlit logs on every rerun that
     # it will be removed. Its replacement, width="stretch", reached st.image in

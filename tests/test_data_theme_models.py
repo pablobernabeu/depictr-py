@@ -493,10 +493,10 @@ def test_coefficient_plot_names_each_factor_level_as_in_r():
 
 
 def test_the_apps_quoted_formula_draws_no_formula_syntax():
-    # The web app quotes every name with Q("...") (_fit_ols in
+    # The web app used to quote every name with Q("...") (_fit_ols in
     # app/streamlit_app.py), and its forest showed Q("region")[T.North] and
-    # Q("stress"). The R twin's test-coefficient_plot.R pins the same labels
-    # for this model.
+    # Q("stress"). It still quotes a keyword such as yield. The R twin's
+    # test-coefficient_plot.R pins the same labels for this model.
     smf = pytest.importorskip("statsmodels.formula.api")
     fit = smf.ols('Q("life_satisfaction") ~ Q("region") + Q("stress")',
                   wellbeing_survey()).fit()
