@@ -187,7 +187,10 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     value : str
         The numeric column plotted along the x-axis.
     group : str
-        A two-level grouping column; its levels are the two points.
+        A two-level grouping column; its levels are the two points. They are
+        taken in a categorical's declared order, and otherwise sorted, as in
+        the R twin. The first level is the start of each segment, orders the
+        categories and takes the first colour of the palette.
     legend_inside : bool
         When ``True``, place the two-group legend in the top-right of the panel
         rather than in a right-hand margin.
@@ -212,7 +215,16 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     if category == group:
         raise ValueError("`category` and `group` must be different columns.")
 
-    levels = list(pd.unique(data[group].dropna()))
+    # The two levels are the two ends of every segment. The first of them
+    # orders the categories, and each takes its colour in turn. They are taken
+    # as the R twin takes them, over the rows that are drawn: a categorical's
+    # declared order, and otherwise sorted. Taking them in order of first
+    # appearance let the row order of the input rearrange the figure.
+    drawn = data.loc[data[[category, value, group]].notna().all(axis=1), group]
+    codes = (drawn.cat.remove_unused_categories()
+             if isinstance(drawn.dtype, pd.CategoricalDtype)
+             else drawn.astype("category"))
+    levels = list(codes.cat.categories)
     if len(levels) != 2:
         raise ValueError(
             f"`dumbbell_plot` needs exactly two levels in {group!r}; "
@@ -232,6 +244,7 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
 
     long = wide.melt(id_vars=category, value_vars=levels,
                      var_name=group, value_name=value)
+    long[group] = pd.Categorical(long[group], categories=levels)
 
     p = (
         ggplot(wide, aes(y=category))

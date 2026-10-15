@@ -80,6 +80,55 @@ def test_dumbbell_plot_rejects_same_category_and_group():
         dumbbell_plot(LD, "condition", "RT", "condition")
 
 
+def _dumbbell_order(p):
+    """The two segment ends, the category order and each level's point colour.
+
+    A drawn point is matched to its level through the value it sits at, read
+    from the one-row-per-category table the segments are drawn from.
+    """
+    category = p.mapping["y"]
+    mapping = p.layers[0].mapping
+    ends = (mapping["x"], mapping["xend"])
+    categories = list(p.data[category].cat.categories)
+    wide = p.data.set_index(category)
+    built = copy.deepcopy(p)
+    built._build()
+    colours = {}
+    for _, point in built.layers[1].data.iterrows():
+        row = categories[int(round(point["y"])) - 1]
+        for level in ends:
+            if np.isclose(wide.loc[row, level], point["x"]):
+                colours.setdefault(level, set()).add(point["color"])
+    assert all(len(found) == 1 for found in colours.values())
+    return ends, categories, {k: found.pop() for k, found in colours.items()}
+
+
+def test_dumbbell_plot_orders_its_levels_as_r_does_not_by_first_row():
+    # The two levels are the two ends of every segment, and the first of them
+    # orders the categories. They were taken in order of first appearance, so
+    # moving one row to the top reordered the whole figure. As in the R twin,
+    # a categorical keeps its declared order and anything else is sorted.
+    wb = WB.assign(age_group=np.where(WB["age"] < 50, "under 50", "50 or over"))
+    first_other = wb.index[wb["age_group"] != wb["age_group"].iloc[0]][0]
+    moved = pd.concat([wb.loc[[first_other]], wb.drop(index=first_other)])
+    a = _dumbbell_order(dumbbell_plot(wb, "region", "life_satisfaction",
+                                      "age_group"))
+    b = _dumbbell_order(dumbbell_plot(moved, "region", "life_satisfaction",
+                                      "age_group"))
+    assert a[0] == ("50 or over", "under 50")
+    assert a == b
+    # The first level takes the first colour, the brand blue, as in R.
+    assert a[2]["50 or over"] == dp.depictr_palette(2)[0]
+
+    declared = wb.assign(age_group=pd.Categorical(
+        wb["age_group"], categories=["under 50", "50 or over", "unused"]))
+    c = _dumbbell_order(dumbbell_plot(declared, "region", "life_satisfaction",
+                                      "age_group"))
+    assert c[0] == ("under 50", "50 or over")
+    assert c[2] == {"under 50": dp.depictr_palette(2)[0],
+                    "50 or over": dp.depictr_palette(2)[1]}
+
+
 def test_outlier_plot():
     assert _builds(outlier_plot(WB, "income"))
     assert _builds(outlier_plot(LD, "RT"))

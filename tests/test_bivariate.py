@@ -68,6 +68,22 @@ def test_explore_bivariate_categorical_categorical():
     assert _builds(explore_bivariate(LD, "condition", "modality"))
 
 
+def test_explore_bivariate_reads_a_boolean_column_as_a_category():
+    # pandas counts a boolean column as numeric, so it was drawn as a scatter
+    # with a regression line through 0 and 1. The R twin's is.numeric() is
+    # FALSE for a logical vector, which takes the box plots instead.
+    df = LD.assign(fast=LD["RT"] < LD["RT"].median())
+    for x, y in (("fast", "RT"), ("RT", "fast")):
+        p = explore_bivariate(df, x, y)
+        assert [type(layer.geom).__name__ for layer in p.layers] == [
+            "geom_boxplot", "geom_jitter"]
+        assert _builds(p)
+    # Two booleans meet in the tile of joint counts.
+    q = explore_bivariate(df.assign(slow=~df["fast"]), "fast", "slow")
+    assert [type(layer.geom).__name__ for layer in q.layers] == ["geom_tile"]
+    assert _builds(q)
+
+
 def test_explore_bivariate_bad_column():
     with pytest.raises(KeyError):
         explore_bivariate(CY, "fertiliser", "not_a_column")

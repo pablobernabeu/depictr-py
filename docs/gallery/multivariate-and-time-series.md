@@ -97,13 +97,20 @@ print(show(p))
 
 ## Autocorrelation
 
-The autocorrelation and partial autocorrelation functions, with an approximate
-95% band. The spikes at multiples of twelve are the seasonality.
+The autocorrelation function, with an approximate 95% band. The trend keeps the
+correlations high at short lags, and the season rides on their slow decay as a
+wave. It dips near lag six, where the series is half a cycle out of step with
+itself. It peaks again at lag twelve, the only multiple of the period within the
+default range of lags.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.acf_plot(series)
 print(show(p))
 ```
+
+The partial autocorrelation function, which leaves out what the shorter lags
+already explain. Lag one carries most of the dependence, and the value at lag
+twelve lies well inside the band.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.acf_plot(series, kind="pacf")

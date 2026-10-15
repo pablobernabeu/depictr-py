@@ -335,6 +335,10 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         is_intercept = est["term"].str.fullmatch(_INTERCEPT_PATTERN)
         intercept_dropped = bool(is_intercept.any())
         est = est[~is_intercept]
+    # Dropping the only term, the intercept of an intercept-only model, left a
+    # themed but empty panel. The R twin's check and message.
+    if est.empty:
+        raise ValueError("No terms left to plot (did you drop the only term?).")
     # A list is read in model order, so it is attached to the rows before they
     # are sorted, and each label travels with its own term.
     if isinstance(labels, (list, tuple)):

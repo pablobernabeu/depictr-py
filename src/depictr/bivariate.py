@@ -8,7 +8,7 @@ plot from the column types so you do not have to.
 
 from __future__ import annotations
 
-from pandas.api.types import is_timedelta64_dtype
+from pandas.api.types import is_bool_dtype, is_timedelta64_dtype
 from plotnine import (
     aes,
     geom_boxplot,
@@ -104,7 +104,8 @@ def explore_bivariate(data, x, y, title=None):
 
     Datetime and timedelta columns count as numeric, so against a numeric
     column they give a scatter plot with a trend, and against a categorical one
-    boxplots of their values across the categories. A duration is drawn as a
+    boxplots of their values across the categories. A boolean column counts as
+    categorical, as a logical vector does in the R twin. A duration is drawn as a
     number in the unit :func:`summary_table` reports it in, named in the axis
     title, as in ``stay (days)``. The R twin draws a ``difftime`` the same way,
     in its own units.
@@ -133,9 +134,11 @@ def explore_bivariate(data, x, y, title=None):
             raise KeyError(f"{col!r} is not a column of `data`.")
 
     # A datetime or timedelta column is not numeric to pandas, so it was taken
-    # for a category, and drawing boxes over it raised a TypeError.
-    x_num = _is_continuous(data[x])
-    y_num = _is_continuous(data[y])
+    # for a category, and drawing boxes over it raised a TypeError. A boolean
+    # column is numeric to pandas, so it was drawn as a scatter through 0 and
+    # 1, where the R twin's is.numeric() takes a logical column for a category.
+    x_num = _is_continuous(data[x]) and not is_bool_dtype(data[x])
+    y_num = _is_continuous(data[y]) and not is_bool_dtype(data[y])
     data, axis_title = _durations_as_numbers(data, (x, y))
 
     if x_num and y_num:

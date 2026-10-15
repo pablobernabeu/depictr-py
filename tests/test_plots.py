@@ -82,9 +82,53 @@ def test_na_group_level_draws():
     assert _builds(p)
 
 
+def test_explore_distribution_refuses_what_it_cannot_draw():
+    # An unknown kind, such as the abbreviation "hist", matched neither layer
+    # and left an empty panel, and a text column was drawn as a density of its
+    # category codes. The R twin refuses both.
+    with pytest.raises(ValueError, match=re.escape(
+            "`kind` must be 'density', 'histogram' or 'both'.")):
+        dp.explore_distribution(LD, "RT", kind="hist")
+    for column in ("condition", "accuracy_bool"):
+        frame = LD.assign(accuracy_bool=LD["accuracy"] == 1)
+        with pytest.raises(TypeError, match=re.escape(
+                "`x` must be a numeric variable.")):
+            dp.explore_distribution(frame, column)
+
+
 def test_explore_categorical():
     assert _builds(dp.explore_categorical(WB, "education", group="region"))
     assert _builds(dp.explore_categorical(WB, "region"))
+
+
+def test_explore_categorical_keeps_every_bar_in_its_dodge_slot():
+    # Category c is never observed in G2, so its G1 bar was the only one at c,
+    # took the whole width of the category and read as an ungrouped total. The
+    # empty cell is now a bar of height zero, as the R twin's table() gives it.
+    df = pd.DataFrame({"cat": ["a"] * 3 + ["b"] * 3 + ["c"] * 2,
+                       "grp": ["G1", "G2", "G2", "G1", "G2", "G2", "G1", "G1"]})
+    for proportion in (False, True):
+        built = copy.deepcopy(dp.explore_categorical(df, "cat", group="grp",
+                                                     proportion=proportion))
+        built._build()
+        bars = built.layers[0].data
+        assert len(bars) == 6
+        assert (bars["xmax"] - bars["xmin"]).round(9).nunique() == 1
+        assert (bars["y"] == 0).sum() == 1
+
+
+def test_explore_categorical_refuses_a_continuous_or_unknown_column():
+    # A continuous column was drawn as one bar per distinct value, and an
+    # unknown one returned a plot that failed only when drawn. The R twin
+    # refuses both, the first in these words.
+    with pytest.raises(ValueError, match=re.escape(
+            "`x` (income) is numeric with")):
+        dp.explore_categorical(WB, "income")
+    with pytest.raises(KeyError, match="is not a column of"):
+        dp.explore_categorical(WB, "not_a_column")
+    # A numeric coding with few values is a category, not a measurement.
+    likert = pd.DataFrame({"agreement": [1, 2, 3, 4, 5] * 4})
+    assert _builds(dp.explore_categorical(likert, "agreement"))
 
 
 def test_correlation_heatmap_and_missingness():
@@ -114,6 +158,18 @@ def test_correlation_heatmap_handles_an_undefined_correlation():
                            "y": [np.nan, np.nan, 3.0, 7.0]})
     q = dp.correlation_heatmap(sparse)
     assert "n/a" in set(q.data["label"])
+
+
+def test_correlation_heatmap_needs_two_columns_to_correlate():
+    # One column, named or left after the zero-variance drop, was drawn as a
+    # single tile labelled 1.00. The R twin refuses it, in these words.
+    message = re.escape("Need at least two numeric columns to compute correlations.")
+    with pytest.raises(ValueError, match=message):
+        dp.correlation_heatmap(WB, cols=["age"])
+    flat = pd.DataFrame({"a": [1.0, 2, 3], "b": [5.0, 5, 5]})
+    with pytest.warns(UserWarning, match="zero-variance"), \
+            pytest.raises(ValueError, match=message):
+        dp.correlation_heatmap(flat)
 
 
 def test_correlation_heatmap_labels_are_legible_on_their_tiles():
@@ -246,6 +302,44 @@ def test_confusion_matrix_counts_are_legible_on_their_tiles():
     count = cells["label"].astype(float)
     assert cells.loc[count.idxmax(), "colour"] == "#ffffff"
     assert cells.loc[count.idxmin(), "colour"] == "#000000"
+
+
+def test_classification_curves_read_a_two_category_outcome_as_r_does():
+    # The R twin reads a two-level factor as 0/1, its second level the positive
+    # class. Here the values equal to 1 were counted, so a categorical had no
+    # positives and met the single-class refusal, which named the wrong problem.
+    # A 1/2 coding was read with 1 as the positive class and 2 as a negative in
+    # gains and lift, and as neither class in the threshold sweep.
+    pytest.importorskip("sklearn")
+    y = CT["adverse_event"]
+    prob = 1 / (1 + np.exp(-CT["biomarker"]))
+    curves = (dp.roc_curve_plot, dp.pr_curve_plot, dp.gain_plot, dp.lift_plot,
+              dp.threshold_plot, dp.calibration_plot)
+    words = np.where(y == 1, "yes", "no")
+    outcome = pd.Series(pd.Categorical(words, categories=["no", "yes"]))
+    for fn in curves:
+        pd.testing.assert_frame_equal(fn(outcome, prob).data, fn(y, prob).data)
+    # The declared order names the positive class, whatever the alphabet says.
+    reverse = pd.Categorical(words, categories=["yes", "no"])
+    pd.testing.assert_frame_equal(dp.gain_plot(reverse, prob).data,
+                                  dp.gain_plot(1 - y, prob).data)
+
+    rng = np.random.default_rng(0)
+    three = pd.Series(pd.Categorical(["a", "b", "c"] * 5))
+    with pytest.raises(ValueError, match=re.escape(
+            "The outcome categorical has 3 categories; a binary outcome must "
+            "have exactly two. Categories: a, b, c.")):
+        dp.roc_curve_plot(three, rng.random(15))
+    # Text, as in the R twin, and any coding but 0/1 are refused in one message.
+    for bad in (words, np.where(y == 1, 2, 1), np.where(y == 1, 1, -1)):
+        for fn in curves:
+            with pytest.raises(ValueError,
+                               match="`y_true` must hold outcomes coded 0/1"):
+                fn(bad, prob)
+    # A categorical whose positive category goes unobserved is single-class.
+    with pytest.raises(ValueError, match="ROC needs both positive"):
+        dp.roc_curve_plot(pd.Categorical(["no"] * 20, categories=["no", "yes"]),
+                          rng.random(20))
 
 
 def test_gain_and_lift_refuse_a_single_class_outcome():

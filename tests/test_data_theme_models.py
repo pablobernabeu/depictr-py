@@ -309,6 +309,17 @@ def test_coefficient_plot_from_fitted_model():
     p.draw(show=False)  # builds without error
 
 
+def test_coefficient_plot_refuses_a_model_with_no_terms_left():
+    # Dropping the intercept of an intercept-only model left a themed but empty
+    # panel. The R twin says that nothing is left, in these words.
+    sm = pytest.importorskip("statsmodels.formula.api")
+    fit = sm.ols('Q("yield") ~ 1', DATASETS["crop_yield"]()).fit()
+    with pytest.raises(ValueError, match=re.escape(
+            "No terms left to plot (did you drop the only term?).")):
+        coefficient_plot(fit)
+    coefficient_plot(fit, intercept=True).draw(show=False)
+
+
 def test_coefficient_plot_order_increases_up_the_axis_as_in_r():
     # Regression: "ascending" and "descending" were drawn the opposite way round
     # from the docstring and from the R twin. plotnine, like ggplot2, draws the

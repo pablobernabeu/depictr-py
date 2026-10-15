@@ -187,10 +187,11 @@ cat_cols = [c for c in data.columns
             if c not in num_cols and 2 <= data[c].nunique() <= 12]
 binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # The ROC/PR/gain/lift/calibration/threshold family does arithmetic on y_true
-# (a cumulative sum, for one), so it needs a column coded 0/1. Any other
-# two-level column counts no positives and meets the single-class refusal,
-# whose wording describes the wrong problem. confusion_matrix_plot carries no
-# such constraint and keeps the wider list. When no column is coded 0/1, the
+# (a cumulative sum, for one), so it reads the outcome as 0/1. Text is refused,
+# and a categorical with two categories is read with its last category as the
+# positive class, which the pane would have to say, so only the columns coded
+# 0/1 are offered. confusion_matrix_plot carries no such constraint and keeps
+# the wider list. When no column is coded 0/1, the
 # pane says so through _choose(). The wider list used to be offered in that
 # case, since an empty selectbox left the family unreachable with no word of
 # why, and the visitor met the misleading refusal.

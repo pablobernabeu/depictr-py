@@ -63,18 +63,61 @@ def _positive_count(y_true, message) -> int:
     annotations would then print as if they measured something. The R twin
     words the error per curve, so each caller passes its own ``message``.
 
-    The count is of values equal to 1, so booleans work and anything else does
-    not. A two-level outcome coded some other way, ``"yes"``/``"no"`` say, has
-    no positives by this test and meets the single-class refusal, whose wording
-    then describes the wrong problem. The R twin coerces a logical or a
-    two-level factor to 0/1 before counting, and this one has no equivalent, so
-    the documented contract on every caller is 0/1.
+    The count is of values equal to 1, so the outcome is first read as 0/1 by
+    :func:`_binary_outcome`.
     """
     y_true = np.asarray(y_true)
     n_pos = int(np.sum(y_true == 1))
     if n_pos == 0 or n_pos == len(y_true):
         raise ValueError(message)
     return n_pos
+
+
+def _binary_outcome(y_true) -> np.ndarray:
+    """An outcome read as 0/1, as the R twin's ``as_binary()`` reads it.
+
+    Booleans become 0 and 1. A categorical, the counterpart of R's factor,
+    must have at most two categories, and its last declared category is the
+    positive class, the convention ``as_binary()`` follows. Anything else must
+    already be coded 0/1, as numbers or as their text, so a 1/2 or -1/1 coding
+    and text such as ``"yes"``/``"no"`` are refused, as R refuses them. Each
+    curve counted the values equal to 1, so a categorical had no positives and
+    met the single-class refusal, and a 1/2 coding was read with 1 as the
+    positive class. A missing value stays missing, for the caller to refuse.
+
+    Returns
+    -------
+    numpy.ndarray
+        Integers when no value is missing, and floats with NaN otherwise.
+    """
+    if isinstance(y_true, pd.Series):
+        values = y_true.reset_index(drop=True)
+    elif isinstance(y_true, pd.Categorical):
+        values = pd.Series(y_true)
+    else:
+        values = pd.Series(np.asarray(y_true).ravel())
+    missing = values.isna()
+    if isinstance(values.dtype, pd.CategoricalDtype):
+        categories = list(values.cat.categories)
+        if len(categories) > 2:
+            raise ValueError(
+                f"The outcome categorical has {len(categories)} categories; a "
+                "binary outcome must have exactly two. Categories: "
+                f"{', '.join(str(c) for c in categories)}."
+            )
+        coded = ((values == categories[-1]) if categories
+                 else pd.Series(False, index=values.index))
+    elif pd.api.types.is_bool_dtype(values):
+        coded = values
+    else:
+        coded = pd.to_numeric(values, errors="coerce")
+        if not (coded.isin([0, 1]) | missing).all():
+            raise ValueError(
+                "`y_true` must hold outcomes coded 0/1, as booleans or as a "
+                "categorical with two categories."
+            )
+    coded = coded.astype(float).mask(missing)
+    return coded.to_numpy() if missing.any() else coded.astype(int).to_numpy()
 
 
 def _outcome_and_score(y_true, y_score):
@@ -110,7 +153,7 @@ def _gain_table(y_true, y_score):
         The population and captured shares, one point per distinct score after
         the origin.
     """
-    y_true, y_score = _outcome_and_score(y_true, y_score)
+    y_true, y_score = _outcome_and_score(_binary_outcome(y_true), y_score)
     # A missing outcome would count as a negative, and each missing score would
     # sort last as a run of its own, in the order of its row. The curves that
     # scikit-learn computes and calibration_plot() refuse missing values too
@@ -190,9 +233,10 @@ def roc_curve_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1). Both classes must be present: with only one,
-        the true or false positive rate has no denominator and the AUC is
-        undefined.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Both classes must be present: with only one, the true or false
+        positive rate has no denominator and the AUC is undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -210,6 +254,7 @@ def roc_curve_plot(y_true, y_score, title=None):
     >>> p = dp.roc_curve_plot(ct["adverse_event"], score)
     """
     m = _require_sklearn()
+    y_true = _binary_outcome(y_true)
     _positive_count(y_true, "ROC needs both positive and negative outcomes.")
     fpr, tpr, _ = m.roc_curve(y_true, y_score)
     auc = m.auc(fpr, tpr)
@@ -235,9 +280,10 @@ def pr_curve_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1). Both classes must be present: with only one,
-        precision or recall has no denominator and the average precision is
-        undefined.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Both classes must be present: with only one, precision or recall
+        has no denominator and the average precision is undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -255,6 +301,7 @@ def pr_curve_plot(y_true, y_score, title=None):
     >>> p = dp.pr_curve_plot(ct["adverse_event"], score)
     """
     m = _require_sklearn()
+    y_true = _binary_outcome(y_true)
     _positive_count(y_true,
                     "Precision-recall needs both positive and negative outcomes.")
     precision, recall, _ = m.precision_recall_curve(y_true, y_score)
@@ -346,8 +393,9 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes coded 0/1 (booleans work too). Any other value, a
-        missing one included, raises ``ValueError``.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Any other value, a missing one included, raises ``ValueError``.
     y_score : array-like
         Predicted probabilities from a fitted model, on the probability scale.
         Unlike the ROC and gains charts, which only rank cases, a reliability
@@ -414,7 +462,7 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
         raise ValueError('`strategy` must be "quantile" or "uniform".')
     _check_conf_level(conf_level, allow_none=True)
 
-    y_true, y_score = _outcome_and_score(y_true, y_score)
+    y_true, y_score = _outcome_and_score(_binary_outcome(y_true), y_score)
     try:
         y = y_true.astype(float)
     except (TypeError, ValueError):
@@ -470,9 +518,11 @@ def gain_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1). Both classes must be present: with no positives
-        the share captured has no denominator, and with no negatives every depth
-        captures everything. A missing outcome raises ``ValueError``.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Both classes must be present: with no positives the share
+        captured has no denominator, and with no negatives every depth captures
+        everything. A missing outcome raises ``ValueError``.
     y_score : array-like
         Predicted scores or probabilities for the positive class, one per
         outcome. Only the ranking matters, so any monotone score works. A
@@ -524,9 +574,11 @@ def lift_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1). Both classes must be present: lift is a ratio to
-        the baseline positive rate, which is zero with no positives and one at
-        every depth with no negatives. A missing outcome raises ``ValueError``.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Both classes must be present: lift is a ratio to the baseline
+        positive rate, which is zero with no positives and one at every depth
+        with no negatives. A missing outcome raises ``ValueError``.
     y_score : array-like
         Predicted scores or probabilities for the positive class, one per
         outcome. Only the ranking matters, so any monotone score works. A
@@ -597,9 +649,11 @@ def threshold_plot(y_true, y_score, title=None):
     Parameters
     ----------
     y_true : array-like
-        Binary outcomes (0/1). Both classes must be present: with only one,
-        sensitivity or specificity has no denominator at any threshold. A
-        missing outcome raises ``ValueError``.
+        Binary outcomes, coded 0/1, as booleans or as a categorical with two
+        categories, whose last category is the positive class, as in the R
+        twin. Both classes must be present: with only one, sensitivity or
+        specificity has no denominator at any threshold. A missing outcome
+        raises ``ValueError``.
     y_score : array-like
         Predicted scores or probabilities for the positive class, one per
         outcome. A missing score raises ``ValueError``.
@@ -618,7 +672,7 @@ def threshold_plot(y_true, y_score, title=None):
     >>> p = dp.threshold_plot(ct["adverse_event"], score)
     """
     _require_sklearn()
-    y_true, y_score = _outcome_and_score(y_true, y_score)
+    y_true, y_score = _outcome_and_score(_binary_outcome(y_true), y_score)
     # A missing score would rank as a run of its own and a missing outcome
     # would count as neither class, so the cumulative counts need both.
     for name, values in (("y_true", y_true), ("y_score", y_score)):

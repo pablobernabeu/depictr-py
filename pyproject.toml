@@ -101,6 +101,19 @@ exclude = [
     "/images/**",  # README plots, served from GitHub raw, not needed in the package
 ]
 
+# overrides/partials/header.html is a fork of mkdocs-material's own partial.
+# The docs extra sets no ceiling, so a deploy installs the latest release, and
+# `mkdocs build --strict` cannot tell that the template has fallen behind the
+# upstream file. The docs workflow hashes the installed partial and compares it
+# with the hash recorded here, of the partial the fork was taken from. A
+# release that leaves the template alone passes, and one that rewrites it
+# fails the deploy until the fork is redone. The record lives here because
+# MkDocs copies any unrecognised file in the theme directory into the
+# published site. scopusflow-py keeps the same record for its fork.
+[tool.depictr.mkdocs-material-fork]
+version = "9.7.6"
+partials_header_sha256 = "8cf3fb15bcf969ff596649616fd99366b3c31c08d57a86d05308efc16d8fa75f"
+
 [tool.pytest.ini_options]
 # The Examples section of every public docstring is a real doctest and is
 # collected with the suite, so a documented call cannot drift out of step with

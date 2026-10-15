@@ -11,7 +11,7 @@ import numbers
 import warnings
 
 import pandas as pd
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_bool_dtype, is_numeric_dtype
 from plotnine import (
     aes,
     after_stat,
@@ -33,7 +33,7 @@ from plotnine import (
     theme,
 )
 
-from ._groups import _group_scales, _prepare_group
+from ._groups import _MAX_NUMERIC_GROUPS, _group_scales, _prepare_group
 from .audit import _legible_text_colour
 from .palette import ACCENT, BRAND, depictr_palette
 from .theme import (
@@ -65,14 +65,15 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     data : pandas.DataFrame
         The data.
     x : str
-        Name of the numeric column to display.
+        Name of the numeric column to display. Any other column, a boolean one
+        included, raises ``TypeError``, as in the R twin.
     group : str, optional
         A grouping column mapped to colour/fill. A numeric code counts as a
         group, but a numeric column with more than 20 distinct values raises
         ``ValueError``. Rows with a missing group are dropped with a warning,
         and categories without rows are left out of the plot and its palette.
     kind : {"density", "histogram", "both"}
-        What to draw.
+        What to draw. Any other value raises ``ValueError``.
     bins : int
         Number of histogram bins.
     alpha : float, optional
@@ -101,6 +102,13 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
+    # An unknown kind matched neither layer and left an empty panel, and a text
+    # column was drawn as a density of its category codes. The R twin refuses
+    # both, and its is.numeric() is FALSE for a logical column.
+    if kind not in ("density", "histogram", "both"):
+        raise ValueError("`kind` must be 'density', 'histogram' or 'both'.")
+    if not is_numeric_dtype(data[x]) or is_bool_dtype(data[x]):
+        raise TypeError("`x` must be a numeric variable.")
     # The grouped density's light default is kept apart from the 0.6 of every
     # other fill, so that an explicit alpha reaches it too. It was fixed at 0.2.
     density_alpha = 0.2 if alpha is None else alpha
@@ -160,13 +168,17 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     ----------
     data : pandas.DataFrame
     x : str
-        The categorical column.
+        The categorical column. A numeric column is accepted only when it has
+        at most 20 distinct values, such as a 0/1 coding or a Likert item. A
+        continuous one would be drawn as one bar per value, so it raises
+        ``ValueError``, as in the R twin.
     group : str, optional
         A second categorical column mapped to fill, drawn side by side. A
         numeric code counts as a group, but a numeric column with more than 20
         distinct values raises ``ValueError``. Rows with a missing group are
         dropped with a warning, and categories without rows are left out of
-        the plot and its palette.
+        the plot and its palette. A category that a group never takes is drawn
+        as a bar of height zero, so every bar keeps its own slot.
     proportion : bool
         Show proportions within each group rather than raw counts.
     title : str, optional
@@ -181,12 +193,35 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
     >>> wb = dp.wellbeing_survey()
     >>> p = dp.explore_categorical(wb, "education", group="region")
     """
+    if x not in data.columns:
+        raise KeyError(f"{x!r} is not a column of `data`.")
+    # A continuous column would be drawn as one bar per distinct value. A
+    # numeric column with a handful of values is a coding, and the R twin draws
+    # it, with the threshold _prepare_group() also applies to a group.
+    if is_numeric_dtype(data[x]) and not is_bool_dtype(data[x]):
+        n_distinct = int(data[x].dropna().nunique())
+        if n_distinct > _MAX_NUMERIC_GROUPS:
+            raise ValueError(
+                f"`x` ({x}) is numeric with {n_distinct} distinct values; it "
+                "looks continuous, not categorical. Use "
+                "`explore_distribution()` instead, or convert it to a "
+                "categorical first."
+            )
     if group:
         # Rows missing x are not counted, so they are left out before the
         # groups are formed, and the levels are those of the rows counted.
-        data, _, palette = _prepare_group(data.dropna(subset=[x]), group)
-        counts = (data.groupby([group, x], observed=True).size()
-                  .rename("n").reset_index())
+        data, levels, palette = _prepare_group(data.dropna(subset=[x]), group)
+        counts = data.groupby([group, x], observed=True).size().rename("n")
+        # A category that a group never takes has no row, and plotnine then
+        # gives the other group's bar the whole width of the category, where it
+        # reads as a total. Each such cell is counted as zero, as the R twin's
+        # table() counts it, so every bar keeps its own slot.
+        cells = pd.MultiIndex.from_product(
+            [levels, counts.index.get_level_values(x).unique()],
+            names=[group, x])
+        counts = counts.reindex(cells, fill_value=0).reset_index()
+        counts[group] = pd.Categorical(counts[group], categories=levels)
+        counts[x] = counts[x].astype(data[x].dtype)
         if proportion:
             group_total = counts.groupby(group, observed=True)["n"].transform("sum")
             counts["value"] = counts["n"] / group_total
@@ -215,7 +250,8 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
     cols : list of str, optional
         Columns to include; defaults to all numeric columns. A named column
         that is not numeric or boolean, such as text or a datetime, raises
-        ``TypeError``.
+        ``TypeError``, and fewer than two columns left once the zero-variance
+        ones are dropped raise ``ValueError``.
     method : {"pearson", "spearman", "kendall"}
         The correlation coefficient, computed by
         :meth:`pandas.DataFrame.corr` over the pairwise-complete
@@ -272,6 +308,10 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
             stacklevel=2,
         )
         num = num.drop(columns=const)
+    # A single column was drawn as one tile labelled 1.00. The R twin's check
+    # and message.
+    if num.shape[1] < 2:
+        raise ValueError("Need at least two numeric columns to compute correlations.")
     corr = num.corr(method=method)
     order = list(corr.columns)
     long = corr.reset_index().melt(id_vars="index", var_name="var2",

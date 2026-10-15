@@ -232,7 +232,7 @@
   background-color: var(--brand-primary);
   color: #fff;
 }
-/* In dark mode the deep teal is too dark on the navy page (~2.9:1); use the
+/* In dark mode the deep teal is too dark on the navy page (~2.4:1); use the
    lighter teal for the outline button's text and border. */
 [data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
   color: var(--brand-teal-light);

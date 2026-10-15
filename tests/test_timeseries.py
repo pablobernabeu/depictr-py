@@ -33,6 +33,28 @@ def _builds(p):
     return True
 
 
+def test_the_gallery_describes_the_autocorrelations_it_draws():
+    # docs/gallery/multivariate-and-time-series.md described spikes at the
+    # multiples of twelve in both functions. The default lags reach one
+    # multiple, where the autocorrelation peaks on a slow decay, and the
+    # partial autocorrelation there lies inside the band. The page now says
+    # so, and this holds it to the series the page draws.
+    pytest.importorskip("statsmodels")
+    rng = np.random.default_rng(0)
+    t = np.arange(120)
+    series = pd.Series(
+        50 + 0.3 * t + 10 * np.sin(2 * np.pi * t / 12) + rng.normal(0, 3, 120),
+        index=pd.period_range("2016-01", periods=120, freq="M"),
+    )
+    acf = ts.acf_plot(series).data.set_index("lag")["value"]
+    assert [lag for lag in acf.index if lag % 12 == 0] == [12]
+    assert acf[6] < min(acf[5], acf[7])
+    assert acf[12] > max(acf[11], acf[13])
+    pacf = ts.acf_plot(series, kind="pacf").data.set_index("lag")["value"]
+    assert pacf[1] == pacf.abs().max()
+    assert abs(pacf[12]) < 1.96 / np.sqrt(len(series)) / 2
+
+
 def test_acf_plot_kinds():
     pytest.importorskip("statsmodels")
     assert _builds(ts.acf_plot(S, kind="acf"))

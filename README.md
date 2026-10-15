@@ -198,7 +198,7 @@ The exported functions fall into families that follow the stages of an analysis.
 
 | Family | Functions |
 | --- | --- |
-| Theme and palette | `theme_depictr`, `scale_colour_depictr`, `scale_fill_depictr`, `depictr_palette`, `legend_inside` |
+| Theme and palette | `theme_depictr`, `scale_colour_depictr` (also spelt `scale_color_depictr`), `scale_fill_depictr`, `depictr_palette`, `depictr_brand`, `depictr_accent`, `legend_inside` |
 | Accessibility | `check_figure`, `palette_safety`, `simulate_cvd`, `simulate_figure` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
 | Estimation and tables | `estimation_plot` (single- or two-panel Cumming), `summary_table` |
@@ -209,6 +209,7 @@ The exported functions fall into families that follow the stages of an analysis.
 | Survival | `survival_plot` (with an optional number-at-risk table) |
 | Time series | `acf_plot`, `decompose_plot`, `seasonal_plot`, `timeseries_plot` |
 | Composition | `arrange_plots`, `save_plot` |
+| Data | `crop_yield`, `wellbeing_survey`, `lexical_decision`, `clinical_trial`, `monthly_sales`, and `DATASETS`, the four cross-sectional loaders by name |
 
 ## Status
 
@@ -257,8 +258,7 @@ missing value inside it, while the R function computes the correlations across
 the gap from the pairs of observations present, with a warning.
 
 Some defaults differ too. `dumbbell_plot` orders the categories by the value of
-the group that appears first in the data, and the R function by the gap between
-the two groups. `explore_categorical` keeps the order of the levels and, with a
+the group's first level, and the R function by the gap between the two groups. `explore_categorical` keeps the order of the levels and, with a
 group, shows proportions within each group, where the R function sorts the bars
 from most to least frequent and shows counts. `explore_distribution` fills a
 grouped density at an alpha of 0.2, where the R function uses its default of

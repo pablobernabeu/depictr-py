@@ -731,6 +731,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Zenodo record of the next release carries it. The record of 0.3.0 has none.
   The comment beside its release date names the channels that released 0.3.0
   on 2026-09-24: the GitHub release, Zenodo and PyPI.
+- `dumbbell_plot()` took its two levels in the order they first appeared in the
+  data, so moving one row to the top could reverse the segments and reorder
+  the categories, and a categorical's declared order was ignored. The points
+  took their colours in alphabetical order whatever the first level was. The
+  levels now follow a categorical's declared order, and otherwise sorted
+  order, as in the R twin. The first level starts each segment, orders the
+  categories and takes the first colour.
+- The ROC, precision-recall, calibration, gains, lift and threshold curves
+  counted the outcomes equal to 1. A categorical outcome therefore had no
+  positives and met the single-class refusal, which named the wrong problem. A
+  1/2 coding was read with 1 as the positive class, and the threshold sweep
+  counted a 2 as neither class. As in the R twin, a categorical with two
+  categories is now read as 0/1, its last category the positive class, and any
+  other outcome must be coded 0/1 or boolean. A 1/2 or -1/1 coding and text
+  such as "yes"/"no" raise `ValueError`, as they already did in
+  `calibration_plot()`.
+- `explore_distribution()` drew an empty panel for an unknown `kind`, such as
+  `kind="hist"`, and a density of the category codes for a text column. It now
+  refuses both, as the R twin does.
+- `explore_categorical()` drew a category that one group never takes as a
+  single bar the width of the whole category, where it read as an ungrouped
+  total. The empty cell is now a bar of height zero, as in the R twin, so every
+  bar keeps its own slot. A continuous numeric column, which was drawn as one
+  bar per distinct value, now raises `ValueError` past 20 distinct values, and
+  an unknown column raises `KeyError` at once, both as in the R twin.
+- `explore_bivariate()` drew a boolean column as a scatter with a regression
+  line through 0 and 1, since pandas counts it as numeric. It now takes a
+  boolean column for a category, as the R twin takes a logical one.
+- `coefficient_plot()` drew an empty panel when the intercept of an
+  intercept-only model was dropped. It now says that no terms are left, in the
+  R twin's words.
+- `correlation_heatmap()` drew a single tile labelled 1.00 when one column was
+  named, or when one was left once the zero-variance columns had been dropped.
+  It now raises `ValueError`, in the R twin's words.
+- The time-series gallery said that the autocorrelation and partial
+  autocorrelation functions spike at the multiples of twelve. The default lags
+  reach only twelve, where the autocorrelation peaks on a slow decay, and the
+  partial autocorrelation there lies inside the band. The page now describes
+  the figures it draws, and a test holds it to them.
+- The README's table of exported functions left out the dataset loaders,
+  `DATASETS`, `depictr_brand`, `depictr_accent` and the `scale_color_depictr`
+  spelling. It lists them now, and a test holds the table to `__all__`.
+- The documentation deploy checks the forked header template against the
+  mkdocs-material release it was taken from. The docs extra sets no ceiling, so
+  the deploy installs the latest release, and the strict build cannot tell that
+  the template has fallen behind. The release and the upstream file's hash are
+  recorded in `pyproject.toml`, as scopusflow-py records its own, and the
+  deploy stops when the installed file no longer matches. A comment in the
+  stylesheet quoted the dark-mode contrast of the shared stylesheet's teal
+  (2.9:1). depictr's blue on its navy page measures 2.4:1.
 
 ## [0.3.0] - 2026-09-24
 
