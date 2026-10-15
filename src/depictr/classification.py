@@ -6,7 +6,7 @@ the depictr theme, so a ROC curve sits in the same visual language as the rest
 of a report. The cumulative gains, lift and calibration curves are computed
 here with numpy, as the R twin computes them, and need no optional dependency.
 
-Install the optional dependency with ``pip install depictr[classification]``.
+Install the optional dependency with ``pip install "depictr[classification]"``.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def _require_sklearn():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The classification plots need scikit-learn. Install it with "
-            "`pip install depictr[classification]`."
+            '`pip install "depictr[classification]"`.'
         ) from exc
     return m
 

@@ -42,7 +42,7 @@ def _require_statsmodels():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The time-series plots need statsmodels. Install it with "
-            "`pip install depictr[models]`."
+            '`pip install "depictr[models]"`.'
         ) from exc
 
 

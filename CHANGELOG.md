@@ -647,6 +647,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   boolean with a `TypeError` that names it, in the R twin's words. A text
   column failed with "could not convert string to float", and dates or
   durations were correlated as the integers that store them.
+- Installation commands in the documentation and in error messages quote
+  extras and carry no trailing comments, so they paste into zsh, the default
+  shell on macOS, which reads `[...]` as a filename pattern and passes `#`
+  comments on to pip. The README, the home page and the getting-started guide
+  gave the `all` extra without quotes and ended each install line with a
+  comment. The `ImportError` messages of the classification, multivariate,
+  survival, mixed-effects, diagnostic, prediction and time-series plots, and
+  three of their module docstrings, also gave their extras without quotes. A
+  pasted command stopped with "no matches found" before pip ran, or with pip's
+  "Invalid requirement: '#'". Extras are now double-quoted, as in
+  `pip install "depictr[all]"`, a form that zsh, bash, fish, PowerShell and cmd
+  read alike. The install blocks hold bare commands, and the prose before them
+  says what each one installs. A test fails on an extra outside double quotes,
+  and on a `pip install` line in a shell block that carries a `#` comment, in
+  the README, the contributing guide, the documentation, the sources and the
+  app.
 
 ## [0.3.0] - 2026-09-24
 

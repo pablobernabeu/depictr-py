@@ -8,7 +8,7 @@ with its formulas. ``risk_table=True`` draws a number-at-risk table beneath the
 curves, and the counts are also returned on the plot (``plot.at_risk``) for
 composing a table of your own.
 
-Install the optional dependency with ``pip install depictr[survival]``.
+Install the optional dependency with ``pip install "depictr[survival]"``.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def _require_lifelines():
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "survival_plot needs lifelines. Install it with "
-            "`pip install depictr[survival]`."
+            '`pip install "depictr[survival]"`.'
         ) from exc
     return lifelines
 

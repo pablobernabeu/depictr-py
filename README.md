@@ -115,11 +115,14 @@ the vermillion there.
 
 ## Installation
 
-depictr is on [PyPI](https://pypi.org/project/depictr/):
+depictr is on [PyPI](https://pypi.org/project/depictr/). The first command
+below installs the core (plotnine, pandas, numpy, matplotlib and scipy), and the
+second adds the optional computation back-ends. The double quotes keep zsh, the
+default shell on macOS, from reading the brackets as a filename pattern.
 
 ```bash
-pip install depictr            # core (plotnine, pandas, numpy, matplotlib, scipy)
-pip install depictr[all]       # plus the optional computation back-ends
+pip install depictr
+pip install "depictr[all]"
 ```
 
 The classification and survival plots delegate to scikit-learn and lifelines,
