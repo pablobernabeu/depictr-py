@@ -256,6 +256,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   allowed 1.30. The web app sizes its figure and table with `width="stretch"`,
   which first reached `st.image()` in 1.49 and replaced `use_container_width`.
   Streamlit logged on every rerun that the older argument would be removed.
+- Packaging: the build backend is no longer held below hatchling 1.32, whose
+  metadata version twine now accepts, and the licence is declared once, as an
+  SPDX expression, without the classifier PEP 639 deprecates. The core metadata
+  gives `License-Expression: MIT`, where its `License` field held the whole
+  licence text.
 
 ### Deprecated
 
