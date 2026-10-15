@@ -588,6 +588,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fraction. It now raises "`n_boot` must be a positive integer.", the message
   it already gave below 1, and takes a whole number held in a float, such as
   `1e4`, as the integer it is.
+- `summary_table()` and `explore_bivariate()` took a datetime or timedelta
+  column for a category. With `vars=None`, `summary_table()` dropped such a
+  column without a word when it had many distinct values, as if it were an
+  identifier, and otherwise gave it one row per value, as it did whenever the
+  column was named in `vars`. Dates are now summarised as a range instead of
+  one row per day: a single `Range` row reads `2024-01-01 to 2024-04-27`
+  overall and in each group, with the time to the minute or second where the
+  column has one. A timedelta is summarised as mean (SD) in the largest of
+  days, hours, minutes and seconds that its median duration reaches, and the
+  statistic names the unit, as in `Mean (SD), days`. The R twin reports a
+  `difftime` in the units it carries. The identifier columns that
+  `vars=None` still skips are named in a `UserWarning`, as the R twin names
+  them in a message. `explore_bivariate()` raised `TypeError: Continuous
+  value supplied to discrete scale` when either column held dates or
+  durations and the other numbers. Dates and durations now count as numeric,
+  as in the R twin. Against a numeric column, they give the scatter plot with
+  a trend of `scatter_trend()`, and against a categorical one boxplots of
+  their values across the categories. A duration is drawn as a number in the
+  unit that `summary_table()` reports, and the axis title names it.
+- `correlation_heatmap()` refuses a column in `cols` that is not numeric or
+  boolean with a `TypeError` that names it, in the R twin's words. A text
+  column failed with "could not convert string to float", and dates or
+  durations were correlated as the integers that store them.
 
 ## [0.3.0] - 2026-09-24
 

@@ -371,7 +371,9 @@ def test_summary_table_suppress_missing():
 
 def test_summary_table_default_vars_skips_nothing_unexpected():
     # With no vars given, every non-group column appears except the field
-    # identifier, which has one distinct value per row.
-    t = summary_table(CY)
+    # identifier, which has one distinct value per row and is named in a
+    # warning.
+    with pytest.warns(UserWarning, match=r"skipping high-cardinality column\(s\): field\."):
+        t = summary_table(CY)
     listed = set(t["variable"]) - {"", "N"}
     assert listed == set(CY.columns) - {"field"}

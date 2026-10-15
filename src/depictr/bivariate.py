@@ -8,7 +8,7 @@ plot from the column types so you do not have to.
 
 from __future__ import annotations
 
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_timedelta64_dtype
 from plotnine import (
     aes,
     geom_boxplot,
@@ -24,6 +24,7 @@ from plotnine import (
 
 from ._groups import _group_scales, _prepare_group
 from .palette import BRAND, depictr_palette
+from .tables import _duration_unit, _is_continuous
 from .theme import scale_fill_depictr, theme_depictr
 
 
@@ -94,6 +95,13 @@ def explore_bivariate(data, x, y, title=None):
       variable across the categories, with the raw points jittered over them;
     - two categorical columns give a tile of joint counts, shaded by frequency.
 
+    Datetime and timedelta columns count as numeric, so against a numeric
+    column they give a scatter plot with a trend, and against a categorical one
+    boxplots of their values across the categories. A duration is drawn as a
+    number in the unit :func:`summary_table` reports it in, named in the axis
+    title, as in ``stay (days)``. The R twin draws a ``difftime`` the same way,
+    in its own units.
+
     Parameters
     ----------
     data : pandas.DataFrame
@@ -117,11 +125,15 @@ def explore_bivariate(data, x, y, title=None):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
 
-    x_num = is_numeric_dtype(data[x])
-    y_num = is_numeric_dtype(data[y])
+    # A datetime or timedelta column is not numeric to pandas, so it was taken
+    # for a category, and drawing boxes over it raised a TypeError.
+    x_num = _is_continuous(data[x])
+    y_num = _is_continuous(data[y])
+    data, axis_title = _durations_as_numbers(data, (x, y))
 
     if x_num and y_num:
-        return scatter_trend(data, x, y, title=title)
+        return (scatter_trend(data, x, y, title=title)
+                + labs(x=axis_title[x], y=axis_title[y]))
 
     if x_num != y_num:
         # One of each: draw the numeric variable across the categories. Putting
@@ -133,7 +145,7 @@ def explore_bivariate(data, x, y, title=None):
             + geom_jitter(position=position_jitter(width=0.2), alpha=0.3,
                           color="#4d4d4d", size=1)
             + scale_fill_depictr()
-            + labs(x=cat, y=num, title=title)
+            + labs(x=cat, y=axis_title[num], title=title)
             + theme_depictr()
         )
         return p
@@ -149,3 +161,24 @@ def explore_bivariate(data, x, y, title=None):
         + labs(x=x, y=y, title=title)
         + theme_depictr(grid="none")
     )
+
+
+def _durations_as_numbers(data, cols):
+    """Return ``data`` with each timedelta column among ``cols`` as a number in
+    the unit :func:`summary_table` reports it in, and each column's axis title,
+    which names that unit.
+
+    A number in a stated unit is how the R twin draws a ``difftime``, for which
+    ggplot2 has no scale. It also keeps the axis off plotnine's timedelta
+    scale, whose breaks mizani converts in a way that recent NumPy releases
+    deprecate.
+    """
+    titles = {}
+    for col in dict.fromkeys(cols):  # x and y may be one column
+        titles[col] = col
+        if is_timedelta64_dtype(data[col]):
+            unit, size = _duration_unit(data[col])
+            data = data.copy()
+            data[col] = data[col].dt.total_seconds() / size
+            titles[col] = f"{col} ({unit})"
+    return data, titles

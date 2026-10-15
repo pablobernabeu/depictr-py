@@ -10,6 +10,7 @@ from __future__ import annotations
 import warnings
 
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from plotnine import (
     aes,
     after_stat,
@@ -210,7 +211,9 @@ def correlation_heatmap(data, cols=None, title=None):
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Columns to include; defaults to all numeric columns.
+        Columns to include; defaults to all numeric columns. A named column
+        that is not numeric or boolean, such as text or a datetime, raises
+        ``TypeError``.
     title : str, optional
 
     Returns
@@ -226,6 +229,15 @@ def correlation_heatmap(data, cols=None, title=None):
     >>> p = dp.correlation_heatmap(wb)
     """
     num = data[cols] if cols else data.select_dtypes("number")
+    # Text failed inside pandas with "could not convert string to float", and a
+    # datetime was correlated as the integers that store it. The wording is the
+    # R twin's, as in its explore_pairs().
+    not_numeric = [c for c in num.columns if not is_numeric_dtype(num[c])]
+    if not_numeric:
+        raise TypeError(
+            "correlation_heatmap() needs numeric columns; these are not: "
+            f"{', '.join(str(c) for c in not_numeric)}."
+        )
     # A correlation is undefined for a constant column, so pandas fills the
     # whole row and column with NaN, which the label formatter then rendered as
     # the literal string "nan". Drop those columns and say so.
