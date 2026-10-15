@@ -31,6 +31,18 @@ the same view.
 
 ![The same app view with the colour-vision selector set to "deutan". The cumulative distribution is redrawn with the standard-treatment curve shifted from orange to mustard yellow while the enhanced-treatment curve stays blue, and the two remain clearly distinguishable.](assets/app-colour-vision.png){ width="820" }
 
+## Your own data
+
+Choosing 'Upload a CSV' in the sidebar loads a file of your own. Excel on
+Windows saves a CSV in the cp1252 code page, where an accented letter is not
+valid UTF-8, so the app tries UTF-8 first, then cp1252 and then latin-1.
+Whenever the encoding is not UTF-8, the call the app shows names it, as in
+`pd.read_csv(your_file, encoding='cp1252')`, so pasting the call reads the file
+the same way. A file that cannot be read as a CSV, such as an empty one, gets a
+message saying why. A plot that needs a kind of column the data lack says so
+and draws nothing. The classification curves, for instance, need an outcome
+coded 0/1.
+
 ## Run it
 
 The app lives in the repository rather than the wheel, so run it from a clone:

@@ -252,6 +252,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same label share a row in `compare_models()`, and both functions drop
   brms's `b_Intercept` with the intercept, as in R. The plot's data keeps the
   raw names in `term`, and `labels="raw"` draws them as before.
+- The `app` and `all` extras require Streamlit 1.49 or later, where they
+  allowed 1.30. The web app sizes its figure and table with `width="stretch"`,
+  which first reached `st.image()` in 1.49 and replaced `use_container_width`.
+  Streamlit logged on every rerun that the older argument would be removed.
 
 ### Deprecated
 
@@ -298,6 +302,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web app no longer offers the time column as the event indicator. Its
   Kaplan-Meier pane offers the columns coded 0/1 or 1/2, opens on one named
   `event` or `status`, and says so when a dataset has none.
+- The web app read an uploaded CSV as UTF-8, outside its error handler. A file
+  that Excel on Windows saves in cp1252 therefore ended the page in a
+  `UnicodeDecodeError` traceback, and an empty or ragged file in a pandas one.
+  The app now tries UTF-8, then cp1252, then latin-1, and the call it shows
+  names any encoding other than UTF-8, so the call reads the file the same
+  way. A file it cannot read gets an error message.
+- Panes of the web app whose required choice had nothing to offer showed
+  "Could not draw that plot for this data: None". The classification curves
+  and the confusion matrix did so on `wellbeing_survey`, and the effect of a
+  predictor on `wellbeing_survey` and `lexical_decision`. Such a pane now says
+  what kind of column it needs and draws nothing. Where no column is coded
+  0/1, the classification curves no longer offer another two-level column,
+  whose refusal described the wrong problem. The dumbbell offers only a
+  two-level column other than its category and value. It used to fall back to
+  any other category, or to the category itself, and so opened on a column the
+  plot refuses on `crop_yield` and `wellbeing_survey`.
 - `save_plot()` wrote files that journals reject. A PDF or EPS carried Type 3
   fonts, which Nature refuses. An EPS drew its translucent layers opaque, which
   matplotlib reported only in its log. A TIFF was uncompressed RGBA, 10.8 MiB at

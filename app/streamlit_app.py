@@ -10,6 +10,8 @@ Run with:  streamlit run app/streamlit_app.py
 
 from __future__ import annotations
 
+import io
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -33,10 +35,52 @@ def show(plot, code: str, deficiency: str):
         image = dp.simulate_figure(plot, deficiency)
     left, right = st.columns([3, 2])
     with left:
-        st.image(image, use_container_width=True)
+        st.image(image, width="stretch")
     with right:
         st.caption("The exact call")
         st.code(code, language="python")
+
+
+def _read_upload(upload):
+    """An uploaded CSV as a data frame, with the encoding that read it.
+
+    Excel on Windows saves a CSV in the system's code page, cp1252 in Western
+    Europe, where an accented letter is a byte that is not valid UTF-8. UTF-8
+    is tried first, then cp1252, then latin-1, which gives every byte a
+    character and so cannot fail on the encoding. The bytes are parsed from a
+    fresh buffer each time, since a failed attempt leaves the upload's read
+    position wherever pandas stopped.
+    """
+    raw = upload.getvalue()
+    for encoding in ("utf-8", "cp1252"):
+        try:
+            return pd.read_csv(io.BytesIO(raw), encoding=encoding), encoding
+        except UnicodeDecodeError:
+            pass
+    return pd.read_csv(io.BytesIO(raw), encoding="latin-1"), "latin-1"
+
+
+class _NothingToOffer(Exception):
+    """A choice the pane needs has no column of this data to offer."""
+
+
+def _choose(label, options, why, **kwargs):
+    """A selectbox the pane cannot draw without.
+
+    Given no options, ``st.selectbox`` returns None, and the plot fails on
+    ``data[None]`` with the bare message "None". With no options, this raises
+    instead, and the handler at the foot of the file shows ``why``, what the
+    pane needs, in place of a figure.
+    """
+    options = list(options)
+    if not options:
+        raise _NothingToOffer(why)
+    return st.selectbox(label, options, **kwargs)
+
+
+NEEDS_NUMERIC = "This plot needs a numeric column, and this dataset has none."
+NEEDS_GROUP = ("This plot needs a categorical column with 2 to 12 distinct "
+               "values, and this dataset has none.")
 
 
 # ---- sidebar: data and vision -------------------------------------------------
@@ -44,10 +88,23 @@ st.sidebar.title("depictr")
 st.sidebar.caption("Unified, colourblind-safe statistical visualisation")
 
 source = st.sidebar.radio("Data", ["Bundled dataset", "Upload a CSV"])
+read_error = None
 if source == "Upload a CSV":
     upload = st.sidebar.file_uploader("CSV file", type="csv")
-    data = pd.read_csv(upload) if upload else None
-    data_call = "pd.read_csv(your_file)"
+    data, data_call = None, "pd.read_csv(your_file)"
+    if upload is not None:
+        # The read sits outside the handler at the foot of the file. A file
+        # pandas cannot parse, such as an empty or ragged one, is caught here
+        # instead and reported below the title.
+        try:
+            data, encoding = _read_upload(upload)
+        except Exception as exc:
+            read_error = f"Could not read {upload.name} as a CSV: {exc}"
+        else:
+            # pandas reads UTF-8 by default, so only another encoding needs
+            # naming for the displayed call to read the file the same way.
+            if encoding != "utf-8":
+                data_call = f"pd.read_csv(your_file, encoding={encoding!r})"
 else:
     name = st.sidebar.selectbox("Dataset", list(dp.DATASETS))
     data = dp.DATASETS[name]()
@@ -74,11 +131,14 @@ st.write(
     "object you can extend with `+`."
 )
 
+if read_error is not None:
+    st.error(read_error)
+    st.stop()
 if data is None:
     st.info("Upload a CSV to begin.")
     st.stop()
 
-st.dataframe(data.head(), use_container_width=True)
+st.dataframe(data.head(), width="stretch")
 num_cols = list(data.select_dtypes("number").columns)
 # A grouping column is offered only when it has 2 to 12 distinct values. An
 # identifier (participant, item, field, id, patient) has dozens or hundreds,
@@ -88,15 +148,14 @@ cat_cols = [c for c in data.columns
 binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # The ROC/PR/gain/lift/calibration/threshold family does arithmetic on y_true
 # (a cumulative sum, for one), so it needs a column coded 0/1. Any other
-# two-level column counts no positives and meets the single-class refusal.
-# confusion_matrix_plot carries no such constraint and keeps the wider list.
-#
-# The fallback to `binary_cols` covers an uploaded CSV with no 0/1 column at
-# all: an empty selectbox would leave the whole family unreachable with no
-# explanation, so the wider list is offered and the plot's own refusal is what
-# the user sees, through the error handler at the foot of this file.
+# two-level column counts no positives and meets the single-class refusal,
+# whose wording describes the wrong problem. confusion_matrix_plot carries no
+# such constraint and keeps the wider list. When no column is coded 0/1, the
+# pane says so through _choose(). The wider list used to be offered in that
+# case, since an empty selectbox left the family unreachable with no word of
+# why, and the visitor met the misleading refusal.
 binary01_cols = [c for c in binary_cols
-                 if set(pd.unique(data[c].dropna())) <= {0, 1}] or binary_cols
+                 if set(pd.unique(data[c].dropna())) <= {0, 1}]
 
 
 def _opt(label, options):
@@ -134,7 +193,7 @@ stage = st.selectbox("Plot", FAMILIES[family])
 
 try:
     if stage == "Distribution":
-        x = st.selectbox("Numeric variable", num_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
         show(dp.explore_distribution(data, x, group=g, kind="both",
                                      legend_inside=legend_in),
@@ -142,51 +201,54 @@ try:
              f"kind='both', legend_inside={legend_in})",
              deficiency)
     elif stage == "Categorical":
-        x = st.selectbox("Category", cat_cols)
+        x = _choose("Category", cat_cols, NEEDS_GROUP)
         g = _opt("Group (optional)", cat_cols)
         show(dp.explore_categorical(data, x, group=g),
              f"dp.explore_categorical({data_call}, {x!r}, group={g!r})", deficiency)
     elif stage == "ECDF":
-        x = st.selectbox("Numeric variable", num_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
         show(dp.ecdf_plot(data, x, group=g, legend_inside=legend_in),
              f"dp.ecdf_plot({data_call}, {x!r}, group={g!r}, "
              f"legend_inside={legend_in})", deficiency)
     elif stage == "Ridgeline":
-        x = st.selectbox("Numeric variable", num_cols)
-        g = st.selectbox("Group", cat_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
+        g = _choose("Group", cat_cols, NEEDS_GROUP)
         show(dp.ridgeline_plot(data, x, g),
              f"dp.ridgeline_plot({data_call}, {x!r}, {g!r})", deficiency)
     elif stage == "Raincloud":
-        x = st.selectbox("Numeric variable", num_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         g = _opt("Group (optional)", cat_cols)
         show(dp.raincloud_plot(data, x, group=g),
              f"dp.raincloud_plot({data_call}, {x!r}, group={g!r})", deficiency)
     elif stage == "Dumbbell":
-        cat = st.selectbox("Category", cat_cols)
-        val = st.selectbox("Value", num_cols)
-        # The group must differ from the category, or dumbbell_plot's pivot
-        # collides on one column. Prefer another two-level column (categorical
-        # or numeric -- dumbbell_plot only needs exactly two levels); fall back
-        # to any other category, widening to cat_cols only as a last resort.
-        g_options = ([c for c in binary_cols if c != cat]
-                     or [c for c in cat_cols if c != cat] or cat_cols)
-        g = st.selectbox("Two-level group", g_options)
+        cat = _choose("Category", cat_cols, NEEDS_GROUP)
+        val = _choose("Value", num_cols, NEEDS_NUMERIC)
+        # dumbbell_plot needs a group with exactly two levels, categorical or
+        # numeric, in a column apart from the category and the value, or its
+        # pivot collides. The pane offers only such columns. It used to fall
+        # back to any other category, or to the category itself, and so opened
+        # on a column the plot refuses.
+        g = _choose("Two-level group", [c for c in binary_cols if c not in (cat, val)],
+                    "This plot needs a two-level column other than its category "
+                    "and value, and this dataset has none.")
         show(dp.dumbbell_plot(data, cat, val, g, legend_inside=legend_in),
              f"dp.dumbbell_plot({data_call}, {cat!r}, {val!r}, {g!r}, "
              f"legend_inside={legend_in})", deficiency)
     elif stage == "Outliers":
-        x = st.selectbox("Numeric variable", num_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
         show(dp.outlier_plot(data, x),
              f"dp.outlier_plot({data_call}, {x!r})", deficiency)
     elif stage == "Group comparison":
-        x = st.selectbox("Numeric variable", num_cols)
-        g = st.selectbox("Group", cat_cols)
+        x = _choose("Numeric variable", num_cols, NEEDS_NUMERIC)
+        g = _choose("Group", cat_cols, NEEDS_GROUP)
         show(dp.group_comparison_plot(data, x, g),
              f"dp.group_comparison_plot({data_call}, {x!r}, {g!r})", deficiency)
     elif stage == "Scatter + trend":
-        x = st.selectbox("x", num_cols)
-        y = st.selectbox("y", [c for c in num_cols if c != x])
+        x = _choose("x", num_cols, NEEDS_NUMERIC)
+        y = _choose("y", [c for c in num_cols if c != x],
+                    "This plot needs a second numeric column, and this dataset "
+                    "has none.")
         g = _opt("Group (optional)", cat_cols)
         show(dp.scatter_trend(data, x, y, group=g),
              f"dp.scatter_trend({data_call}, {x!r}, {y!r}, group={g!r})", deficiency)
@@ -202,8 +264,8 @@ try:
              f"dp.missingness_map({data_call}, legend_inside={legend_in})",
              deficiency)
     elif stage == "Estimation plot":
-        y = st.selectbox("Outcome", num_cols)
-        g = st.selectbox("Group", cat_cols)
+        y = _choose("Outcome", num_cols, NEEDS_NUMERIC)
+        g = _choose("Group", cat_cols, NEEDS_GROUP)
         two = st.checkbox("Two-panel (Cumming)", value=True)
         show(dp.estimation_plot(data, y, g, two_panel=two, seed=1),
              f"dp.estimation_plot({data_call}, {y!r}, {g!r}, two_panel={two})",
@@ -218,16 +280,19 @@ try:
         show(plot, f"dp.{fn}({data_call})", deficiency)
     elif stage in {"ROC curve", "PR curve", "Gains", "Lift", "Calibration",
                    "Threshold"}:
-        target = st.selectbox("Binary outcome (0/1)", binary01_cols)
-        score = st.selectbox("Score / probability", num_cols)
+        target = _choose("Binary outcome (0/1)", binary01_cols,
+                         "This plot needs an outcome column coded 0/1, and this "
+                         "dataset has none.")
+        score = _choose("Score / probability", num_cols, NEEDS_NUMERIC)
         fn = {"ROC curve": "roc_curve_plot", "PR curve": "pr_curve_plot",
               "Gains": "gain_plot", "Lift": "lift_plot",
               "Calibration": "calibration_plot", "Threshold": "threshold_plot"}[stage]
         show(getattr(dp, fn)(data[target], data[score]),
              f"dp.{fn}({data_call}[{target!r}], {data_call}[{score!r}])", deficiency)
     elif stage == "Confusion matrix":
-        target = st.selectbox("Binary outcome", binary_cols)
-        pred = st.selectbox("Predicted label", binary_cols)
+        needs = "This plot needs a two-level column, and this dataset has none."
+        target = _choose("Binary outcome", binary_cols, needs)
+        pred = _choose("Predicted label", binary_cols, needs)
         show(dp.confusion_matrix_plot(data[target], data[pred], normalise="true"),
              f"dp.confusion_matrix_plot({data_call}[{target!r}], "
              f"{data_call}[{pred!r}], normalise='true')",
@@ -236,9 +301,9 @@ try:
         # survival_plot reads the event under the 0/1 coding (0 = censored) or
         # the survival::Surv() 1/2 coding (1 = censored) and refuses any other,
         # so only such columns are offered. There is no fallback to the other
-        # two-level columns, as binary01_cols has, since each would only meet
-        # the refusal. The default is a column named event or status, since
-        # the first numeric column is as likely to be the follow-up time.
+        # two-level columns, since each would only meet the refusal. The
+        # default is a column named event or status, since the first numeric
+        # column is as likely to be the follow-up time.
         event_cols = [c for c in binary_cols
                       if set(pd.unique(data[c].dropna())) in ({0, 1}, {1, 2})]
         if not event_cols:
@@ -246,7 +311,7 @@ try:
                     "(0 = censored) or 1/2 (1 = censored), and this dataset "
                     "has none.")
         else:
-            time = st.selectbox("Time", num_cols)
+            time = _choose("Time", num_cols, NEEDS_NUMERIC)
             names = [str(c).lower() for c in event_cols]
             default = next((names.index(n) for n in ("event", "status")
                             if n in names), 0)
@@ -324,7 +389,7 @@ try:
                  code_prefix + f"dp.{fn}({series_call}, period={period})",
                  deficiency)
     elif family.startswith("Models"):
-        outcome = st.selectbox("Outcome (numeric)", num_cols)
+        outcome = _choose("Outcome (numeric)", num_cols, NEEDS_NUMERIC)
         # Identifiers are left out, as for the grouping choices: one dummy per
         # field or respondent would saturate the model.
         candidates = [c for c in data.columns
@@ -342,10 +407,15 @@ try:
                 show(dp.residual_diagnostics_plot(model),
                      "dp.residual_diagnostics_plot(model)", deficiency)
             elif stage == "Effect of a predictor":
-                var = st.selectbox("Predictor to vary", [p for p in predictors if p in num_cols])
+                var = _choose("Predictor to vary",
+                              [p for p in predictors if p in num_cols],
+                              "This plot varies a numeric predictor, and none of "
+                              "the predictors chosen is numeric.")
                 show(dp.effects_plot(model, var),
                      f"dp.effects_plot(model, {var!r})", deficiency)
         else:
             st.info("Choose at least one predictor.")
+except _NothingToOffer as why:
+    st.info(str(why))
 except Exception as exc:  # surface a friendly message rather than a stack trace
     st.error(f"Could not draw that plot for this data: {exc}")

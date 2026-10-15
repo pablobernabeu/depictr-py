@@ -1,10 +1,11 @@
 """Every pane of the gallery app works on every bundled dataset.
 
 The app is driven headless through Streamlit's AppTest with each pane's default
-choices, as a visitor first meets it. A pane that cannot draw shows an error
-through the handler at the foot of the app. The sweep is slow (a few minutes),
-so it carries the ``slow`` marker: it runs with the full suite, and
-``-m "not slow"`` leaves it out of a quick run.
+choices, as a visitor first meets it. A pane draws its figure, or says with
+``st.info`` what the dataset lacks, or shows the plot's own refusal through the
+handler at the foot of the app. The sweep is slow (a few minutes), so it carries
+the ``slow`` marker: it runs with the full suite, and ``-m "not slow"`` leaves it
+out of a quick run.
 """
 
 from pathlib import Path
@@ -17,20 +18,30 @@ import depictr as dp  # noqa: E402
 
 APP = Path(__file__).resolve().parents[1] / "app" / "streamlit_app.py"
 
-# Panes whose default choices do not suit a dataset, whatever its values: no
-# 0/1 column to offer as the classification outcome (crop_yield,
-# wellbeing_survey), a score column that is not a probability for the
-# calibration plot, no second two-level column for the dumbbell, or no numeric
-# predictor among the two offered by default. The gaps lie in how the app
-# chooses its defaults, and the simulated data these datasets replaced showed
-# the same errors in the same panes. Any other pane must draw.
-DEFAULT_CHOICE_GAPS = {
+# Panes that draw nothing and say why, since the dataset has no column that a
+# required choice can take. crop_yield and wellbeing_survey have no 0/1 outcome
+# for the classification curves, no event column for the Kaplan-Meier plot and
+# no two-level column besides the dumbbell's category, and wellbeing_survey has
+# none at all for the confusion matrix. The two predictors the model panes
+# choose by default are factors in wellbeing_survey and lexical_decision, so
+# there is no numeric predictor to vary.
+NOTHING_TO_OFFER = {
     "crop_yield": {"Dumbbell", "ROC curve", "PR curve", "Gains", "Lift",
-                   "Calibration", "Threshold"},
+                   "Calibration", "Threshold", "Kaplan-Meier"},
     "wellbeing_survey": {"Dumbbell", "ROC curve", "PR curve", "Gains", "Lift",
                          "Calibration", "Confusion matrix", "Threshold",
-                         "Effect of a predictor"},
-    "lexical_decision": {"Calibration", "Effect of a predictor"},
+                         "Kaplan-Meier", "Effect of a predictor"},
+    "lexical_decision": {"Effect of a predictor"},
+    "clinical_trial": set(),
+}
+
+# Panes whose default choices meet the plot's own refusal: the calibration plot
+# needs a probability as its score, and the first numeric column, which the app
+# offers by default, is not one. Every pane in neither table must draw.
+DEFAULT_CHOICE_GAPS = {
+    "crop_yield": set(),
+    "wellbeing_survey": set(),
+    "lexical_decision": {"Calibration"},
     "clinical_trial": {"Calibration"},
 }
 
@@ -38,6 +49,11 @@ DEFAULT_CHOICE_GAPS = {
 def _selectbox(at, label):
     """The selectbox whose label starts with ``label``."""
     return next(box for box in at.selectbox if box.label.startswith(label))
+
+
+def _images(at):
+    """The images the app has drawn, under the element name of any release."""
+    return [*at.get("image"), *at.get("imgs")]
 
 
 @pytest.mark.slow
@@ -48,7 +64,7 @@ def test_every_pane_draws_for_every_dataset(dataset):
     at = AppTest.from_file(str(APP), default_timeout=300)
     at.run()
     _selectbox(at, "Dataset").select(dataset).run()
-    crashed, failed = [], []
+    crashed, failed, noted, blank = [], {}, set(), []
     for family in _selectbox(at, "Family").options:
         _selectbox(at, "Family").select(family).run()
         for stage in _selectbox(at, "Plot").options:
@@ -58,10 +74,19 @@ def test_every_pane_draws_for_every_dataset(dataset):
             if at.exception:
                 crashed.append(f"{family} / {stage}: {at.exception[0].value}")
             elif at.error:
-                failed.append(stage)
+                failed[stage] = at.error[0].value
+            elif at.info:
+                noted.add(stage)
+            elif not _images(at):
+                blank.append(stage)
     assert not crashed, "\n".join(crashed)
-    unexpected = set(failed) - DEFAULT_CHOICE_GAPS[dataset]
-    assert not unexpected, f"{dataset}: no figure in {sorted(unexpected)}"
+    # An empty selectbox gives None, and data[None] used to surface as the
+    # message "None", which tells a visitor nothing.
+    bare = {stage: msg for stage, msg in failed.items() if msg.endswith(": None")}
+    assert not bare, f"{dataset}: {bare}"
+    assert set(failed) == DEFAULT_CHOICE_GAPS[dataset], f"{dataset}: {failed}"
+    assert noted == NOTHING_TO_OFFER[dataset], dataset
+    assert not blank, f"{dataset}: nothing shown in {blank}"
 
 
 def test_identifiers_are_not_offered_as_groups():
