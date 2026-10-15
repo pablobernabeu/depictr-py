@@ -319,3 +319,48 @@ def test_offset_and_exposure_fits_are_predicted_at_the_mean_offset(counts):
     np.testing.assert_allclose(
         a["fit"], np.exp(b["Intercept"] + b["x"] * a["x"] + mean_offset), rtol=1e-8)
     assert p.labels.y == "Predicted y at the mean offset"
+
+
+def test_compare_models_exponentiates_every_model(glm):
+    # Regression: the reference line was fixed at 0, so an odds-ratio
+    # comparison on a log axis warned "divide by zero encountered in log10" and
+    # drew no line at 1. The R twin's compare_models() takes the same arguments.
+    import warnings
+
+    from plotnine import geom_vline
+    from plotnine.scales.scale_xy import scale_x_log10
+
+    smf = pytest.importorskip("statsmodels.formula.api")
+    reduced = smf.logit("accuracy ~ word_frequency + condition",
+                        lexical_decision()).fit(disp=0)
+    # A tidy frame is read on the link scale, as the models are.
+    frame = pd.DataFrame({"term": ["word_frequency"], "estimate": [0.3],
+                          "conf_low": [0.1], "conf_high": [0.5]})
+    p = compare_models({"full": glm, "reduced": reduced, "frame": frame},
+                       exponentiate=True)
+    got = p.data.set_index(["model", "term"])["estimate"]
+    np.testing.assert_allclose(got[("reduced", "word_frequency")],
+                               np.exp(reduced.params["word_frequency"]))
+    np.testing.assert_allclose(got[("frame", "word_frequency")], np.exp(0.3))
+    lines = [float(x) for layer in p.layers if isinstance(layer.geom, geom_vline)
+             for x in layer.geom.data["xintercept"]]
+    assert lines == [1.0]
+    assert p.labels.x == "Odds ratio"
+    assert any(isinstance(s, scale_x_log10) for s in p.scales)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        p.draw(show=False)
+
+    # Defaults unchanged, and an explicit line wins.
+    p0 = compare_models({"full": glm, "reduced": reduced})
+    assert p0.labels.x == "Estimate"
+    assert [float(x) for layer in p0.layers if isinstance(layer.geom, geom_vline)
+            for x in layer.geom.data["xintercept"]] == [0.0]
+    p2 = compare_models({"full": glm, "reduced": reduced}, reference_line=2)
+    assert [float(x) for layer in p2.layers if isinstance(layer.geom, geom_vline)
+            for x in layer.geom.data["xintercept"]] == [2.0]
+
+
+def test_compare_models_neutral_label_for_mixed_families(glm, ols):
+    p = compare_models({"logit": glm, "ols": ols}, exponentiate=True)
+    assert p.labels.x == "exp(Estimate)"

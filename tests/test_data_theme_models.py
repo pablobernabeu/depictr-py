@@ -307,3 +307,142 @@ def test_coefficient_plot_ties_keep_model_order_as_in_r():
     assert list(p.data["term"].cat.categories) == [f"t{i:02d}" for i in up]
     p = coefficient_plot(est, order="descending")
     assert list(p.data["term"].cat.categories) == [f"t{i:02d}" for i in down]
+
+
+# Odds, rate and risk ratios. An exponentiated table drawn with scale_x_log10()
+# met the hard-coded line at 0, which gave "divide by zero encountered in
+# log10" and no line at 1, so an odds-ratio forest needed the plot's layers
+# edited by hand. The R suite pins the same behaviour (test-coefficient_plot.R).
+
+
+def _vlines(p):
+    from plotnine import geom_vline
+
+    return [float(x) for layer in p.layers if isinstance(layer.geom, geom_vline)
+            for x in layer.geom.data["xintercept"]]
+
+
+def _x_is_log10(p):
+    from plotnine.scales.scale_xy import scale_x_log10
+
+    return any(isinstance(s, scale_x_log10) for s in p.scales)
+
+
+def _draw_without_runtime_warnings(p):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        p.draw(show=False)
+    plt.close("all")
+
+
+@pytest.fixture(scope="module")
+def logit_fit():
+    smf = pytest.importorskip("statsmodels.formula.api")
+    return smf.logit("accuracy ~ word_frequency + condition",
+                     DATASETS["lexical_decision"]()).fit(disp=0)
+
+
+def _counts():
+    rng = np.random.default_rng(9)
+    x = rng.normal(size=200)
+    arm = np.repeat(["a", "b"], 100)
+    count = rng.poisson(np.exp(0.5 + 0.3 * x + 0.2 * (arm == "b")))
+    return pd.DataFrame({"x": x, "arm": arm, "count": count})
+
+
+def test_tidy_estimates_exponentiates_estimates_and_limits(logit_fit):
+    link = tidy_estimates(logit_fit)
+    ratio = tidy_estimates(logit_fit, exponentiate=True)
+    assert list(ratio["term"]) == list(link["term"])
+    np.testing.assert_allclose(ratio["estimate"], np.exp(logit_fit.params))
+    np.testing.assert_allclose(ratio["conf_low"], np.exp(link["conf_low"]))
+    np.testing.assert_allclose(ratio["conf_high"], np.exp(link["conf_high"]))
+    pd.testing.assert_frame_equal(tidy_estimates(logit_fit, exponentiate=False), link)
+    # A tidy frame is read as link-scale estimates.
+    raw = pd.DataFrame({"term": ["a"], "estimate": [0.2], "conf_low": [0.1],
+                        "conf_high": [0.3]})
+    np.testing.assert_allclose(
+        tidy_estimates(raw, exponentiate=True)[["estimate", "conf_low", "conf_high"]]
+        .to_numpy(), np.exp([[0.2, 0.1, 0.3]]))
+    with pytest.raises(TypeError, match="`exponentiate` must be True or False"):
+        tidy_estimates(logit_fit, exponentiate="yes")
+
+
+def test_coefficient_plot_draws_odds_ratios_on_a_log_axis(logit_fit):
+    p = coefficient_plot(logit_fit, exponentiate=True)
+    got = p.data.set_index("term")["estimate"]
+    want = np.exp(logit_fit.params.drop("Intercept"))
+    np.testing.assert_allclose(got[want.index], want)
+    assert _vlines(p) == [1.0]
+    assert p.labels.x == "Odds ratio"
+    assert _x_is_log10(p)
+    _draw_without_runtime_warnings(p)
+    # Without it, nothing changes.
+    p0 = coefficient_plot(logit_fit)
+    assert _vlines(p0) == [0.0]
+    assert p0.labels.x == "Estimate"
+    assert not _x_is_log10(p0)
+
+
+def test_coefficient_plot_reference_line_is_an_argument(logit_fit):
+    assert _vlines(coefficient_plot(logit_fit, exponentiate=True,
+                                    reference_line=2)) == [2.0]
+    assert _vlines(coefficient_plot(logit_fit, reference_line=0.5)) == [0.5]
+    # NaN leaves the line out, as NA does in the R twin.
+    assert _vlines(coefficient_plot(logit_fit, reference_line=float("nan"))) == []
+
+
+def test_exponentiated_estimates_are_named_by_family_and_link(logit_fit):
+    smf = pytest.importorskip("statsmodels.formula.api")
+    sm = pytest.importorskip("statsmodels.api")
+    counts = _counts()
+    poisson_glm = smf.glm("count ~ x + arm", counts,
+                          family=sm.families.Poisson()).fit()
+    p = coefficient_plot(poisson_glm, exponentiate=True)
+    assert p.labels.x == "Rate ratio"
+    _draw_without_runtime_warnings(p)
+    assert coefficient_plot(smf.poisson("count ~ x + arm", counts).fit(disp=0),
+                            exponentiate=True).labels.x == "Rate ratio"
+    nb = smf.glm("count ~ x", counts,
+                 family=sm.families.NegativeBinomial(alpha=1.0)).fit()
+    assert coefficient_plot(nb, exponentiate=True).labels.x == "Rate ratio"
+    events = counts.assign(event=(counts["count"] > 2).astype(int))
+    binomial_glm = smf.glm("event ~ x", events,
+                           family=sm.families.Binomial()).fit()
+    assert coefficient_plot(binomial_glm,
+                            exponentiate=True).labels.x == "Odds ratio"
+    with warnings.catch_warnings():
+        # statsmodels warns that a log link can leave the unit interval, the
+        # price of a model whose exponentiated slope is a risk ratio.
+        warnings.simplefilter("ignore")
+        log_binomial = smf.glm(
+            "event ~ x", events,
+            family=sm.families.Binomial(link=sm.families.links.Log())).fit()
+    assert coefficient_plot(log_binomial,
+                            exponentiate=True).labels.x == "Risk ratio"
+    probit = smf.probit("event ~ x", events).fit(disp=0)
+    assert coefficient_plot(probit, exponentiate=True).labels.x == "exp(Estimate)"
+    # exp() of a slope on log(y) is a ratio of geometric means.
+    ols = smf.ols('np.log(Q("yield")) ~ rainfall', DATASETS["crop_yield"]()).fit()
+    assert coefficient_plot(ols, exponentiate=True).labels.x == "exp(Estimate)"
+
+
+def test_tidy_estimates_follows_the_results_use_t():
+    # Intervals follow the fitted result's use_t: z by default, as statsmodels'
+    # own GLM summary reports, and t on the residual df with use_t=True, which
+    # is what the R twin gives a family with an estimated dispersion.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    stats = pytest.importorskip("scipy.stats")
+    small = DATASETS["crop_yield"]().iloc[:15]
+    form = 'Q("yield") ~ rainfall + fertiliser'
+    z_fit = smf.glm(form, small).fit()
+    t_fit = smf.glm(form, small).fit(use_t=True)
+    z = stats.norm.ppf(0.975)
+    t = stats.t.ppf(0.975, t_fit.df_resid)
+    np.testing.assert_allclose(tidy_estimates(z_fit)["conf_high"],
+                               z_fit.params + z * z_fit.bse)
+    np.testing.assert_allclose(tidy_estimates(t_fit)["conf_high"],
+                               t_fit.params + t * t_fit.bse)
+    ols = smf.ols(form, small).fit()
+    np.testing.assert_allclose(tidy_estimates(t_fit)[["conf_low", "conf_high"]],
+                               tidy_estimates(ols)[["conf_low", "conf_high"]])

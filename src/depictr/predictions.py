@@ -288,7 +288,9 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     The predictor ``var`` is swept across its observed range while every other
     numeric predictor is held at its mean and every categorical at its reference
     (most common) level. The line is the predicted response and the ribbon its
-    confidence band, both read from statsmodels' ``get_prediction``.
+    confidence band, both read from statsmodels' ``get_prediction``. The band
+    takes t or z as the result's ``use_t`` says, so a GLM whose dispersion is
+    estimated, fitted with ``use_t=True``, gets the t band of the R twin.
 
     The predictors are the columns the formula names, so a column of the source
     frame outside the model plays no part. The range, means and levels come from
@@ -455,7 +457,7 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
 
 
 def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
-                   title=None):
+                   title=None, reference_line=None, exponentiate: bool = False):
     """Dodged forest comparing each coefficient across several models.
 
     Each model contributes its estimates and confidence intervals (read with
@@ -475,6 +477,17 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         Confidence level passed to :func:`depictr.models.tidy_estimates`.
     title : str, optional
         Plot title.
+    reference_line : float, optional
+        Position of the dashed vertical reference line. ``None``, the default,
+        puts it at 0, or at 1 when ``exponentiate`` is set. ``float("nan")``
+        leaves it out.
+    exponentiate : bool
+        Whether to draw every model's exponentiated estimates and intervals on
+        a log10 axis, as odds or rate ratios. A tidy frame among the models
+        must hold estimates on the link scale, since it is exponentiated too.
+        The axis is named as in :func:`depictr.coefficient_plot` when the
+        fitted models agree on the ratio, and "exp(Estimate)" when they do
+        not. Defaults to ``False``.
 
     Returns
     -------
@@ -489,17 +502,33 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
     >>> p = dp.compare_models({"Reduced": reduced, "Full": model})
     """
-    from .models import tidy_estimates
+    from .models import (
+        _check_exponentiate,
+        _ratio_label,
+        _reference_position,
+        tidy_estimates,
+    )
 
     if not isinstance(models, dict) or not models:
         raise ValueError("`models` must be a non-empty {name: model} dict.")
+    _check_exponentiate(exponentiate)
+    line = _reference_position(reference_line, exponentiate)
 
     frames = []
     for name, model in models.items():
-        est = tidy_estimates(model, conf_level=conf_level).copy()
+        est = tidy_estimates(model, conf_level=conf_level,
+                             exponentiate=exponentiate).copy()
         est["model"] = str(name)
         frames.append(est)
     est = pd.concat(frames, ignore_index=True)
+
+    # The ratio is named after the fitted models. Tidy frames carry no family,
+    # and models of different families share only the neutral name.
+    x_label = "Estimate"
+    if exponentiate:
+        named = {_ratio_label(m) for m in models.values()
+                 if not isinstance(m, pd.DataFrame)}
+        x_label = named.pop() if len(named) == 1 else "exp(Estimate)"
 
     if not intercept:
         est = est[~est["term"].str.fullmatch(r"(?i)\(?intercept\)?|const")]
@@ -533,12 +562,15 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         geom_errorbarh,
         geom_point,
         geom_vline,
+        scale_x_log10,
         scale_y_continuous,
     )
 
-    return (
-        ggplot(est, aes(x="estimate", y="y", color="model"))
-        + geom_vline(xintercept=0, linetype="dashed", color="#9e9e9e")
+    p = ggplot(est, aes(x="estimate", y="y", color="model"))
+    if line is not None:
+        p = p + geom_vline(xintercept=line, linetype="dashed", color="#9e9e9e")
+    p = (
+        p
         + geom_errorbarh(aes(xmin="conf_low", xmax="conf_high"),
                          height=0.0, size=0.7)
         + geom_point(size=2.4)
@@ -548,7 +580,8 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
             labels=term_levels,
             limits=(-0.5, len(term_levels) - 0.5),
         )
-        + labs(x="Estimate", y="", color="Model", title=title)
+        + labs(x=x_label, y="", color="Model", title=title)
         + theme_depictr()
         + theme(panel_grid_major_y=element_blank())
     )
+    return p + scale_x_log10() if exponentiate else p

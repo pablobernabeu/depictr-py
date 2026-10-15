@@ -67,6 +67,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with three private names from `depictr.cvd`. The R twin's
   `simulate_figure()` uses the same matrices on the figure's vector elements
   and returns a gtable.
+- `tidy_estimates()`, `coefficient_plot()` and `compare_models()` gain
+  `exponentiate`, and the two plots gain `reference_line`, as in the R twin.
+  `exponentiate=True` exponentiates the estimates and interval limits, so the
+  plots draw odds, rate or risk ratios on a log10 axis with the reference line
+  at 1. The axis is labelled "Odds ratio" for a logit link, "Rate ratio" for a
+  log link in a Poisson or negative binomial model, "Risk ratio" for a
+  binomial model with a log link and "exp(Estimate)" otherwise. A tidy frame
+  is read as estimates on the link scale. The reference line was fixed at 0,
+  so an exponentiated table drawn on a log axis warned "divide by zero
+  encountered in log10" and showed no line at 1. `reference_line=None` keeps
+  the line at 0 unless `exponentiate` is set, and `float("nan")` leaves it
+  out.
 
 ### Changed
 
@@ -207,6 +219,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bundled datasets, and the figure is unchanged. Each ridge sits in a panel of
   its own, so the stacking that `geom_area()` applies by default had nothing to
   stack. The ridges are now drawn unstacked.
+- The R twin now gives a GLM whose dispersion is estimated (Gaussian, Gamma,
+  inverse Gaussian) t intervals on the residual degrees of freedom, as R's
+  `summary.glm()` tests it, where it gave z intervals. Here the intervals stay
+  those of the result's `conf_int()`, which follow its `use_t`: z by default,
+  as statsmodels' own GLM summary reports, and t when the model is fitted with
+  `use_t=True`, which gives the R twin's intervals. The effects and
+  interaction bands follow `use_t` in the same way. The `tidy_estimates()`
+  docstring now says so. At 12 residual degrees of freedom, the t interval is
+  about 11% wider.
 
 ### Deprecated
 
