@@ -1,6 +1,7 @@
 """Tests for the bundled data, the theme/scales, and the model-or-frame input."""
 
 import copy
+import re
 import warnings
 from statistics import NormalDist
 
@@ -446,3 +447,127 @@ def test_tidy_estimates_follows_the_results_use_t():
     ols = smf.ols(form, small).fit()
     np.testing.assert_allclose(tidy_estimates(t_fit)[["conf_low", "conf_high"]],
                                tidy_estimates(ols)[["conf_low", "conf_high"]])
+
+
+TIMES = "\u00d7"
+
+
+def _top_down(p):
+    """The drawn term labels, from the top of the axis to the bottom."""
+    return list(p.data["label"].cat.categories)[::-1]
+
+
+def _label_of(p):
+    """Each raw term with the label it is drawn under."""
+    return dict(zip(p.data["term"].astype(str), p.data["label"].astype(str),
+                    strict=True))
+
+
+def test_coefficient_plot_names_each_factor_level_as_in_r():
+    # Regression: the rows showed patsy's names, treatment[T.enhanced] and
+    # rainfall:treatment[T.enhanced]. A factor's row now names its level, as in
+    # the R twin, whose test-coefficient_plot.R pins the same labels.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols('Q("yield") ~ rainfall * treatment + fertiliser',
+                  DATASETS["crop_yield"]()).fit()
+    interaction = f"rainfall {TIMES} treatment: enhanced"
+    # Sorted by estimate, the twins draw the same rows in the same order.
+    assert _top_down(coefficient_plot(fit, order="ascending")) == [
+        "treatment: enhanced", "fertiliser", "rainfall", interaction]
+    # In model order the rows follow patsy's columns, which run in another
+    # order from R's, but each term carries the label it has in R.
+    p = coefficient_plot(fit)
+    assert _top_down(p) == ["treatment: enhanced", "rainfall", interaction,
+                            "fertiliser"]
+    assert _label_of(p) == {
+        "treatment[T.enhanced]": "treatment: enhanced",
+        "rainfall": "rainfall",
+        "rainfall:treatment[T.enhanced]": interaction,
+        "fertiliser": "fertiliser",
+    }
+    assert "rainfall * treatment: enhanced" in _top_down(
+        coefficient_plot(fit, interaction="asterisk"))
+    assert _top_down(coefficient_plot(fit, labels="raw")) == [
+        "treatment[T.enhanced]", "rainfall", "rainfall:treatment[T.enhanced]",
+        "fertiliser"]
+
+
+def test_the_apps_quoted_formula_draws_no_formula_syntax():
+    # The web app quotes every name with Q("...") (_fit_ols in
+    # app/streamlit_app.py), and its forest showed Q("region")[T.North] and
+    # Q("stress"). The R twin's test-coefficient_plot.R pins the same labels
+    # for this model.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols('Q("life_satisfaction") ~ Q("region") + Q("stress")',
+                  wellbeing_survey()).fit()
+    labels = _top_down(coefficient_plot(fit))
+    assert labels == ["region: North", "region: South", "region: West", "stress"]
+    assert not any("Q(" in label for label in labels)
+
+
+def test_factor_labels_come_from_the_design_of_a_formula_fit():
+    # A level holding a colon and a bracket cannot be told from the name
+    # alone, g[T.a]:b] reading as an interaction. The design of a patsy fit
+    # records where each level begins and ends.
+    smf = pytest.importorskip("statsmodels.formula.api")
+    rng = np.random.default_rng(3)
+    df = pd.DataFrame({
+        "y": rng.normal(size=40), "x": rng.normal(size=40),
+        "g": pd.Categorical(np.tile(["low", "a]:b"], 20),
+                            categories=["low", "a]:b"]),
+    })
+    fit = smf.ols("y ~ x * g", df).fit()
+    assert set(_label_of(coefficient_plot(fit)).values()) == {
+        "g: a]:b", "x", f"x {TIMES} g: a]:b"}
+
+
+def test_coefficient_plot_takes_labels_by_name_by_position_or_raw():
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols('Q("yield") ~ rainfall + fertiliser + soil_ph',
+                  DATASETS["crop_yield"]()).fit()
+    # A dict relabels the terms it names and leaves the rest to the default.
+    p = coefficient_plot(fit, labels={"soil_ph": "Soil pH"})
+    assert _top_down(p) == ["rainfall", "fertiliser", "Soil pH"]
+    # A list gives one label per term in model order, whatever the order, as
+    # the R twin binds an unnamed vector.
+    want = {"rainfall": "Rainfall", "fertiliser": "Fertiliser",
+            "soil_ph": "Soil pH"}
+    for order in ("model", "ascending", "descending"):
+        p = coefficient_plot(fit, labels=list(want.values()), order=order)
+        assert _label_of(p) == want, order
+    assert _top_down(coefficient_plot(fit, labels=list(want.values()))) == [
+        "Rainfall", "Fertiliser", "Soil pH"]
+    p = coefficient_plot(fit, labels=("Constant", *want.values()), intercept=True)
+    assert _label_of(p) == {"Intercept": "Constant", **want}
+
+
+def test_coefficient_plot_reports_labels_it_cannot_use():
+    smf = pytest.importorskip("statsmodels.formula.api")
+    fit = smf.ols('Q("yield") ~ rainfall + fertiliser + soil_ph',
+                  DATASETS["crop_yield"]()).fit()
+    # The sentence of posterior_plot() and of the R twin.
+    with pytest.warns(UserWarning, match=(
+            r"^`labels` keys not found among the parameters: soil_pH\. The "
+            r"parameters are Intercept, rainfall, fertiliser, soil_ph\.$")):
+        coefficient_plot(fit, labels={"soil_pH": "Soil pH"})
+    # Labelling a term that is not drawn, such as the dropped intercept, is
+    # not a typo.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        coefficient_plot(fit, labels={"Intercept": "Constant"})
+    with pytest.raises(ValueError, match=re.escape(
+            "`labels` has length 2 but the model has 3 terms to label (in "
+            "model order, after dropping the intercept).")):
+        coefficient_plot(fit, labels=["Rainfall", "Fertiliser"])
+    with pytest.raises(ValueError, match=re.escape(
+            "`labels` has length 3 but the model has 4 terms to label (in "
+            "model order).")):
+        coefficient_plot(fit, labels=["R", "F", "S"], intercept=True)
+    with pytest.raises(ValueError, match=(
+            r"^Terms rainfall and soil_ph share the label 'Weather'; rename "
+            r"one with `labels`\.$")):
+        coefficient_plot(fit, labels={"rainfall": "Weather", "soil_ph": "Weather"})
+    with pytest.raises(TypeError, match="^`labels` must be"):
+        coefficient_plot(fit, labels="Rainfall")
+    with pytest.raises(ValueError, match="^`interaction` must be one of"):
+        coefficient_plot(fit, interaction="cross")

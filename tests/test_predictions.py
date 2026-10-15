@@ -1,5 +1,7 @@
 """Smoke and behaviour tests for the model-prediction plots."""
 
+import re
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -364,3 +366,85 @@ def test_compare_models_exponentiates_every_model(glm):
 def test_compare_models_neutral_label_for_mixed_families(glm, ols):
     p = compare_models({"logit": glm, "ols": ols}, exponentiate=True)
     assert p.labels.x == "exp(Estimate)"
+
+
+def _top_down(p):
+    """compare_models() term labels, from the top of the axis to the bottom."""
+    return list(p.data["label"].cat.categories)[::-1]
+
+
+def _y_axis_labels(p):
+    """The labels the y scale prints, from the top of the axis to the bottom."""
+    scale = p.scales.get_scales("y")
+    return [label for _, label in sorted(zip(scale.breaks, scale.labels,
+                                             strict=True), reverse=True)]
+
+
+@pytest.fixture(scope="module")
+def additive_and_full():
+    smf = pytest.importorskip("statsmodels.formula.api")
+    cy = crop_yield()
+    return (smf.ols('Q("yield") ~ rainfall + treatment', cy).fit(),
+            smf.ols('Q("yield") ~ rainfall * treatment', cy).fit())
+
+
+def test_compare_models_names_the_level_in_every_models_terms(additive_and_full):
+    # Regression: the axis printed patsy's names. As in the R twin, whose
+    # test-coefficient_plot.R pins the same labels, a factor's row names its
+    # level, including a term that only the second model holds, and a
+    # brms-style table lines up with the fits through its b_ prefix.
+    additive, full = additive_and_full
+    want = ["treatment: enhanced", "rainfall",
+            "rainfall \u00d7 treatment: enhanced"]
+    p = compare_models({"Additive": additive, "Interaction": full})
+    assert _top_down(p) == want
+    assert _y_axis_labels(p) == want
+    bayes = tidy_estimates(full)
+    bayes["term"] = "b_" + bayes["term"]
+    p = compare_models({"Frequentist": full, "Bayesian": bayes})
+    assert _top_down(p) == want
+    assert _y_axis_labels(p) == want
+    assert p.data["label"].nunique() == len(want)
+
+
+def test_compare_models_takes_labels_by_name_by_position_or_raw(additive_and_full):
+    additive, full = additive_and_full
+    models = {"Additive": additive, "Interaction": full}
+    p = compare_models(models, labels={"rainfall": "Rainfall (mm)"})
+    assert _top_down(p) == ["treatment: enhanced", "Rainfall (mm)",
+                            "rainfall \u00d7 treatment: enhanced"]
+    # A list gives one label per row, in the order the terms first appear,
+    # which is the order they are drawn from the top.
+    mine = ["Enhanced", "Rainfall", "Rainfall by enhanced"]
+    p = compare_models(models, labels=mine)
+    assert _top_down(p) == mine
+    assert _y_axis_labels(p) == mine
+    assert _top_down(compare_models(models, labels="raw")) == [
+        "treatment[T.enhanced]", "rainfall", "rainfall:treatment[T.enhanced]"]
+    assert _top_down(compare_models(models, interaction="colon"))[-1] == (
+        "rainfall:treatment: enhanced")
+
+
+def test_compare_models_reports_labels_it_cannot_use(additive_and_full):
+    additive, full = additive_and_full
+    models = {"Additive": additive, "Interaction": full}
+    # Each term is listed once, though every model reports it.
+    with pytest.warns(UserWarning, match=(
+            r"^`labels` keys not found among the parameters: rainfal\. The "
+            r"parameters are Intercept, treatment\[T\.enhanced\], rainfall, "
+            r"rainfall:treatment\[T\.enhanced\]\.$")):
+        compare_models(models, labels={"rainfal": "Rainfall"})
+    with pytest.raises(ValueError, match=re.escape(
+            "`labels` has length 2 but the models have 3 terms to label (in "
+            "the order they first appear, after dropping the intercept).")):
+        compare_models(models, labels=["Enhanced", "Rainfall"])
+    # Two terms of one model under one label would hide one behind the other.
+    with pytest.raises(ValueError, match=(
+            r"^Terms treatment\[T\.enhanced\] and rainfall share the label "
+            r"'Weather'; rename one with `labels`\.$")):
+        compare_models(models, labels={"treatment[T.enhanced]": "Weather",
+                                       "rainfall": "Weather"})
+    with pytest.raises(TypeError, match="^`labels` must be"):
+        compare_models(models, labels=3)
+    with pytest.raises(ValueError, match="^`interaction` must be one of"):
+        compare_models(models, interaction="cross")

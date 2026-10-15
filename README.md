@@ -198,7 +198,7 @@ The exported functions fall into families that follow the stages of an analysis.
 | Accessibility | `check_figure`, `palette_safety`, `simulate_cvd`, `simulate_figure` |
 | Exploratory analysis | `explore_distribution`, `explore_categorical`, `explore_bivariate`, `scatter_trend`, `correlation_heatmap`, `missingness_map`, `ecdf_plot`, `ridgeline_plot`, `dumbbell_plot`, `outlier_plot`, `group_comparison_plot`, `raincloud_plot`, `explore_pairs` |
 | Estimation and tables | `estimation_plot` (single- or two-panel Cumming), `summary_table` |
-| Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot` |
+| Model estimates | `coefficient_plot`, `tidy_estimates`, `effects_plot`, `interaction_plot`, `compare_models`, `random_effects_plot`, `posterior_plot`, `frequentist_bayesian_plot`, `power_curve_plot`, `format_terms` |
 | Diagnostics | `qq_plot`, `influence_plot`, `vif_plot`, `binned_residual_plot`, `residual_diagnostics_plot`, `model_report` |
 | Classification | `roc_curve_plot`, `pr_curve_plot`, `confusion_matrix_plot`, `calibration_plot`, `gain_plot`, `lift_plot`, `threshold_plot` |
 | Multivariate | `pca_plot`, `scree_plot`, `cluster_plot`, `dendrogram_plot`, `silhouette_plot` |
@@ -227,11 +227,10 @@ same tables as the R function, pilotr's included, but it has no `x_lab`,
 classification curve shows a single model. The R package's ROC,
 precision-recall, calibration, gains and lift functions also overlay
 several models given as a named list, and its gains chart adds a
-perfect-model line. Seven functions
+perfect-model line. Six functions
 from the R package have yet to be ported: `optimizer_fixef_plot` (there is no direct
 statsmodels equivalent of `lme4::allFit`), `k_diagnostic`, `palette_preview`,
-`model_fit_table`, `ts_forecast`, the label helper `format_terms` and the
-session-wide settings of `depictr_options`.
+`model_fit_table`, `ts_forecast` and the session-wide settings of `depictr_options`.
 
 ## Relationship to the R package
 

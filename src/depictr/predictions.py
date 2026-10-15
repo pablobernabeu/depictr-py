@@ -36,6 +36,16 @@ from plotnine import (
 )
 
 from .palette import BRAND
+from .terms import (
+    _INTERCEPT_PATTERN,
+    _check_distinct,
+    _check_label_count,
+    _check_labels,
+    _design_labels,
+    _term_labels,
+    _warn_unused_labels,
+    interaction_separator,
+)
 from .theme import scale_colour_depictr, scale_fill_depictr, theme_depictr
 
 
@@ -457,7 +467,8 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
 
 
 def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
-                   title=None, reference_line=None, exponentiate: bool = False):
+                   title=None, reference_line=None, exponentiate: bool = False,
+                   labels=None, interaction: str = "times"):
     """Dodged forest comparing each coefficient across several models.
 
     Each model contributes its estimates and confidence intervals (read with
@@ -465,6 +476,13 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     work); the terms share a y-axis and the models are dodged apart and coloured,
     so a coefficient that shifts from one specification to the next is easy to
     spot.
+
+    The terms are labelled as in :func:`depictr.coefficient_plot`: a factor
+    level names its variable and level (``treatment: enhanced``), read from
+    the design of each fitted model, and other names are tidied with
+    :func:`depictr.format_terms`. Terms that take the same label share a row,
+    so ``stress`` and a brms-style ``b_stress`` are drawn as one term, as in
+    the R twin.
 
     Parameters
     ----------
@@ -488,10 +506,23 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         The axis is named as in :func:`depictr.coefficient_plot` when the
         fitted models agree on the ratio, and "exp(Estimate)" when they do
         not. Defaults to ``False``.
+    labels : dict, list or "raw", optional
+        Display labels for the terms. A dict maps raw term names to labels and
+        leaves the other terms to the default labels, and a key that matches
+        no term warns. A list gives one label per row, in the order the terms
+        first appear across the models, which is the order they are drawn
+        from the top, after the intercept is dropped unless
+        ``intercept=True``. Terms drawn on one row take one label. ``"raw"``
+        draws the names as the models give them.
+    interaction : {"times", "asterisk", "colon", "space"}
+        How an interaction is written in the default labels, passed to
+        :func:`depictr.format_terms`.
 
     Returns
     -------
     plotnine.ggplot
+        The plot's data keeps the raw names in ``term`` and the drawn ones in
+        ``label``.
 
     Examples
     --------
@@ -512,6 +543,8 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     if not isinstance(models, dict) or not models:
         raise ValueError("`models` must be a non-empty {name: model} dict.")
     _check_exponentiate(exponentiate)
+    interaction_separator(interaction)
+    _check_labels(labels)
     line = _reference_position(reference_line, exponentiate)
 
     frames = []
@@ -521,6 +554,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         est["model"] = str(name)
         frames.append(est)
     est = pd.concat(frames, ignore_index=True)
+    _warn_unused_labels(est["term"], labels)
 
     # The ratio is named after the fitted models. Tidy frames carry no family,
     # and models of different families share only the neutral name.
@@ -530,14 +564,45 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
                  if not isinstance(m, pd.DataFrame)}
         x_label = named.pop() if len(named) == 1 else "exp(Estimate)"
 
+    # The factor labels of every fitted model, so a factor term that only a
+    # later model holds is labelled too. Where two models hold the same
+    # column, the first one's label is kept.
+    auto = {}
+    if not isinstance(labels, str):
+        for model in models.values():
+            for column, label in _design_labels(model, interaction).items():
+                auto.setdefault(column, label)
+
+    intercept_dropped = False
     if not intercept:
-        est = est[~est["term"].str.fullmatch(r"(?i)\(?intercept\)?|const")]
+        is_intercept = est["term"].str.fullmatch(_INTERCEPT_PATTERN)
+        intercept_dropped = bool(is_intercept.any())
+        est = est[~is_intercept]
     if est.empty:
         raise ValueError("Nothing left to plot after dropping the intercept.")
 
+    # Rows are aligned by label, as in the R twin, so terms of different models
+    # that take the same label share one. A list gives one label per row, in
+    # the order the terms first appear, and is matched to the default labels
+    # in that order.
+    positional = isinstance(labels, (list, tuple))
+    drawn = _term_labels(est["term"], None if positional else labels, auto,
+                         interaction)
+    if positional:
+        rows = list(dict.fromkeys(drawn))
+        _check_label_count(labels, len(rows), "the models have",
+                           "in the order they first appear", intercept_dropped)
+        given = dict(zip(rows, (str(label) for label in labels), strict=True))
+        drawn = [given[label] for label in drawn]
+    est = est.assign(label=drawn)
+    # Two terms of one model under one label would be drawn on top of each
+    # other.
+    for _, part in est.groupby("model", sort=False):
+        _check_distinct(part["term"], part["label"])
+
     # First-seen order of terms and models. Terms run up the axis so the first
     # reads at the top, models keep their dict order in the legend.
-    term_levels = list(dict.fromkeys(est["term"]))
+    term_levels = list(dict.fromkeys(est["label"]))
     model_levels = [str(k) for k in models]
     est["model"] = pd.Categorical(est["model"], categories=model_levels, ordered=True)
 
@@ -555,7 +620,10 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     # strict=True: both are columns of the same frame, so unequal lengths cannot
     # happen and a silent truncation would misplace every later estimate.
     est["y"] = [base_y[t] + offset[m]
-                for t, m in zip(est["term"], est["model"], strict=True)]
+                for t, m in zip(est["label"], est["model"], strict=True)]
+    # Listed from the bottom of the axis up, as coefficient_plot() lists them.
+    est["label"] = pd.Categorical(est["label"], categories=term_levels[::-1],
+                                  ordered=True)
 
     from plotnine import (
         element_blank,

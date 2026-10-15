@@ -21,6 +21,16 @@ from plotnine import (
 )
 
 from .palette import depictr_brand
+from .terms import (
+    _INTERCEPT_PATTERN,
+    _check_distinct,
+    _check_label_count,
+    _check_labels,
+    _design_labels,
+    _term_labels,
+    _warn_unused_labels,
+    interaction_separator,
+)
 from .theme import theme_depictr
 
 # Tidy columns every downstream function relies on.
@@ -216,8 +226,19 @@ def _tidy_from_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 def coefficient_plot(model, intercept: bool = False, order: str = "model",
                      conf_level: float = 0.95, title=None, reference_line=None,
-                     exponentiate: bool = False):
+                     exponentiate: bool = False, labels=None,
+                     interaction: str = "times"):
     """Forest (dot-and-whisker) plot of model coefficients.
+
+    By default each term is labelled for a reader. The coefficient of a factor
+    level names its variable and level, so patsy's ``treatment[T.enhanced]``
+    is drawn as ``treatment: enhanced``, the contrast of enhanced with the
+    reference level, and ``rainfall:treatment[T.enhanced]`` as
+    ``rainfall × treatment: enhanced``. For a formula fit, the levels are read
+    from the model's design, so a level holding a colon or a bracket is kept
+    whole. Other names, and the terms of a data frame, are tidied with
+    :func:`format_terms`, which also drops the ``Q()`` and ``C()`` wrappers of
+    a formula. The R twin labels its terms by the same rules.
 
     Parameters
     ----------
@@ -247,18 +268,36 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         model with a log link and "exp(Estimate)" otherwise. A data frame
         ``model`` must hold estimates on the link scale. Defaults to
         ``False``.
+    labels : dict, list or "raw", optional
+        Display labels for the terms. A dict maps raw term names to labels,
+        such as ``{"soil_ph": "Soil pH"}``, and leaves the other terms to the
+        default labels. A key that matches no term warns, since a mistyped one
+        would otherwise change nothing. A list gives one label per term in
+        model order (the order :func:`tidy_estimates` returns, after the
+        intercept is dropped unless ``intercept=True``), whatever ``order``
+        is, so each label stays with its term when the terms are sorted. Under
+        the default order, it reads from top to bottom. ``"raw"`` draws the
+        names as the model gives them. Two terms may not share a label.
+    interaction : {"times", "asterisk", "colon", "space"}
+        How an interaction is written in the default labels, passed to
+        :func:`format_terms`: a multiplication sign by default.
 
     Returns
     -------
     plotnine.ggplot
+        The plot's data keeps the raw names in ``term`` and the drawn ones in
+        ``label``.
 
     Examples
     --------
     >>> import depictr as dp
     >>> import statsmodels.formula.api as smf
     >>> cy = dp.crop_yield()
-    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + soil_ph', cy).fit()
+    >>> model = smf.ols('Q("yield") ~ fertiliser + rainfall + treatment', cy).fit()
     >>> p = dp.coefficient_plot(model, title="Drivers of crop yield")
+    >>> list(p.data["label"].cat.categories)[::-1]
+    ['treatment: enhanced', 'fertiliser', 'rainfall']
+    >>> p = dp.coefficient_plot(model, labels={"treatment[T.enhanced]": "Enhanced"})
 
     Odds ratios from a logistic regression, on a log axis with the line at 1:
 
@@ -267,10 +306,28 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     >>> p = dp.coefficient_plot(logit, exponentiate=True)
     """
     _check_exponentiate(exponentiate)
+    interaction_separator(interaction)
+    _check_labels(labels)
     line = _reference_position(reference_line, exponentiate)
     est = tidy_estimates(model, conf_level=conf_level, exponentiate=exponentiate)
+    # Judged against every term, so labelling one that is merely not drawn,
+    # such as the dropped intercept, is not reported as a typo.
+    _warn_unused_labels(est["term"], labels)
+    auto = {} if isinstance(labels, str) else _design_labels(model, interaction)
+    intercept_dropped = False
     if not intercept:
-        est = est[~est["term"].str.fullmatch(r"(?i)\(?intercept\)?|const")]
+        is_intercept = est["term"].str.fullmatch(_INTERCEPT_PATTERN)
+        intercept_dropped = bool(is_intercept.any())
+        est = est[~is_intercept]
+    # A list is read in model order, so it is attached to the rows before they
+    # are sorted, and each label travels with its own term.
+    if isinstance(labels, (list, tuple)):
+        _check_label_count(labels, len(est), "the model has", "in model order",
+                           intercept_dropped)
+        est = est.assign(label=[str(label) for label in labels])
+    else:
+        est = est.assign(label=_term_labels(est["term"], labels, auto, interaction))
+    _check_distinct(est["term"], est["label"])
     # plotnine draws the first category of the y axis at the bottom. A sorted
     # order is therefore listed as it stands, so estimates increase up the axis
     # under "ascending", while model order is reversed so that the first term
@@ -280,11 +337,15 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         est = est.sort_values("estimate", kind="stable")
     elif order == "descending":
         est = est.sort_values("estimate", ascending=False, kind="stable")
-    levels = list(est["term"])
+    terms, drawn = list(est["term"]), list(est["label"])
     if order not in ("ascending", "descending"):
-        levels = levels[::-1]
-    est = est.assign(term=pd.Categorical(est["term"], categories=levels, ordered=True))
-    p = ggplot(est, aes(x="estimate", y="term"))
+        terms, drawn = terms[::-1], drawn[::-1]
+    est = est.assign(
+        term=pd.Categorical(est["term"], categories=list(dict.fromkeys(terms)),
+                            ordered=True),
+        label=pd.Categorical(est["label"], categories=drawn, ordered=True),
+    )
+    p = ggplot(est, aes(x="estimate", y="label"))
     if line is not None:
         p = p + geom_vline(xintercept=line, linetype="dashed", color="#9e9e9e")
     p = (

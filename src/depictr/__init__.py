@@ -70,6 +70,7 @@ from .power import power_curve_plot
 from .predictions import compare_models, effects_plot, interaction_plot
 from .survival import survival_plot
 from .tables import summary_table
+from .terms import format_terms
 from .theme import (
     legend_inside,
     scale_color_depictr,
@@ -99,7 +100,7 @@ __all__ = [
     # Model estimates
     "coefficient_plot", "tidy_estimates", "effects_plot", "interaction_plot",
     "compare_models", "random_effects_plot", "posterior_plot",
-    "frequentist_bayesian_plot", "power_curve_plot",
+    "frequentist_bayesian_plot", "power_curve_plot", "format_terms",
     # Diagnostics
     "qq_plot", "influence_plot", "vif_plot", "binned_residual_plot",
     "residual_diagnostics_plot", "model_report",

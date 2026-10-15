@@ -24,7 +24,8 @@ model = smf.ols(
 
 ## Coefficient forest
 
-A dot-and-whisker forest of the coefficients.
+A dot-and-whisker forest of the coefficients. The treatment row is labelled
+`treatment: enhanced`, which names the level compared with the reference.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.coefficient_plot(model, title="Drivers of crop yield")

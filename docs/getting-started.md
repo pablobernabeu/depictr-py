@@ -74,6 +74,12 @@ dp.effects_plot(model, "fertiliser")
 dp.residual_diagnostics_plot(model)
 ```
 
+The forest labels each term for a reader. The treatment row reads
+`treatment: enhanced`, the contrast of enhanced fields with the reference level,
+standard, and `soil_ph` reads `soil ph`. `labels` renames any term,
+`labels="raw"` keeps the model's own names, and `format_terms` applies the same
+rules to any list of names.
+
 `coefficient_plot` also accepts a plain data frame of estimates (with columns
 `term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source (a
 Bayesian fit, a bootstrap, a table copied from a paper) plot the same way.

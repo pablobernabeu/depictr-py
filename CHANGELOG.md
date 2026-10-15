@@ -79,6 +79,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   encountered in log10" and showed no line at 1. `reference_line=None` keeps
   the line at 0 unless `exponentiate` is set, and `float("nan")` leaves it
   out.
+- `format_terms()` tidies raw term names into labels by the rules of the R
+  twin's `format_terms()`, with the same `interaction`, `strip_prefix`,
+  `tidy_intercept` and `wrap` arguments. It also reads the names that patsy
+  and formulaic give a formula's terms: `treatment[T.enhanced]` and
+  `C(treatment)[T.enhanced]` become `treatment: enhanced`, and
+  `Q("region")[T.North]` becomes `region: North`. The README no longer lists
+  it among the functions yet to be ported.
+- `coefficient_plot()` and `compare_models()` gain `labels` and `interaction`.
+  `labels` takes a dict from raw name to label, which warns about a key that
+  matches no term as `posterior_plot()` does, a list with one label per term,
+  or `"raw"` for the names the model gives. `coefficient_plot()` reads a list
+  in model order, whatever `order` is, and `compare_models()` in the order the
+  terms first appear, as the R twin reads an unnamed vector. `interaction`
+  sets how an interaction is written.
 
 ### Changed
 
@@ -228,6 +242,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interaction bands follow `use_t` in the same way. The `tidy_estimates()`
   docstring now says so. At 12 residual degrees of freedom, the t interval is
   about 11% wider.
+- `coefficient_plot()` and `compare_models()` label their terms for a reader,
+  where they printed patsy's names. A factor's coefficient names its variable
+  and level, so `treatment[T.enhanced]` is drawn as `treatment: enhanced`,
+  `rainfall:treatment[T.enhanced]` as `rainfall × treatment: enhanced` and the
+  web app's `Q("region")[T.North]` as `region: North`. For a formula fit, the
+  levels are read from the model's design. The R twin labels its terms the
+  same way, and the two test suites pin the same labels. Terms that take the
+  same label share a row in `compare_models()`, and both functions drop
+  brms's `b_Intercept` with the intercept, as in R. The plot's data keeps the
+  raw names in `term`, and `labels="raw"` draws them as before.
 
 ### Deprecated
 
