@@ -723,6 +723,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `interaction_plot()` said a categorical predictor is held at its reference
   level. It is held at its most common level, as the R twin documents, and
   that level need not be the reference. The docstrings now say so.
+- `CITATION.cff` gives the author's ORCID iD, as the R twin's does, so the
+  Zenodo record of the next release carries it. The record of 0.3.0 has none.
+  The comment beside its release date names the channels that released 0.3.0
+  on 2026-09-24: the GitHub release, Zenodo and PyPI.
 
 ## [0.3.0] - 2026-09-24
 

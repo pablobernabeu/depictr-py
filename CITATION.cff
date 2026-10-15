@@ -15,8 +15,10 @@ type: software
 authors:
   - family-names: Bernabeu
     given-names: Pablo
+    orcid: "https://orcid.org/0000-0003-1083-2460"
 version: "0.3.0"
-# The date PyPI published 0.3.0, the day of the GitHub release.
+# 0.3.0 first became public on 2026-09-24, when the GitHub release appeared,
+# Zenodo archived it and PyPI published it.
 date-released: "2026-09-24"
 license: MIT
 # Zenodo's concept DOI, which archives every GitHub release of this repository,
