@@ -37,12 +37,10 @@ jobs:
       - name: Install the package with its optional back-ends and test tools
         run: python -m pip install -e ".[all,test]"
 
-      # The whole repository, not src and tests alone. Naming those two left
-      # app/streamlit_app.py and docs/_exec.py linted by nothing, and the app had
-      # been carrying an over-long line that no gate could see. Matching the
-      # scopusflow twin, which already lints everything, means a new top-level
-      # script is covered the day it is added rather than whenever someone
-      # remembers to extend this list.
+      # The whole repository, not src and tests alone, so app/ and docs/ are
+      # linted too and a new top-level script is covered the day it is added
+      # rather than whenever someone remembers to extend a list. This matches the
+      # scopusflow twin, which lints everything.
       - name: Lint
         run: ruff check .
 
@@ -109,11 +107,9 @@ jobs:
           PY
 
   # The floors in pyproject are a promise to anyone resolving against an older
-  # stack, and nothing tested them: three of them were below what plotnine
-  # itself requires, describing a combination no install could produce. This
-  # job installs the declared minima so the promise stays honest. A failure
-  # here means the floors need raising to what actually works, not that the
-  # job is too strict.
+  # stack. This job installs the declared minima so the promise stays honest. A
+  # failure here means the floors need raising to what actually works, not that
+  # the job is too strict.
   minimum-versions:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest

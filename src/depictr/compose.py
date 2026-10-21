@@ -27,14 +27,14 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
     ``ncol``, then stacking the rows (``/``). The result is a plotnine
     composition, so it still has ``.draw`` and ``.save``. This is the building
     block behind the multi-panel reports (for example
-    :func:`depictr.residual_diagnostics_plot`).
+    [`depictr.residual_diagnostics_plot`][]).
 
     Each panel is tagged A, B, C and so on by default, in reading order, as
     the R twin's patchwork annotation tags them. The tags run on through a
     composition passed as one of the plots, and a ``plot_spacer()`` takes
     none. A tag is drawn in the top-left corner of its panel at the theme's
     ``plot_tag`` size, 1.2 times the base size, as in ggplot2. In this twin
-    each tag belongs to its panel's plot, so :func:`depictr.check_figure`
+    each tag belongs to its panel's plot, so [`depictr.check_figure`][]
     measures it with the rest of the panel's text, where the R twin's audit
     leaves out the tags that patchwork draws around the panels.
 
@@ -45,7 +45,8 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
     ncol, nrow : int, optional
         The grid shape. Give one and the other is derived from the count; give
         neither and a sensible default is chosen (one column for a single plot,
-        two up to four plots, three beyond).
+        two up to four plots, three beyond). When both are given, ``ncol``
+        decides and ``nrow`` is ignored.
     title : str, optional
         A title. Applied only when a single plot is passed: plotnine
         compositions cannot carry a figure-level title, so for a grid the
@@ -55,7 +56,7 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
         or capital or lower-case Roman numerals, as patchwork's
         ``tag_levels`` takes them. A sequence of strings gives the tags
         themselves, one per panel in reading order. ``None`` leaves the panels
-        untagged, as before this argument existed. Letters run to 26 panels.
+        untagged. Letters run to 26 panels.
     tag_size : float, optional
         The size of the tags in points, such as the 8 pt that Nature asks of
         panel labels. ``None``, the default, leaves it to each panel's theme.
@@ -228,7 +229,7 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     Missing directories on the way to ``filename`` are created, and PDF, EPS
     and TIFF files are written to pass the technical checks journals run on
     submitted figures. With ``check=True``, the figure is also audited with
-    :func:`depictr.check_figure` at the width it is saved at.
+    [`depictr.check_figure`][] at the width it is saved at.
 
     A PDF or EPS embeds its fonts as TrueType (Type 42). matplotlib's default,
     Type 3, is the kind Nature refuses, and the setting holds for this save
@@ -284,17 +285,19 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     units : str
         Size units (``"in"``, ``"cm"`` or ``"mm"``).
     check : bool
-        Whether to audit the figure with :func:`depictr.check_figure` at the
+        Whether to audit the figure with [`depictr.check_figure`][] at the
         width it is saved at, given as both ``width_cm`` and
         ``render_width_cm``, so that the text sizes it reports are the printed
         ones. A warning names each check the figure fails. Defaults to False.
         The audit runs before the file is written, so a plot it cannot read is
         refused without saving. For the full report, or for other thresholds
-        such as a journal's own text floor, call :func:`depictr.check_figure`
+        such as a journal's own text floor, call [`depictr.check_figure`][]
         with the saved width as both widths.
     **kwargs
-        Passed to :meth:`plotnine.ggplot.save`, and from there to matplotlib's
-        ``savefig()``.
+        Passed to ``plotnine.ggplot.save``, and from there to matplotlib's
+        ``savefig()``. ``path`` and ``format`` apply to a composition too, but
+        plotnine's ``Compose.save()`` ignores every other option, so one such
+        as ``transparent=True`` has no effect on a composition.
 
     Returns
     -------

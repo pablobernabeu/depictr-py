@@ -39,6 +39,10 @@ the computation where it is. The gallery guides in `docs/gallery/` render their
 plots at build time, so a new family is easiest to review with a guide added
 there.
 
+In a docstring that the API page shows, cross-reference another depictr
+function as ``[`depictr.name`][]``, which the page turns into a link. A Sphinx
+role such as `:func:` is printed there as text.
+
 ## Submitting a pull request
 
 Base your work on `main`, keep the change focused, and add or update tests and

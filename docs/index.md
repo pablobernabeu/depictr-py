@@ -23,7 +23,7 @@ pip install depictr
 pip install "depictr[all]"
 ```
 
-The classification and survival plots delegate to optional back-ends, so the core install stays light. The model plots use statsmodels, which arrives with plotnine. The [Get started](getting-started.md) guide lists the extras.
+The classification and survival plots, and every multivariate plot but the dendrogram, delegate to optional back-ends, so the core install stays light. The model plots use statsmodels, which arrives with plotnine. The [Get started](getting-started.md) guide lists the extras.
 
 ## A first plot
 

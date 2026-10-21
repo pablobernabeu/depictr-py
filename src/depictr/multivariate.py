@@ -100,7 +100,9 @@ def pca_plot(data, cols=None, group=None, title=None):
     coloured by ``group``. Each original variable is drawn as an arrow from the
     origin along its loading, labelled with the variable name just beyond the
     arrow head. The axis labels report the percentage of variance each component
-    explains.
+    explains. The columns used are standardised to zero mean and unit variance
+    first, so the components are those of their correlation matrix, and rows
+    with a missing value in any of them are dropped.
 
     Parameters
     ----------
@@ -215,7 +217,9 @@ def scree_plot(data, cols=None, title=None):
 
     Bars give the proportion of variance each principal component explains; an
     overlaid line and points give the running cumulative proportion. Both share
-    the (0, 1) y-axis.
+    the (0, 1) y-axis. The columns used are standardised and rows with a
+    missing value in any of them are dropped, as in
+    [`pca_plot`][depictr.pca_plot].
 
     Parameters
     ----------
@@ -264,9 +268,10 @@ def scree_plot(data, cols=None, title=None):
 def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
     """k-means clusters drawn on the first two principal components.
 
-    k-means is run on the standardised data in all of its dimensions, with the
-    settings :func:`silhouette_plot` uses, so the two functions show the same
-    partition for the same ``k``, as the R twin does. The principal components
+    k-means is run on the standardised data in all of its dimensions, as the
+    R twin's ``cluster_plot()`` runs it by default, and with the settings
+    [`silhouette_plot`][depictr.silhouette_plot] uses, so the two functions
+    show the same partition for the same ``k``. The principal components
     serve only to display it. Points are drawn at their PC1 and PC2 scores,
     coloured by cluster, and each centroid is marked by a larger outlined
     point at the projection of its k-means centre. The axis labels report the
@@ -290,7 +295,7 @@ def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
     -------
     plotnine.ggplot
         The cluster of each complete-case row is attached as ``p.clusters``, a
-        :class:`pandas.Series` on the index of ``data``. k-means clusters are
+        ``pandas.Series`` on the index of ``data``. k-means clusters are
         numbered from 1.
 
     Raises
@@ -376,7 +381,9 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     The linkage is computed by scipy and the dendrogram coordinates it returns
     are redrawn as line segments under the depictr theme, so the tree matches the
     rest of the figure set. Leaves are not labelled, since the intent is to read
-    the overall merge structure rather than individual observations.
+    the overall merge structure rather than individual observations. The
+    columns used are standardised, rows with a missing value in any of them
+    are dropped and the linkage is computed on Euclidean distances.
 
     Parameters
     ----------
@@ -384,7 +391,7 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     cols : list of str, optional
         Numeric columns to cluster on; defaults to all numeric columns.
     method : str
-        Linkage method passed to :func:`scipy.cluster.hierarchy.linkage`
+        Linkage method passed to ``scipy.cluster.hierarchy.linkage``
         (for example ``"ward"``, ``"average"``, ``"complete"``).
     title : str, optional
 
@@ -434,7 +441,8 @@ def silhouette_plot(data, cols=None, k=3, title=None):
     k-means is run on the standardised data and the silhouette width of each
     observation is drawn as a horizontal bar, sorted within its cluster and
     coloured by cluster. A dashed reference line marks the mean silhouette width,
-    a quick read on how well-separated the clustering is overall.
+    a quick read on how well-separated the clustering is overall. Rows with a
+    missing value in any of the columns used are dropped.
 
     Parameters
     ----------

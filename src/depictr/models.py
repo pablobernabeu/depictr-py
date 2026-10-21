@@ -49,7 +49,12 @@ def tidy_estimates(model, conf_level: float = 0.95,
     model : statsmodels results object or pandas.DataFrame
         A fitted model exposing ``params`` and ``conf_int`` (for example a
         statsmodels ``OLS``, ``GLM`` or ``MixedLM`` result, fitted from a formula
-        or from arrays), or a data frame already carrying the estimates.
+        or from arrays), or a data frame of estimates with the columns ``term``,
+        ``estimate``, ``conf_low`` and ``conf_high``. broom's ``conf.low`` and
+        ``conf.high``, ``lower`` and ``upper`` or ``ci_low`` and ``ci_high``
+        are read as the interval limits, and ``coef`` or ``coefficient`` as the
+        estimate. Other columns are dropped, and a frame without the four
+        raises ``ValueError``.
     conf_level : float
         Confidence level for the interval when reading it from a model, a
         single number strictly between 0 and 1.
@@ -242,13 +247,14 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     ``rainfall × treatment: enhanced``. For a formula fit, the levels are read
     from the model's design, so a level holding a colon or a bracket is kept
     whole. Other names, and the terms of a data frame, are tidied with
-    :func:`format_terms`, which also drops the ``Q()`` and ``C()`` wrappers of
-    a formula. The R twin labels its terms by the same rules.
+    [`format_terms`][depictr.format_terms], which also drops the ``Q()`` and
+    ``C()`` wrappers of a formula. The R twin labels its terms by the same
+    rules.
 
     Parameters
     ----------
     model : statsmodels results object or pandas.DataFrame
-        See :func:`tidy_estimates`.
+        See [`tidy_estimates`][depictr.tidy_estimates].
     intercept : bool
         Whether to include the intercept term.
     order : {"model", "none", "ascending", "descending"}
@@ -259,8 +265,8 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         order, is accepted as an alias. The R twin reads ``order`` the same
         way. Any other value raises ``ValueError``.
     conf_level : float
-        Confidence level passed to :func:`tidy_estimates`, a single number
-        strictly between 0 and 1.
+        Confidence level passed to [`tidy_estimates`][depictr.tidy_estimates],
+        a single number strictly between 0 and 1.
     title : str, optional
     reference_line : float, optional
         Position of the dashed vertical reference line. ``None``, the default,
@@ -281,14 +287,16 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         such as ``{"soil_ph": "Soil pH"}``, and leaves the other terms to the
         default labels. A key that matches no term warns, since a mistyped one
         would otherwise change nothing. A list gives one label per term in
-        model order (the order :func:`tidy_estimates` returns, after the
-        intercept is dropped unless ``intercept=True``), whatever ``order``
-        is, so each label stays with its term when the terms are sorted. Under
-        the default order, it reads from top to bottom. ``"raw"`` draws the
-        names as the model gives them. Two terms may not share a label.
+        model order (the order [`tidy_estimates`][depictr.tidy_estimates]
+        returns, after the intercept is dropped unless ``intercept=True``),
+        whatever ``order`` is, so each label stays with its term when the
+        terms are sorted. Under the default order, it reads from top to
+        bottom. ``"raw"`` draws the names as the model gives them. Two terms
+        may not share a label.
     interaction : {"times", "asterisk", "colon", "space"}
         How an interaction is written in the default labels, passed to
-        :func:`format_terms`: a multiplication sign by default.
+        [`format_terms`][depictr.format_terms]: a multiplication sign by
+        default.
 
     Returns
     -------
@@ -315,8 +323,8 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     """
     _check_conf_level(conf_level)
     if not isinstance(order, str) or order not in _ORDERS:
-        # An unknown order, a typo among them, used to fall back to model
-        # order without a word. R's match.arg() refuses it.
+        # Unchecked, an unknown order, a typo among them, would fall back to
+        # model order without a word. R's match.arg() refuses it.
         raise ValueError(
             "`order` must be one of 'model' (or its alias 'none'), "
             "'ascending' or 'descending'."
@@ -335,8 +343,8 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         is_intercept = est["term"].str.fullmatch(_INTERCEPT_PATTERN)
         intercept_dropped = bool(is_intercept.any())
         est = est[~is_intercept]
-    # Dropping the only term, the intercept of an intercept-only model, left a
-    # themed but empty panel. The R twin's check and message.
+    # Dropping the only term, the intercept of an intercept-only model, would
+    # leave a themed but empty panel. The R twin's check and message.
     if est.empty:
         raise ValueError("No terms left to plot (did you drop the only term?).")
     # A list is read in model order, so it is attached to the rows before they

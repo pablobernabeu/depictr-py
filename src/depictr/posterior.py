@@ -168,17 +168,17 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
     blue for frequentist, the palette's orange for Bayesian).
 
     Only terms present in both sources are drawn. The frequentist confidence
-    level is whatever :func:`depictr.models.tidy_estimates` reads from the model
+    level is whatever [`depictr.models.tidy_estimates`][] reads from the model
     (95% for a fitted statsmodels result), matching the Bayesian outer band.
 
     Parameters
     ----------
     frequentist : statsmodels results object or pandas.DataFrame
         A fitted model or a tidy estimate frame, as accepted by
-        :func:`depictr.models.tidy_estimates`.
+        [`depictr.models.tidy_estimates`][].
     bayesian : pandas.DataFrame or dict of array-like
         Posterior draws, one column (or dict entry) per term, as accepted by
-        :func:`posterior_plot`.
+        [`posterior_plot`][depictr.posterior_plot].
     title : str, optional
         Plot title.
 

@@ -1,13 +1,17 @@
 {#-
-  Overrides mkdocs-material 9.7.6's partials/header.html for two things:
-  (1) a text link to the code-free app in the header's right-hand row, placed
-  before the search box; and (2) the palette (light/dark) toggle moved to the
-  far right end of the header, after the repository link.
-  The App link is deliberately plain text, not the .md-source repo-link
-  classes: those carry a responsive width cap and hide/ellipsis rules tuned for
-  a repo icon and name, which squeezed this link's label out of view.
+  Overrides mkdocs-material 9.7.6's partials/header.html for three things.
+  (1) The released-version chip, a <small class="mrd-version"> filled from
+  extra.version in mkdocs.yml, sits beside the site name. (2) A link to the
+  app's page (docs/app.md) sits in the header's right-hand row, before the
+  search box. (3) The palette (light/dark) toggle is moved to the far right end
+  of the header, after the repository link.
+  The App link is a bare .md-header__button anchor, not the .md-source
+  repo-link classes: those carry a responsive width cap and hide/ellipsis rules
+  tuned for a repo icon and name, which squeezed this link's label out of view.
+  docs/stylesheets/brand.css draws it as a pill.
   If upgrading mkdocs-material changes this file upstream, re-diff against the
-  new partials/header.html and re-apply the "App link" and moved-palette blocks.
+  new partials/header.html and re-apply the version chip, the "App link" block
+  and the moved-palette blocks.
   [tool.depictr.mkdocs-material-fork] in pyproject.toml records that version
   and the upstream file's hash. The docs workflow fails the deploy when the
   installed template no longer matches, so update the record with the fork.

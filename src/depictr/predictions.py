@@ -151,10 +151,10 @@ def _formula_design(model):
     term fills, keyed by the term's name. statsmodels up to 0.14 keeps the
     formula's patsy DesignInfo as ``data.design_info``. From 0.15 it keeps it as
     ``data.model_spec``, which holds a formulaic ModelSpec instead when the
-    formula engine is set to formulaic. Looking for ``design_info`` alone
-    skipped the grid check under 0.15 without a word. A statistic of one row
-    can be NaN, as x.std() is, and either engine would drop such a row as
-    missing, so nothing counts as missing here.
+    formula engine is set to formulaic. Both are looked for, since
+    ``design_info`` alone would skip the grid check under 0.15 without a word.
+    A statistic of one row can be NaN, as x.std() is, and either engine would
+    drop such a row as missing, so nothing counts as missing here.
     """
     data = model.model.data
     spec = getattr(data, "model_spec", None)
@@ -384,10 +384,11 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     ``x`` within that group, so a fan of non-parallel lines is the visible mark of
     an interaction. The remaining predictors are held at their mean if numeric,
     and at their most common level (the mode) if categorical. As in
-    :func:`effects_plot`, the predictors are the columns the formula names, the
-    range, means and levels come from the rows the model was fitted to, a term
-    computed from statistics of its rows is refused, and an offset or exposure
-    is held at its mean.
+    [`effects_plot`][depictr.effects_plot], the predictors are the columns
+    the formula names, the range, means and levels come from the rows the
+    model was fitted to, a term computed from statistics of its rows is
+    refused, an offset is held at its mean and an exposure at its geometric
+    mean.
 
     Parameters
     ----------
@@ -479,15 +480,15 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     """Dodged forest comparing each coefficient across several models.
 
     Each model contributes its estimates and confidence intervals (read with
-    :func:`depictr.models.tidy_estimates`, so a fitted model or a tidy frame both
+    [`depictr.models.tidy_estimates`][], so a fitted model or a tidy frame both
     work); the terms share a y-axis and the models are dodged apart and coloured,
     so a coefficient that shifts from one specification to the next is easy to
     spot.
 
-    The terms are labelled as in :func:`depictr.coefficient_plot`: a factor
+    The terms are labelled as in [`depictr.coefficient_plot`][]: a factor
     level names its variable and level (``treatment: enhanced``), read from
     the design of each fitted model, and other names are tidied with
-    :func:`depictr.format_terms`. Terms that take the same label share a row,
+    [`depictr.format_terms`][]. Terms that take the same label share a row,
     so ``stress`` and a brms-style ``b_stress`` are drawn as one term, as in
     the R twin.
 
@@ -499,7 +500,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     intercept : bool
         Whether to keep the intercept term.
     conf_level : float
-        Confidence level passed to :func:`depictr.models.tidy_estimates`, a
+        Confidence level passed to [`depictr.models.tidy_estimates`][], a
         single number strictly between 0 and 1.
     title : str, optional
         Plot title.
@@ -511,7 +512,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         Whether to draw every model's exponentiated estimates and intervals on
         a log10 axis, as odds or rate ratios. A tidy frame among the models
         must hold estimates on the link scale, since it is exponentiated too.
-        The axis is named as in :func:`depictr.coefficient_plot` when the
+        The axis is named as in [`depictr.coefficient_plot`][] when the
         fitted models agree on the ratio, and "exp(Estimate)" when they do
         not. Defaults to ``False``.
     labels : dict, list or "raw", optional
@@ -524,7 +525,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         draws the names as the models give them.
     interaction : {"times", "asterisk", "colon", "space"}
         How an interaction is written in the default labels, passed to
-        :func:`depictr.format_terms`.
+        [`depictr.format_terms`][].
 
     Returns
     -------

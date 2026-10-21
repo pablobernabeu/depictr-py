@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cluster_plot(clusters=)` draws a clustering computed elsewhere, as the R
   twin's `clusters` argument does, and every cluster plot carries its
   assignments as `p.clusters`, one per complete-case row of `data`.
-- `power_curve_plot()` gains `target`, `lower`, `upper`, `ribbon` and `y_lab`
-  after `title`, as in the R twin. The target line was fixed at 0.8, and no
+- `power_curve_plot()` gains the R twin's `target`, `lower`, `upper`, `ribbon`
+  and `y_lab`, placed after `title`. The target line was fixed at 0.8, and no
   confidence band was drawn. It also takes a list of dicts, one per row, which
   is how pilotr returns a power curve in Python, and recognises `n_subject` and
   `<power>_lo`/`<power>_hi` columns, so pilotr's output plots as it is, with
@@ -135,10 +135,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not yet ported. The Status section now lists the differences that change
   what a figure shows or how it is computed, among them the STL decomposition,
   the posterior options, the Q-Q band, the ROC confidence band and Youden
-  point, the forecast, the order of the dumbbell categories and the handling
-  of a gap in `acf_plot()`. It no longer counts the frequentist-over-Bayesian
-  overlay and the survival number-at-risk table among the composites, since
-  each is a single plot.
+  point, the forecast, the order of the dumbbell categories, the handling of a
+  gap in `acf_plot()`, the default kind of `explore_distribution()`, the
+  linkage of `dendrogram_plot()`, the k-means that `silhouette_plot()` runs
+  itself and what several other R functions draw by default that the Python
+  ones leave out. It no longer counts the frequentist-over-Bayesian overlay
+  and the survival number-at-risk table among the composites, since each is a
+  single plot.
 - `CITATION.cff` names PyPI as the package's repository artifact, as the R
   twin's names CRAN, and says that its DOI is the Zenodo concept DOI of this
   repository, which holds the Python package alone, since PyPI assigns no DOI.
@@ -250,7 +253,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warned that interpolated colours lose the guarantee, and its nine colours
   now fail the check too. `metric="cie76"` restores the old measure for this
   release, and the greyscale check is the lightness gap under either. The R
-  twin makes the same change and gives the same numbers.
+  twin makes the same change and gives the same numbers. The README, the
+  getting-started guide and the accessibility page name the CIEDE2000
+  colour-difference test.
 - The accent colour is now the vermillion `#d55e00`, as in the R twin. The
   orange it replaces reaches only 2.25:1 against white, below the 3:1 that
   WCAG 2.2 asks of a graphical object, and it marked the flagged points of
@@ -767,8 +772,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It now raises `ValueError`, in the R twin's words.
 - The time-series gallery said that the autocorrelation and partial
   autocorrelation functions spike at the multiples of twelve. The default lags
-  reach only twelve, where the autocorrelation peaks on a slow decay, and the
-  partial autocorrelation there lies inside the band. The page now describes
+  reach 20, so twelve is the only multiple of the period among them. The
+  autocorrelation peaks there on a slow decay, and the partial autocorrelation
+  there lies inside the band. The page now describes
   the figures it draws, and a test holds it to them.
 - The README's table of exported functions left out the dataset loaders,
   `DATASETS`, `depictr_brand`, `depictr_accent` and the `scale_color_depictr`
@@ -781,6 +787,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deploy stops when the installed file no longer matches. A comment in the
   stylesheet quoted the dark-mode contrast of the shared stylesheet's teal
   (2.9:1). depictr's blue on its navy page measures 2.4:1.
+- Documentation. `explore_pairs()` gave a single plot as a possible result,
+  where it always returns a composition. Some behaviour was not documented.
+  `explore_categorical(proportion=)` applies only with a `group`, and
+  `arrange_plots()` ignores `nrow` when `ncol` is given.
+  `missingness_map()` writes its own title when none is given, and
+  `outlier_plot()` always adds a subtitle. `save_plot()` cannot pass options
+  such as `transparent=True` on to a composition, whose save ignores them.
+  `pca_plot()`, `scree_plot()`, `dendrogram_plot()` and `silhouette_plot()`
+  standardise the columns and drop the incomplete rows, and
+  `dendrogram_plot()` measures Euclidean distances. The docstrings now say so.
+  `tidy_estimates()` names the columns a data frame of estimates must have and
+  the other names it reads for them. The columns of `estimation_plot()`'s
+  `.differences` and `survival_plot()`'s `.at_risk` are named too, and the API
+  page describes `DATASETS`. `estimation_plot()`, `simulate_cvd()` and
+  `check_figure()` list the works they cite under References.
+- Documentation. The install sections named the classification and survival
+  plots as the ones that need an extra, and left out the PCA, scree, cluster
+  and silhouette plots, which need scikit-learn from `depictr[classification]`.
+  The app's run instructions installed Streamlit alone, with which most of the
+  classification and multivariate panes and the Kaplan-Meier pane cannot draw,
+  and now install the `all` extra. The getting-started guide said that every
+  model-family plot accepts a table of estimates, where only
+  `coefficient_plot()`, `compare_models()` and `frequentist_bayesian_plot()`
+  do, and that the accessibility page states one limitation, where it also
+  states the orange's shortfall in contrast. The README and the guide said
+  that every function returns a plotnine object, which holds for the plotting
+  functions, and the app guide now names the sidebar's controls, the legend
+  checkbox among them.
 
 ## [0.3.0] - 2026-09-24
 

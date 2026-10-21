@@ -33,10 +33,9 @@ dependencies = [
     # arrange_plots and the multi-panel reports rely on.
     "plotnine>=0.15",
     # The three floors below are plotnine 0.15's own requirements rather than
-    # independent choices. They were once lower (pandas 2.0, matplotlib 3.6,
-    # scipy 1.7), which no install could ever have honoured: the resolver takes
-    # the higher bound, so the declaration described a stack nobody ran. A
-    # floor is a claim about what has been tested, so it now matches what
+    # independent choices. A lower floor could never be honoured, since the
+    # resolver takes the higher bound, so it would describe a stack nobody runs.
+    # A floor is a claim about what has been tested, so each matches what
     # plotnine forces and the minimum-versions CI job installs.
     "pandas>=2.2",
     "matplotlib>=3.8",
@@ -48,6 +47,8 @@ dependencies = [
 # Each plotting family delegates its computation to a specialist package and
 # re-skins the result under the depictr theme. The specialists are optional, so
 # the core installs light and each is needed only for its own functions.
+# The classification extra also serves the multivariate plots whose principal
+# components, k-means and silhouettes come from scikit-learn.
 # plotnine 0.15 already requires statsmodels 0.14.5, so a lower floor here
 # would describe a combination the core install cannot produce.
 models = ["statsmodels>=0.14.5"]

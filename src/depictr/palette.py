@@ -89,8 +89,8 @@ def depictr_accent() -> str:
     """Return the depictr accent colour as a hex string.
 
     The accent marks a single element against the brand blue, such as the
-    flagged points of :func:`depictr.outlier_plot` and the missing cells of
-    :func:`depictr.missingness_map`. It is the Okabe-Ito vermillion, as in the
+    flagged points of [`depictr.outlier_plot`][] and the missing cells of
+    [`depictr.missingness_map`][]. It is the Okabe-Ito vermillion, as in the
     R twin, which stays distinguishable from the brand blue under the common
     colour-vision deficiencies and reaches 3.87:1 against white.
 
@@ -125,7 +125,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     In the default order the second colour is the orange (``#e69f00``), at
     2.25:1 against white. Any figure on white whose colour tells two or more
     groups apart therefore fails the ``geometry_contrast`` row of
-    :func:`depictr.check_figure`. No more than three of the eight colours pass
+    [`depictr.check_figure`][]. No more than three of the eight colours pass
     every colour row of that audit together.
 
     ``order="contrast"`` puts those three first: the brand blue, the vermillion
@@ -134,9 +134,9 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     then pass every colour row, contrast against white included. They stay at
     least 14.01 apart in CIEDE2000 under every vision type, 6.86 apart in
     lightness and 3.06:1 against white. Four groups keep 3:1 against white,
-    but the bluish green and the vermillion are 3.31 apart in lightness, which
+    but the bluish green and the reddish purple are 3.31 apart in lightness, which
     fails ``greyscale_separability``. Under this order, the second group is
-    drawn in the vermillion, which is also :func:`depictr.depictr_accent`.
+    drawn in the vermillion, which is also [`depictr.depictr_accent`][].
     The default order is unchanged, and the R twin gives the same order.
 
     The R twin can make the order the default for every plot through its
@@ -178,7 +178,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
         When ``n`` exceeds the eight Okabe-Ito colours and the qualitative
         palette is therefore interpolated. The colourblind-safety guarantee
         covers the eight base colours only; an interpolated palette fails
-        :func:`depictr.cvd.palette_safety`. Facet the groups, or use the
+        [`depictr.cvd.palette_safety`][]. Facet the groups, or use the
         sequential ramp, when there are more than eight of them. Also when
         ``order="contrast"`` and ``n`` exceeds four, since the fifth colour,
         the orange, falls below 3:1 against white.
@@ -192,8 +192,10 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     ['#005b96', '#d55e00', '#cc79a7']
     """
     if n is not None:
-        # depictr_palette(-1) gave seven colours and (0) none, and a fraction
-        # failed inside the slicing or the ramp. The R twin's check and message.
+        # Unchecked, depictr_palette(-1) would give seven colours and (0) none,
+        # and an untruncated fraction would fail inside the slicing or the
+        # ramp. The R twin's check and message, and, as there, a fraction is
+        # truncated.
         if (isinstance(n, bool) or not isinstance(n, numbers.Real)
                 or not math.isfinite(n) or n < 1):
             raise ValueError("`n` must be a single positive number.")

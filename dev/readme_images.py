@@ -6,7 +6,8 @@ Run from the root of the repository, with the package importable:
 
 The images are served from GitHub raw and kept out of the source distribution,
 so rerun this script and commit the result whenever a change alters either
-figure. The sizes and resolution match the images the README has always shown.
+figure. The sizes and resolution below are those the README's images are
+drawn at.
 """
 
 from __future__ import annotations

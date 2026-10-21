@@ -183,8 +183,8 @@ def monthly_sales(seed: int | None = None) -> pd.DataFrame:
 
     144 rows in long format: ``date`` (the first of each month, 2018 to 2023),
     ``series`` (indoor, outdoor) and ``sales``. The R package's
-    ``monthly_sales``. It is not in :data:`DATASETS`, which lists the
-    cross-sectional datasets the web app offers.
+    ``monthly_sales``. It is not in [`DATASETS`][depictr.DATASETS], which
+    lists the cross-sectional datasets the web app offers.
 
     Parameters
     ----------
@@ -200,11 +200,13 @@ def monthly_sales(seed: int | None = None) -> pd.DataFrame:
     return _load("monthly_sales", seed)
 
 
-#: The cross-sectional datasets, by name, offered by the web app and used in the
-#: documentation. ``monthly_sales``, a time series, has its own loader.
 DATASETS = {
     "crop_yield": crop_yield,
     "wellbeing_survey": wellbeing_survey,
     "lexical_decision": lexical_decision,
     "clinical_trial": clinical_trial,
 }
+"""The cross-sectional datasets, by name: a dict from each name to its loader,
+so ``DATASETS["crop_yield"]()`` returns that frame. The web app offers these
+four and the documentation uses them. ``monthly_sales``, a time series, has its
+own loader and is not included."""

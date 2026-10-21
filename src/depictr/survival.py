@@ -237,13 +237,15 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     Returns
     -------
     plotnine.ggplot
-        The plot carries ``.at_risk`` (a DataFrame of number-at-risk counts at
+        The plot carries ``.at_risk``, a DataFrame with the columns
+        ``group``, ``time`` and ``n_at_risk``: the number at risk in each
+        group (in a single group, ``"all"``, when ``group`` is not given) at
         round times from 0 to at most the longest follow-up, which are the
-        time-axis breaks when ``risk_table=True``) and, when grouped,
-        ``.logrank_p`` and ``.logrank_stat``. Its data hold one row per time
-        in each group's event table, with the columns ``time``, ``surv`` and
-        ``group`` and, unless ``conf_level`` is ``None``, ``lower`` and
-        ``upper``.
+        time-axis breaks when ``risk_table=True``. When grouped, it also
+        carries ``.logrank_p`` and ``.logrank_stat``. Its data hold one row
+        per time in each group's event table, with the columns ``time``,
+        ``surv`` and ``group`` and, unless ``conf_level`` is ``None``,
+        ``lower`` and ``upper``.
 
     References
     ----------
@@ -270,10 +272,11 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     _check_conf_level(conf_level, allow_none=True)
 
     time = np.asarray(time, dtype=float)
-    # A missing or infinite follow-up time has no place on a time axis, and it
-    # used to surface far downstream as an unattributed StopIteration from the
-    # axis-break search. Deciding whether to drop or impute is the analyst's
-    # call, not something to make silently on their behalf.
+    # A missing or infinite follow-up time has no place on a time axis, and
+    # unchecked, it would surface far downstream as an unattributed
+    # StopIteration from the axis-break search. Deciding whether to drop or
+    # impute is the analyst's call, not something to make silently on their
+    # behalf.
     if not np.isfinite(time).all():
         raise ValueError(
             "`time` must be finite; drop or impute missing follow-up times "
@@ -299,8 +302,8 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         if not len(groups):
             raise ValueError("`group` is missing for every observation.")
     # A missing event is neither an event nor a censoring, so the observation
-    # cannot enter the estimate. A cast to int used to turn it into the integer
-    # sentinel numpy fills a NaN with, which lifelines counted as a death. The
+    # cannot enter the estimate. A cast to int would turn it into the integer
+    # sentinel numpy fills a NaN with, which lifelines counts as a death. The
     # warning is the R twin's message, word for word.
     missing_event = np.isnan(event)
     if missing_event.any():
@@ -424,8 +427,8 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     tbl["y"] = tbl["group"].map(y_of)
     ymin = -(header + row_h * len(order) + 0.02)
     # The ticks sit at the exact break times the counts were taken at, and only
-    # their labels are formatted. Rounding the times themselves collapsed short
-    # follow-up onto one tick and put the count at 0.25 under a "0.2".
+    # their labels are formatted. Rounding the times themselves would collapse
+    # short follow-up onto one tick and put the count at 0.25 under a "0.2".
     break_labels = [f"{b:g}" for b in breaks]
     # Survival-axis ticks plus one tick per table row, labelled with the group.
     surv_breaks = [0.0, 0.25, 0.5, 0.75, 1.0]

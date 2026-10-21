@@ -1,8 +1,10 @@
 # Accessibility: a validated colourblind-safe palette
 
 depictr defaults to the Okabe-Ito palette and then measures what that choice
-buys. A Machado-2009 simulator and a CIE-Lab distance test confirm the colours
-stay distinguishable under each colour-vision deficiency. A safe palette is not a
+buys. A colour-vision simulator
+([Machado, Oliveira and Fernandes, 2009](https://doi.org/10.1109/TVCG.2009.113))
+and a CIEDE2000 colour-difference test confirm the colours stay distinguishable
+under each colour-vision deficiency. A safe palette is not a
 safe figure, though, so the same machinery also audits a finished plot.
 That is the second half of this page.
 

@@ -99,7 +99,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     the figure's encoding colours, by the CIEDE2000 formula (Sharma, Wu &
     Dalal, 2005) unless ``metric`` asks for the older CIE76. The three
     ``colour_separability_*`` rows repeat that measurement after simulating each
-    dichromacy at full severity with :func:`depictr.simulate_cvd`. Encoding
+    dichromacy at full severity with [`depictr.simulate_cvd`][]. Encoding
     colours are the distinct colour and fill values that tell groups apart. A
     layer contributes its colours when it maps colour or fill to a discrete
     scale, even if it draws a single colour, or when it draws two or more.
@@ -196,18 +196,18 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     the vermillion (``#d55e00``, at 3.87:1) in the orange's place and a
     redundant shape clear that row and ``redundant_encoding``, as the first
     example below shows. The contrast-first order of
-    :func:`depictr.depictr_palette` puts the vermillion second and the reddish
-    purple third, and :func:`depictr.scale_colour_depictr` takes it as
+    [`depictr.depictr_palette`][] puts the vermillion second and the reddish
+    purple third, and [`depictr.scale_colour_depictr`][] takes it as
     ``order="contrast"``. Up to three groups then pass every colour row, and
     four keep 3:1 against white.
 
     **Auditing at the printed size.** Text is drawn in points, so the size it
     prints at depends on the two widths. A figure drawn at the size it will be
-    printed, as :func:`depictr.save_plot` draws one given
+    printed, as [`depictr.save_plot`][] draws one given
     ``width=8.9, units="cm"``, needs no scaling. Pass the saved width as both
     ``width_cm`` and ``render_width_cm``, or leave both at their defaults.
     Given alone, ``width_cm`` audits the figure as though it had been drawn
-    seven inches wide and then shrunk to fit. :func:`depictr.save_plot` with
+    seven inches wide and then shrunk to fit. [`depictr.save_plot`][] with
     ``check=True`` audits a figure at the width it saves it at, given as both.
 
     The default ``min_text_pt`` of 6 is lenient. As their guidelines stood on
@@ -219,8 +219,8 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     and a panel label drawn as a panel's title or annotation is measured with
     the rest. The four pages are listed under References.
 
-    **Compositions.** A composition, such as :func:`depictr.arrange_plots`,
-    :func:`depictr.residual_diagnostics_plot` and :func:`depictr.model_report`
+    **Compositions.** A composition, such as [`depictr.arrange_plots`][],
+    [`depictr.residual_diagnostics_plot`][] and [`depictr.model_report`][]
     return, is audited panel by panel. Each panel has its own scales, theme
     and text, so each is audited as it would be on its own. The reports are
     stacked under a leading integer column, ``panel``, which only the report
@@ -230,11 +230,11 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
 
     Panels are numbered depth-first through any composition nested inside, in
     the order the composition holds them, which is the reading order of the
-    grids :func:`depictr.arrange_plots` builds. A ``plot_spacer()`` draws no
+    grids [`depictr.arrange_plots`][] builds. A ``plot_spacer()`` draws no
     figure of its own and takes no number. A panel's legend is measured with
     the panel. Only the panels are measured, so anything a composition draws
     around them is not. The R twin numbers the panels of a patchwork by the
-    same rule. The panel tags :func:`depictr.arrange_plots` adds belong to the
+    same rule. The panel tags [`depictr.arrange_plots`][] adds belong to the
     panels' own plots in this twin, so each tag is measured with its panel,
     by ``text_size_max`` too. The R twin's patchwork draws its tags around the
     panels, where they are not measured, so a composition arranged with
@@ -249,7 +249,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     width_cm : float
         The width, in centimetres, that the figure will occupy in the finished
         document. Defaults to 17.78 cm, the seven inches
-        :func:`depictr.save_plot` draws at, which means no scaling.
+        [`depictr.save_plot`][] draws at, which means no scaling.
     render_width_cm : float
         The width, in centimetres, that the figure is drawn at. Defaults to the
         same 17.78 cm. The ratio of the two widths is the factor every point
@@ -258,16 +258,16 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
         The smallest acceptable colour difference, on the scale of ``metric``,
         for the colour separability checks, and the smallest acceptable
         difference in lightness for the greyscale check. Defaults to 5,
-        matching :func:`depictr.palette_safety`.
+        matching [`depictr.palette_safety`][].
     min_text_pt : float
         The smallest acceptable printed text size, in points, for the text
         around the panel and the text inside it alike. Defaults to 6, below the
         floor most journals set (see "Auditing at the printed size" above).
     metric : {"ciede2000", "cie76"}
         The colour difference the colour separability checks measure:
-        CIEDE2000, the default, or the Euclidean distance in CIELAB that
-        earlier versions measured. ``"cie76"`` is kept so that earlier results
-        can be reproduced, and a later release will remove it.
+        CIEDE2000, the default, or CIE76, the Euclidean distance in CIELAB.
+        ``"cie76"`` is kept so that results computed with it can be
+        reproduced, and a later release will remove it.
     max_text_pt : float, optional
         The largest acceptable printed text size, in points, or None, the
         default, for no ceiling. When given, a ``text_size_max`` row is
@@ -308,6 +308,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     formula: Implementation notes, supplementary test data, and mathematical
     observations. Color Research & Application, 30(1), 21-30.
     https://doi.org/10.1002/col.20070
+
+    World Wide Web Consortium. (2023). Web content accessibility guidelines
+    (WCAG) 2.2. W3C Recommendation. https://www.w3.org/TR/WCAG22/
 
     Examples
     --------
@@ -548,12 +551,12 @@ def _plot_background(plot, figure) -> str:
     """The colour the figure's own background is painted.
 
     plotnine paints ``plot_background`` onto a rectangle of its own and leaves
-    the matplotlib figure patch at its default white, whatever the theme says.
-    Reading the patch alone therefore measured every label against white on a
-    figure with a dark background, reporting a contrast the reader never gets
-    and disagreeing with the R twin, which reads the resolved
-    ``plot.background`` element. The patch stays as the fallback, for a theme
-    that paints nothing, and white stands in for the paper beneath both.
+    the matplotlib figure patch at its default white, whatever the theme says,
+    so the rectangle is read first, as the R twin reads the resolved
+    ``plot.background`` element. Read alone, the patch would measure every
+    label against white on a figure with a dark background. The patch stays
+    as the fallback, for a theme that paints nothing, and white stands in for
+    the paper beneath both.
     """
     painted = getattr(getattr(plot, "theme", None), "targets", None)
     painted = getattr(painted, "plot_background", None)

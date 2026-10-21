@@ -70,17 +70,18 @@ plugins:
             show_root_full_path: false
             show_source: true
             separate_signature: true
-            # api.md groups the objects under seven h2 sections, mirroring the R
-            # package's reference index. At mkdocstrings' default level the object
-            # headings would also be h2, flattening the table of contents into one
-            # list in which no object shows which group it belongs to.
+            # api.md groups the objects under seven h2 sections, in the order of
+            # the R package's eight-section reference index (api.md's introduction
+            # says where the two are cut differently). At mkdocstrings' default
+            # level the object headings would also be h2, flattening the table of
+            # contents into one list in which no object shows which group it
+            # belongs to.
             heading_level: 3
-  # The reference used to be seven pages under docs/reference/, one per function
-  # group, and those paths are bookmarked, linked from outside the site and
-  # indexed by search engines. The plugin writes a stub at each old path, and the
-  # stub carries any anchor across, so a deep link to a single function still
-  # lands on that function. The anchors themselves are unchanged, because
-  # mkdocstrings derives them from the object's path rather than from the page.
+  # The seven per-group paths under reference/ below are bookmarked, linked from
+  # outside the site and indexed by search engines, so each redirects to api.md.
+  # The plugin writes a stub at each path, and the stub carries any anchor
+  # across, so a deep link to a single function still lands on that function:
+  # mkdocstrings derives the anchors from the object's path, not from the page.
   - redirects:
       redirect_maps:
         reference/theme-and-accessibility.md: api.md
@@ -109,8 +110,9 @@ nav:
   - Home: index.md
   - Get started: getting-started.md
   - API reference: api.md
-  # Labelled Articles to match the R twin's navbar and the rest of the family,
-  # while the pages keep their gallery/ paths so existing links still resolve.
+  # Labelled Articles to match the R twin's navbar and every pkgdown site in the
+  # family, while the pages keep their gallery/ paths so existing links still
+  # resolve.
   # The app page is listed here rather than at top level, because the header
   # override already links it as a pill and the family carries one app entry.
   - Articles:

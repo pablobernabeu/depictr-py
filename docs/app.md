@@ -8,7 +8,9 @@ see it.
 
 ## What it puts on screen
 
-The sidebar holds the data and the two accessibility controls. The main pane
+The sidebar holds the data, the 'Simulate vision' selector, a 'Legend inside
+plot' checkbox and the palette's worst-case colour distance. The checkbox draws
+the legend inside the panel for the plots that take `legend_inside`. The main pane
 holds the plot family, the plot, its variables, the figure and the call that
 produced it. Here it is with the crop-yield trial loaded and an empirical
 cumulative distribution split by treatment.
@@ -63,9 +65,14 @@ The app lives in the repository rather than the wheel, so run it from a clone:
 ```bash
 git clone https://github.com/pablobernabeu/depictr-py
 cd depictr-py
-pip install -e ".[app]"
+pip install -e ".[all]"
 streamlit run app/streamlit_app.py
 ```
+
+The `all` extra brings Streamlit together with scikit-learn and lifelines, which
+most of the classification and multivariate panes and the Kaplan-Meier pane
+need. `pip install -e ".[app]"` installs Streamlit alone, and those panes then
+say which package is missing.
 
 The app runs on your own machine, so nothing you load leaves it. Every plot it
 draws is a plotnine object from the same functions documented in the

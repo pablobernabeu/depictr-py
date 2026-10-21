@@ -244,7 +244,7 @@ def qq_plot(model, title=None):
     residuals of a non-Gaussian GLM are not expected to, even when the model
     is correctly specified: those of a binary model take only two values at
     each fitted value. A bend then says little about the fit. For a GLM,
-    :func:`depictr.residual_diagnostics_plot` and :func:`depictr.model_report`
+    [`depictr.residual_diagnostics_plot`][] and [`depictr.model_report`][]
     plot randomised quantile residuals (Dunn & Smyth, 1996), which are standard
     normal under a correct model.
 
@@ -682,6 +682,7 @@ def binned_residual_plot(model, n_bins=None, title=None, band="model"):
     ----------
     Gelman, A., & Hill, J. (2007). Data analysis using regression and
     multilevel/hierarchical models. Cambridge University Press.
+    https://doi.org/10.1017/CBO9780511790942
 
     Examples
     --------

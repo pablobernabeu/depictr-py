@@ -68,11 +68,8 @@ def draw(fn: str, *args, setup: str = "", **kwargs):
     """Call ``dp.<fn>`` and show its figure beside the call that made it.
 
     The call is written from the arguments the function receives, so the two
-    cannot drift apart. Each call used to be typed out beside its plot, and
-    several no longer matched it. The estimation call left out its seed and
-    the PCA call its grouping, and the survival call carried a literal
-    ``group=...``. ``setup`` holds any lines the call needs first, such as a
-    model fit.
+    cannot drift apart. ``setup`` holds any lines the call needs first, such as
+    a model fit.
     """
     plot = getattr(dp, fn)(*map(_value, args),
                            **{name: _value(arg) for name, arg in kwargs.items()})
@@ -192,9 +189,7 @@ binary_cols = [c for c in data.columns if data[c].nunique() == 2]
 # positive class, which the pane would have to say, so only the columns coded
 # 0/1 are offered. confusion_matrix_plot carries no such constraint and keeps
 # the wider list. When no column is coded 0/1, the
-# pane says so through _choose(). The wider list used to be offered in that
-# case, since an empty selectbox left the family unreachable with no word of
-# why, and the visitor met the misleading refusal.
+# pane says so through _choose().
 binary01_cols = [c for c in binary_cols
                  if set(pd.unique(data[c].dropna())) <= {0, 1}]
 DATA = _Source(data, data_call)
@@ -284,9 +279,7 @@ try:
         val = _choose("Value", num_cols, NEEDS_NUMERIC)
         # dumbbell_plot needs a group with exactly two levels, categorical or
         # numeric, in a column apart from the category and the value, or its
-        # pivot collides. The pane offers only such columns. It used to fall
-        # back to any other category, or to the category itself, and so opened
-        # on a column the plot refuses.
+        # pivot collides. The pane offers only such columns.
         g = _choose("Two-level group", [c for c in binary_cols if c not in (cat, val)],
                     "This plot needs a two-level column other than its category "
                     "and value, and this dataset has none.")

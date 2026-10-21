@@ -87,7 +87,7 @@ def _as_complete_series(x):
     it, the decomposition misaligns, and every later observation lands on the
     wrong within-period position. Whether to drop or impute is the analyst's
     call, not something to make silently on their behalf. Missing values at
-    either end only shorten the series, so they are trimmed as before.
+    either end only shorten the series, so they are trimmed.
     """
     series = _as_series(x)
     present = series.notna().to_numpy()
@@ -105,9 +105,9 @@ def _as_complete_series(x):
 
 # The index frequencies that imply a seasonal period, matched whole and with
 # their case. pandas names minutes "min" and milliseconds "ms", so a match on
-# the first letter read both as monthly. Months and quarters are named by their
-# start or end ("MS", "ME", "QS-OCT"), and a PeriodIndex names them "M" and
-# "Q-DEC".
+# the first letter would read both as monthly. Months and quarters are named by
+# their start or end ("MS", "ME", "QS-OCT"), and a PeriodIndex names them "M"
+# and "Q-DEC".
 _SEASONAL_PERIODS = {
     "M": 12, "ME": 12, "MS": 12,
     "Q": 4, "QE": 4, "QS": 4,
@@ -572,7 +572,7 @@ def _moving_average(values, window):
     values = np.asarray(values, dtype=float)
     if window < 2 or window % 2:
         # An odd window is centred already. A negative one takes the same path,
-        # so pandas refuses it with its own error, as it did before.
+        # so pandas refuses it with its own error.
         return pd.Series(values).rolling(window, center=True).mean().to_numpy()
     out = np.full(values.shape, np.nan)
     # np.convolve() swaps its arguments when the weights are the longer of the
