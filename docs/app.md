@@ -15,7 +15,7 @@ holds the plot family, the plot, its variables, the figure and the call that
 produced it. Here it is with the crop-yield trial loaded and an empirical
 cumulative distribution split by treatment.
 
-![The depictr app with the crop-yield dataset loaded. The sidebar shows the dataset selector, a colour-vision selector reading "normal" and the palette's worst-case colour distance of 7.4. The main pane shows the first rows of the data, selectors reading Exploratory, ECDF, yield and treatment, a cumulative distribution with a blue curve for the enhanced treatment and an orange one for the standard treatment, and beside it the call dp.ecdf_plot(dp.crop_yield(), 'yield', group='treatment', legend_inside=False).](assets/app-plot-pane.png){ width="820" }
+![The depictr app with the crop-yield dataset loaded. The sidebar shows the dataset selector, a colour-vision selector reading "normal", an unticked "Legend inside plot" checkbox and the palette's worst-case colour distance of 6.43. The main pane shows the first rows of the data, selectors reading Exploratory, ECDF, yield and treatment, a cumulative distribution with a blue curve for the standard treatment and an orange one for the enhanced treatment, and beside it the call dp.ecdf_plot(dp.crop_yield(), 'yield', group='treatment', legend_inside=False).](assets/app-plot-pane.png){ width="820" }
 
 The call beside the figure is the point of the whole pane. Whatever you arrive
 at by clicking, you can paste into a script and get the same figure back.
@@ -44,7 +44,7 @@ chosen for, and the two curves stay as easy to tell apart as before. The app
 draws the simulated figure with `dp.simulate_figure`, so a script can produce
 the same view.
 
-![The same app view with the colour-vision selector set to "deutan". The cumulative distribution is redrawn with the standard-treatment curve shifted from orange to mustard yellow while the enhanced-treatment curve stays blue, and the two remain clearly distinguishable.](assets/app-colour-vision.png){ width="820" }
+![The same app view with the colour-vision selector set to "deutan". The cumulative distribution is redrawn with the enhanced-treatment curve shifted from orange to mustard yellow while the standard-treatment curve stays blue, and the two remain clearly distinguishable.](assets/app-colour-vision.png){ width="820" }
 
 ## Your own data
 

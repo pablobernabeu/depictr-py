@@ -149,7 +149,7 @@ def scale_colour_depictr(n: int | None = None, order: str = "default",
     ----------
     n : int, optional
         Number of colours to draw. By default, the scale takes as many colours
-        as the plot has groups: the Okabe-Ito colours in order up to eight,
+        as the plot has groups: the built-in colours in order up to eight,
         and past eight a palette interpolated through them. Interpolation loses
         the colourblind-safety guarantee, which covers the eight base colours
         only, so [`depictr.palette.depictr_palette`][] warns past eight; facet

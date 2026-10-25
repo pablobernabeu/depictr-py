@@ -1,13 +1,13 @@
 """Colourblind-aware palettes shared by every depictr plot.
 
-The qualitative palette is the Okabe-Ito set (Okabe & Ito, 2008), a categorical
-scheme that stays distinguishable under the common forms of colour-vision
-deficiency, led here by the depictr brand blue. The sequential and diverging
-palettes are perceptually ordered single-hue and red-blue ramps. These are the
-defaults behind :func:`depictr.theme.scale_colour_depictr` and the whole package,
-so every figure shares one accessible colour language.
+The qualitative palette is based on the Okabe-Ito set (Okabe & Ito, 2008), a
+categorical scheme that stays distinguishable under the common forms of
+colour-vision deficiency. It is led by the depictr brand blue. The sequential
+and diverging palettes are perceptually ordered single-hue and red-blue ramps.
+These are the defaults behind :func:`depictr.theme.scale_colour_depictr` and the
+whole package, so every figure shares one accessible colour language.
 
-The guarantee is a property of the eight Okabe-Ito colours, not of any number of
+The guarantee is a property of the eight built-in colours, not of any number of
 colours: past eight, :func:`depictr_palette` has to interpolate between them, and
 the interpolated colours sit close enough together to fail
 :func:`depictr.cvd.palette_safety` (nine colours come within a CIEDE2000
@@ -29,8 +29,9 @@ import warnings
 import matplotlib.colors as mcolors
 import numpy as np
 
-# The qualitative palette: the Okabe-Ito colours, led by the depictr brand blue
-# (#005b96) in place of the lighter standard blue so the brand reads first.
+# The qualitative palette, based on the Okabe-Ito colours: the depictr brand blue
+# (#005b96) leads in place of their lighter blue so the brand reads first, and a
+# grey takes the place of their black.
 OKABE_ITO: list[str] = [
     "#005b96",  # blue (brand)
     "#e69f00",  # orange
@@ -122,6 +123,11 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
                     order: str = "default") -> list[str]:
     """Return a depictr palette.
 
+    The qualitative palette is based on the Okabe-Ito set and keeps six of its
+    eight colours. The depictr brand blue (``#005b96``) takes the place of its
+    blue (``#0072b2``) and leads the palette, and a grey (``#999999``) takes the
+    place of its black.
+
     In the default order the second colour is the orange (``#e69f00``), at
     2.25:1 against white. Any figure on white whose colour tells two or more
     groups apart therefore fails the ``geometry_contrast`` row of
@@ -150,8 +156,8 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     n : int, optional
         Number of colours to return, a single number of at least 1. A
         fraction is truncated, as in the R twin, so 2.7 gives two colours. For
-        the qualitative palette ``None`` (the default) returns the full
-        Okabe-Ito set, and an ``n`` larger than the available colours is
+        the qualitative palette ``None`` (the default) returns all eight
+        colours, and an ``n`` larger than the available colours is
         interpolated. The sequential and diverging palettes are ramps and
         accept any ``n`` (defaulting to 7).
     kind : {"qualitative", "sequential", "diverging"}
@@ -175,7 +181,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     Warns
     -----
     UserWarning
-        When ``n`` exceeds the eight Okabe-Ito colours and the qualitative
+        When ``n`` exceeds the eight built-in colours and the qualitative
         palette is therefore interpolated. The colourblind-safety guarantee
         covers the eight base colours only; an interpolated palette fails
         [`depictr.cvd.palette_safety`][]. Facet the groups, or use the

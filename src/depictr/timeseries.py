@@ -480,12 +480,12 @@ def seasonal_plot(x, period=None, title=None):
         + geom_point(size=1.5)
         + x_scale
         # The cycles are a sequence, not unrelated categories, so they take a
-        # single-hue ramp. It reads in time order and, unlike the eight
-        # Okabe-Ito colours of the qualitative palette, extends to any number
-        # of cycles, although past about six its neighbouring colours blur. It
-        # leaves out the palest colour of the sequential palette, which is
-        # close to invisible as a line. The legend is reversed so the darkest,
-        # most recent cycle sits at the top of the key, matching the R twin.
+        # single-hue ramp. It reads in time order and, unlike the eight colours
+        # of the qualitative palette, extends to any number of cycles, although
+        # past about six its neighbouring colours blur. It leaves out the
+        # palest colour of the sequential palette, which is close to invisible
+        # as a line. The legend is reversed so the darkest, most recent cycle
+        # sits at the top of the key, matching the R twin.
         + scale_color_manual(values=_cycle_palette(n_cycles),
                              name="Cycle", guide=guide_legend(reverse=True))
         + labs(x="Position in period", y="Value", title=title)

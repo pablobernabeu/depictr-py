@@ -29,10 +29,11 @@ to pin the tested statsmodels floor.
 
 ## The idea
 
-The whole workflow gets one theme, one colourblind-safe palette (the Okabe-Ito
-set) and one calling convention. Specialist computations stay with the packages
-that do them well, and each result is redrawn under the shared theme, so a ROC
-curve, a coefficient plot and a survival curve read as parts of one figure set.
+The whole workflow gets one theme, one colourblind-safe palette (based on the
+Okabe-Ito set) and one calling convention. Specialist computations stay with the
+packages that do them well, and each result is redrawn under the shared theme,
+so a ROC curve, a coefficient plot and a survival curve read as parts of one
+figure set.
 
 ```python
 import depictr as dp
@@ -116,10 +117,11 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 
 ## Checking the accessibility claim
 
-The default palette is the Okabe-Ito set, and the claim behind that choice is
-testable. A simulator of colour-vision deficiency, based on the model of Machado,
-Oliveira and Fernandes (2009), and a CIEDE2000 colour-difference test measure
-how far apart the palette's colours stay under each form of deficiency.
+The default palette is based on the Okabe-Ito set, and the claim behind that
+choice is testable. A simulator of colour-vision deficiency, based on the model
+of Machado, Oliveira and Fernandes (2009), and a CIEDE2000 colour-difference
+test measure how far apart the palette's colours stay under each form of
+deficiency.
 
 ```python
 dp.palette_safety()

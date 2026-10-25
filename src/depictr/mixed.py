@@ -54,7 +54,9 @@ def random_effects_plot(model, title=None):
     error and the plot adds a 95% interval (the point estimate plus or minus
     1.96 standard errors); without it the points are drawn on their own. If the
     model has more than one random-effect term per group (a random intercept and
-    one or more random slopes), the terms are shown in separate panels.
+    one or more random slopes), the terms are shown in separate panels. Only the
+    first panel is then sorted by its effects, and the later panels share its
+    order. The R twin sorts each panel by its own effects.
 
     Parameters
     ----------
@@ -117,12 +119,13 @@ def random_effects_plot(model, title=None):
     df = pd.DataFrame(rows)
     has_interval = df["low"].notna().any()
 
-    # One panel per random-effect term; sort the group axis within each term so
-    # the most negative effect sits at the bottom after the flip.
+    # One panel per random-effect term. Sort by term, then by effect, so that in
+    # the first panel, which shows the term that sorts first, the most negative
+    # effect sits at the bottom after the flip.
     df = df.sort_values(["term", "effect"]).reset_index(drop=True)
-    # A categorical group axis with a per-term ordering: build the level list in
-    # plotting order. When there are several terms the same group appears under
-    # each, so the order is taken from the (already sorted) appearance.
+    # One categorical group axis, shared by every panel: the level list is the
+    # order in which the groups first appear, which is the first term's sorted
+    # order. The panels of later terms keep that order rather than their own.
     order = list(dict.fromkeys(df["group"]))
     df["group"] = pd.Categorical(df["group"], categories=order, ordered=True)
 

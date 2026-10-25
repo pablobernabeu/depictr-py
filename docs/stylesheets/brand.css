@@ -493,15 +493,16 @@ body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
   color: #fff;
 }
 
-/* Diagram figures shared with the pkgdown site. The chart views (the Venn of
+/* Diagram figures. These rules serve theoryforge's sites, and depictr's sites
+   emit no such figures. They are kept so that this copy of the family's
+   stylesheet stays in step with the others. The chart views (the Venn of
    construct scope, the rigour status grid, the severity bars) and the rendered
    Graphviz views all declare their own width and height, so each is left at its
    natural size and its declared type renders at the size the emitter asked for.
-   An earlier version of this rule instead stretched every chart to a common
-   440px cap, which scaled the three chart views by three different factors, the
-   views having different natural widths, so one identical 13px label came out at
-   12.4px in one figure and 17.9px in another. A chart wider than the column
-   still shrinks to fit rather than forcing a scrollbar. */
+   A common width cap would scale views of different natural widths by
+   different factors, so one 13px label would come out at a different size in
+   each figure. A chart wider than the column still shrinks to fit rather than
+   forcing a scrollbar. */
 .tf-figure { margin: 1.25rem 0; }
 .tf-figure svg {
   display: block;
@@ -628,20 +629,21 @@ body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
 }
 
 /* ---- Scrollbars --------------------------------------------------------- */
-/* A wide code block, table or rendered diagram scrolls inside its own box (set
-   above). Give that scroll a branded, always-visible grip: left to the browser
-   default the thumb all but vanishes against the navy dark-mode code ground, so
-   the bar reads as an empty gutter with no movable part. Both the standard
-   properties (Firefox) and the WebKit pseudo-elements (Chrome, Edge, Safari)
-   are set, so a clearly visible thumb appears in every engine. The colour is
-   the package's bright accent: --brand-teal on most sites (retuned to blue on
-   depictr), falling back to --brand-violet on lexsync.
+/* A wide code block or table, or a rendered diagram on theoryforge's sites,
+   scrolls inside its own box (set above). Give that scroll a branded,
+   always-visible grip: left to the browser default the thumb all but vanishes
+   against the navy dark-mode code ground, so the bar reads as an empty gutter
+   with no movable part. Both the standard properties (Firefox) and the WebKit
+   pseudo-elements (Chrome, Edge, Safari) are set, so a clearly visible thumb
+   appears in every engine. The colour is the package's bright accent:
+   --brand-teal on most sites (retuned to blue on depictr), falling back to
+   --brand-violet on lexsync.
 
    A table needs the wrapper named as well. Material puts the table inside
    .md-typeset__scrollwrap and scrolls that, not the table, so a rule written
-   for the table alone dressed an element that never scrolls and a wide table
-   kept the plain system bar while every code block beside it carried the
-   brand's. */
+   for the table alone would dress an element that never scrolls, and a wide
+   table would keep the plain system bar while every code block beside it
+   carried the brand's. */
 .md-typeset pre,
 .md-typeset pre > code,
 .md-typeset .highlight,
@@ -714,11 +716,11 @@ body[data-md-color-scheme="slate"] .md-footer-meta.md-typeset a:hover {
   padding: 0;
   margin-top: .35rem;
 }
-/* A block that prints its own text, a generated Graphviz DOT source say, cannot
-   be divided line by line at the source, so let output wrap rather than force a
-   horizontal scroll. Source keeps its exact layout: its long lines were
-   shortened at the source, and anything still too wide scrolls under the
-   branded scrollbar. */
+/* A block that prints its own text, such as a generated Graphviz DOT source on
+   theoryforge's sites, cannot be divided line by line at the source, so let
+   output wrap rather than force a horizontal scroll. Source keeps its exact
+   layout: its lines are kept short at the source, and anything still too
+   wide scrolls under the branded scrollbar. */
 /* The accent rule that marks a block as output is painted inside the box, by
    the scheme rules below, rather than added to the border: a 3px border where
    the source block above has none pushed the output text three pixels to the

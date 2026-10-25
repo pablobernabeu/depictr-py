@@ -24,11 +24,11 @@ two differ.
 
 ## Gallery
 
-A grouped density (the default palette is the colourblind-safe Okabe-Ito set) and
-Kaplan-Meier survival curves with a log-rank test and a number-at-risk table,
-both from a single function call:
+A grouped density (the default palette is a colourblind-safe set based on
+Okabe-Ito) and Kaplan-Meier survival curves with a log-rank test and a
+number-at-risk table, both from a single function call:
 
-![Grouped density of response times by priming condition, in the Okabe-Ito palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
+![Grouped density of response times by priming condition, in the default palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
 
 ![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
@@ -55,10 +55,11 @@ accessible figure.
 
 ## Accessibility by default
 
-The default palette is the Okabe-Ito set, and the package puts that choice to a
-test. It ships a simulator of colour-vision deficiency based on the model of
-Machado, Oliveira and Fernandes (2009), and a CIEDE2000 colour-difference test
-that measures how far apart the palette's colours stay under each deficiency:
+The default palette is based on the Okabe-Ito set, and the package puts that
+choice to a test. It ships a simulator of colour-vision deficiency based on the
+model of Machado, Oliveira and Fernandes (2009), and a CIEDE2000
+colour-difference test that measures how far apart the palette's colours stay
+under each deficiency:
 
 ```python
 import depictr as dp
@@ -69,7 +70,7 @@ dp.palette_safety()
 #  'safe': True, 'threshold': 5.0}
 ```
 
-The guarantee belongs to the eight Okabe-Ito colours. A plot with more than
+The guarantee belongs to the eight built-in colours. A plot with more than
 eight groups has to interpolate between them, and the interpolated colours no
 longer clear the distance threshold, so `depictr_palette` warns when it is asked
 for a ninth. Facet the groups, or map them to the sequential ramp, when a figure
@@ -258,7 +259,10 @@ x-axis of its own by default. `model_report` draws the coefficients
 on their own scale beside a residual panel and a Q-Q plot, where the R function
 standardises the continuous predictors by default and adds an effects panel and
 a subtitle of fit statistics. `effects_plot` draws no rug of the observed
-values, which the R function adds by default. `influence_plot` labels no point
+values, which the R function adds by default. With more than one random-effect
+term, `random_effects_plot` sorts the first term's panel by its effects and
+draws the later panels in that order, where the R function sorts each panel by
+its own effects. `influence_plot` labels no point
 and draws only the line at zero, where the R function labels the three points
 with the largest Cook's distance and adds reference lines at studentised
 residuals of -2 and 2 and at twice the mean leverage.

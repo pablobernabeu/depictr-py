@@ -12,7 +12,7 @@ A single figure set for a paper might otherwise draw on seaborn, scikit-learn, s
 
 ## Accessibility by default
 
-The default palette is the Okabe-Ito set, and the package measures how well that choice holds up. A built-in simulator and a colour-distance test confirm that the palette stays legible under each form of colour-vision deficiency. The guarantee belongs to the eight Okabe-Ito colours. A figure with more groups than that has to interpolate between them, and depictr warns at the point of interpolation, so the interpolated colours are never passed off as safe. The guarantee also stops at hue confusion and says nothing about greyscale. `check_figure` measures both on the figure in front of you, along with its text size at print width and the contrast of its text and geometry. The [accessibility page](gallery/accessibility.md) of the gallery renders the safety report and a full audit.
+The default palette is based on the Okabe-Ito set, and the package measures how well that choice holds up. A built-in simulator and a colour-distance test confirm that the palette stays legible under each form of colour-vision deficiency. The guarantee belongs to the eight built-in colours. A figure with more groups than that has to interpolate between them, and depictr warns at the point of interpolation, so the interpolated colours are never passed off as safe. The guarantee also stops at hue confusion and says nothing about greyscale. `check_figure` measures both on the figure in front of you, along with its text size at print width and the contrast of its text and geometry. The [accessibility page](gallery/accessibility.md) of the gallery renders the safety report and a full audit.
 
 ## Install
 

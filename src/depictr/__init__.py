@@ -6,8 +6,8 @@ statistical workflow -- exploratory analysis, model estimates, diagnostics,
 classification, multivariate analysis, survival and time series -- so a coherent
 figure set no longer means stitching together half a dozen libraries with
 mismatched defaults. Every plotting function returns a plotnine object you can
-extend with ``+``, and the colourblind-safe Okabe-Ito palette is the default,
-validated by a built-in colour-vision-deficiency safety check.
+extend with ``+``, and a colourblind-safe palette based on the Okabe-Ito set is
+the default, validated by a built-in colour-vision-deficiency safety check.
 
 It is the Python sibling of the depictr R package
 (https://pablobernabeu.github.io/depictr/).

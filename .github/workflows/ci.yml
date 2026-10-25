@@ -107,9 +107,9 @@ jobs:
           PY
 
   # The floors in pyproject are a promise to anyone resolving against an older
-  # stack. This job installs the declared minima so the promise stays honest. A
-  # failure here means the floors need raising to what actually works, not that
-  # the job is too strict.
+  # stack. This job installs the oldest declared minor series of each core
+  # dependency so the promise stays honest. A failure here means the floors
+  # need raising to what actually works, not that the job is too strict.
   minimum-versions:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest
