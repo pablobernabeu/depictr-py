@@ -770,6 +770,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `correlation_heatmap()` drew a single tile labelled 1.00 when one column was
   named, or when one was left once the zero-variance columns had been dropped.
   It now raises `ValueError`, in the R twin's words.
+- `random_effects_plot()` sorted only the first panel when a model had more
+  than one random-effect term, such as a random intercept and a random slope.
+  The later panels showed the groups in the first term's order whatever their
+  own effects. Each panel is now sorted by its own term's effects, as in the R
+  twin.
 - The time-series gallery said that the autocorrelation and partial
   autocorrelation functions spike at the multiples of twelve. The default lags
   reach 20, so twelve is the only multiple of the period among them. The
@@ -822,15 +827,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `palette_safety()` credited the Okabe-Ito set with the pair that the default
   `threshold` of 5 is calibrated against, the reddish purple and the grey,
   6.43 apart under full deuteranopia. That set has no grey, and the docstring
-  now gives the pair to the built-in palette. `random_effects_plot()` said
-  that it sorts the levels by their effect. With more than one random-effect
-  term, only the first panel is sorted, and the later panels share its order,
-  where the R twin sorts each panel by its own effects. The docstring and the
-  README now say so. The app guide's two screenshots showed an older app, with
-  a worst-case colour distance of 7.4, the crop-yield data without its `field`
-  column and the treatments' colours the other way round. They are retaken
-  from the current app, which shows 6.43 and draws the standard treatment in
-  blue and the enhanced one in orange, and their descriptions match.
+  now gives the pair to the built-in palette. The app guide's two screenshots
+  showed an older app, with a worst-case colour distance of 7.4, the
+  crop-yield data without its `field` column and the treatments' colours the
+  other way round. They are retaken from the current app, which shows 6.43 and
+  draws the standard treatment in blue and the enhanced one in orange, and
+  their descriptions match.
 
 ## [0.3.0] - 2026-09-24
 

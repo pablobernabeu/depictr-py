@@ -259,10 +259,7 @@ x-axis of its own by default. `model_report` draws the coefficients
 on their own scale beside a residual panel and a Q-Q plot, where the R function
 standardises the continuous predictors by default and adds an effects panel and
 a subtitle of fit statistics. `effects_plot` draws no rug of the observed
-values, which the R function adds by default. With more than one random-effect
-term, `random_effects_plot` sorts the first term's panel by its effects and
-draws the later panels in that order, where the R function sorts each panel by
-its own effects. `influence_plot` labels no point
+values, which the R function adds by default. `influence_plot` labels no point
 and draws only the line at zero, where the R function labels the three points
 with the largest Cook's distance and adds reference lines at studentised
 residuals of -2 and 2 and at twice the mean leverage.

@@ -11,6 +11,7 @@ import warnings
 import pandas as pd
 import pytest
 import statsmodels.formula.api as smf
+from matplotlib.collections import PathCollection
 from plotnine import ggplot
 
 from depictr.data import lexical_decision
@@ -71,6 +72,31 @@ def test_random_slope_facets():
     p.draw(show=False)
     # Two random-effect terms (intercept + slope) -> two distinct terms plotted.
     assert p.data["term"].nunique() == 2
+
+
+def test_each_panel_sorted_by_its_own_term():
+    # A random intercept and a random slope for word frequency, which order the
+    # participants differently. Each panel runs up the axis from its own term's
+    # most negative effect, as in the R twin, and each label sits beside its
+    # own group's point.
+    df = _grouped_data()
+    res = smf.mixedlm("RT ~ condition", df, groups=df["participant"],
+                      re_formula="~word_frequency").fit()
+    re = pd.DataFrame(res.random_effects).T
+    expected = {term: [str(g) for g in re[term].sort_values().index]
+                for term in re.columns}
+    assert expected["Group"] != expected["word_frequency"]
+
+    p = random_effects_plot(res)
+    p.draw(show=False)
+    assert list(p.layout.layout["term"]) == ["Group", "word_frequency"]
+    for term, ax in zip(p.layout.layout["term"], p.axs, strict=True):
+        labels = [t.get_text() for t in ax.get_yticklabels()]
+        assert labels == expected[term]
+        points = next(c for c in ax.collections
+                      if isinstance(c, PathCollection)).get_offsets()
+        drawn = [x for x, _ in sorted(points.tolist(), key=lambda xy: xy[1])]
+        assert drawn == pytest.approx([re.loc[g, term] for g in labels])
 
 
 def test_no_interval_fallback():
