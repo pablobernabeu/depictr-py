@@ -118,7 +118,15 @@ _SEASONAL_PERIODS = {
 def _index_period(x):
     """The seasonal period that the frequency of ``x``'s index implies, or None."""
     idx = getattr(x, "index", None)
-    freq = getattr(idx, "freqstr", None) or getattr(idx, "inferred_freq", None)
+    freq = getattr(idx, "freqstr", None)
+    if not freq:
+        # pandas 3.1 warns that inferred_freq will return an offset rather than
+        # a string. An offset names its frequency in freqstr, so either form
+        # gives the same name.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            freq = getattr(idx, "inferred_freq", None)
+        freq = getattr(freq, "freqstr", freq)
     if not freq:
         return None
     # The anchor after the hyphen, as in "Q-DEC", names the month that ends or
@@ -214,7 +222,7 @@ def _seasons(series, period):
         elif period == 4:
             season, names = idx.quarter, [f"Q{q}" for q in range(1, 5)]
         else:
-            season, names = idx.dayofweek + 1, _WEEKDAYS
+            season, names = idx.day_of_week + 1, _WEEKDAYS
         season = np.asarray(season, dtype=int)
         cycle = np.cumsum(np.r_[True, np.diff(season) <= 0])
         return season, cycle, names

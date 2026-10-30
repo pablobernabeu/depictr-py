@@ -134,3 +134,26 @@ jobs:
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
         run: python -m pytest tests -q
+
+  # lifelines declares pandas<3, so the matrix above, which installs the all
+  # extra, never resolves pandas 3. This job leaves out the survival extra, so
+  # pip installs the latest pandas. The survival tests skip without lifelines,
+  # and the doctests in src/ are left out, as in the floors job, since the
+  # example of survival_plot() needs lifelines.
+  latest-pandas:
+    name: Latest pandas, without lifelines
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install the package without the survival back-end
+        run: |
+          python -m pip install -e ".[models,classification,test]"
+          python -c "import pandas; assert int(pandas.__version__.split('.')[0]) >= 3, pandas.__version__"
+      - name: Run the test suite against the latest pandas
+        env:
+          MPLBACKEND: Agg   # headless: no display on the runner
+        run: python -m pytest tests -q

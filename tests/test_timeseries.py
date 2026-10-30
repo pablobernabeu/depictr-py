@@ -312,6 +312,18 @@ def test_month_and_quarter_aliases_still_infer_their_period():
         assert ts._infer_period(s, None) == period, freq
 
 
+def test_an_inferred_frequency_given_as_an_offset_implies_its_period(monkeypatch):
+    # pandas 3.1 returns an offset, not a string, from inferred_freq when
+    # future.infer_freq_returns_offset is set, as a future pandas will by default.
+    idx = pd.DatetimeIndex(list(pd.date_range("2016-01-01", periods=30, freq="D")))
+    for offset, period in ((pd.offsets.MonthEnd(), 12), (pd.offsets.MonthBegin(), 12),
+                           (pd.offsets.QuarterBegin(startingMonth=10), 4),
+                           (pd.offsets.Day(), 7), (pd.offsets.Minute(), None)):
+        monkeypatch.setattr(pd.DatetimeIndex, "inferred_freq",
+                            property(lambda self, offset=offset: offset))
+        assert ts._index_period(pd.Series(np.arange(30.0), index=idx)) == period, offset
+
+
 def test_a_period_that_is_not_whole_is_rounded_down_with_a_warning():
     # int() truncated such a period without a word, and the R twin refused it
     # with a message about season labels that no labels could satisfy. Both

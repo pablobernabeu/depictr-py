@@ -640,6 +640,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and reads a period within 0.00001 of a whole number as that number, as R's
   `ts()` reads a frequency. A period below 2, which drew every observation at
   one position, is now refused, as the R twin refuses such a frequency.
+- `decompose_plot()` and `seasonal_plot()` no longer give a `Pandas4Warning` on
+  pandas 3.1 or fail there when `future.infer_freq_returns_offset` is set.
 - A `conf_level` given as a percentage, such as 95, gave NaN intervals in
   `tidy_estimates()`, `coefficient_plot()`, `compare_models()`,
   `effects_plot()` and `interaction_plot()`, and `estimation_plot()` failed

@@ -56,15 +56,16 @@ def _read(name: str) -> pd.DataFrame:
         values = raw[column]
         kind = col["type"]
         if kind == "factor":
-            factor = pd.Categorical(values, categories=col["levels"],
-                                    ordered=col["ordered"])
             # pandas turns a value outside the categories into a missing value
             # without a word, so a CSV and levels.json that drifted apart would
-            # lose data silently.
-            if factor.isna().sum() != values.isna().sum():
+            # lose data silently. The values are checked before the Categorical
+            # is built, since pandas 3.0 deprecates building one from values
+            # outside its categories.
+            if not values.dropna().isin(col["levels"]).all():
                 raise RuntimeError(f"{name}.{column} holds a value that levels.json "
                                    "does not list. Rerun the export.")
-            out[column] = factor
+            out[column] = pd.Categorical(values, categories=col["levels"],
+                                         ordered=col["ordered"])
         elif kind == "Date":
             out[column] = pd.to_datetime(values, format="%Y-%m-%d")
         elif kind == "character":

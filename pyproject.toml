@@ -124,6 +124,13 @@ testpaths = ["tests", "src/depictr"]
 markers = [
     "slow: takes minutes; runs with the full suite, deselect with -m 'not slow'",
 ]
+# A DeprecationWarning that depictr's own code triggers fails the suite, so a
+# call that a dependency is about to remove is caught while it still works. The
+# module field matches the start of a module's name, so it covers every depictr
+# module and leaves alone the warnings that plotnine triggers in pandas.
+# pandas' Pandas4Warning is a DeprecationWarning. It is not named, since pandas
+# 2 does not define it.
+filterwarnings = ["error::DeprecationWarning:depictr"]
 
 [tool.ruff]
 line-length = 100
