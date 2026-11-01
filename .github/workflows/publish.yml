@@ -28,6 +28,17 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # skip-existing below lets a run upload nothing and still pass, so a tag
+      # on a commit that still carries the previous version would build that
+      # version and publish nothing. On any tag, from a release or from a
+      # dispatch on the tag, the version the package declares has to be the
+      # one the tag names.
+      - name: Check that the tag names the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/depictr/__init__.py)
+          echo "Tag ${GITHUB_REF_NAME}, package version ${version}"
+          test "v${version}" = "${GITHUB_REF_NAME}"
       - name: Build the sdist and wheel
         run: |
           python -m pip install --upgrade build
