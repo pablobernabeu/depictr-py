@@ -139,6 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   takes one, where a level of 0 or 1 gave the model estimates zero-width or
   unbounded intervals, 95 gave missing intervals or an error and
   `survival_plot()` ignored the level.
+- Every function that takes a `conf_level` refuses NaN, where most gave missing
+  intervals.
 - `tidy_estimates()` returns the terms of a model fitted on a frame with
   numbered columns as strings, where it returned integers, on which the plots
   failed.
@@ -438,6 +440,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `decompose_plot()` and `seasonal_plot()` run on pandas 3.1 without a
   `Pandas4Warning`, and work there when `future.infer_freq_returns_offset` is
   set, where they failed.
+- `decompose_plot()` and `seasonal_plot()` take the period of a one-column
+  frame from its index, as for a Series, where a call without `period` raised
+  `ValueError`.
 - `explore_bivariate()` draws a date, date-time or duration against a numeric
   column as a scatter plot with a trend, which raised `TypeError`.
 - The rolling overlay of `timeseries_plot()` no longer warns that it removed
