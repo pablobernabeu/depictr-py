@@ -1,6 +1,6 @@
 """Rendering helpers for the executed documentation examples.
 
-Not part of the ``depictr`` package. The gallery, home and reference pages run
+Not part of the ``depictr`` package. The gallery, home and licence pages run
 their code at build time through markdown-exec, and these helpers turn a result
 into markup the page can display: ``show`` renders a plotnine figure as inline
 SVG, ``image`` renders an array of pixels as an inline PNG, ``table`` renders a

@@ -5,9 +5,9 @@ depictr gives one consistent, accessible, plotnine-based look to the whole
 statistical workflow -- exploratory analysis, model estimates, diagnostics,
 classification, multivariate analysis, survival and time series -- so a coherent
 figure set no longer means stitching together half a dozen libraries with
-mismatched defaults. Every function returns a plotnine object you can extend
-with ``+``, and the colourblind-safe Okabe-Ito palette is the default, validated
-by a built-in colour-vision-deficiency safety check.
+mismatched defaults. Every plotting function returns a plotnine object you can
+extend with ``+``, and a colourblind-safe palette based on the Okabe-Ito set is
+the default, validated by a built-in colour-vision-deficiency safety check.
 
 It is the Python sibling of the depictr R package
 (https://pablobernabeu.github.io/depictr/).
@@ -37,8 +37,6 @@ from .data import (
     wellbeing_survey,
 )
 from .diagnostics import binned_residual_plot, influence_plot, qq_plot, vif_plot
-
-# Multi-panel composites and model-specific plots
 from .diagnostics_panels import model_report, residual_diagnostics_plot
 from .distributions_extra import (
     dumbbell_plot,

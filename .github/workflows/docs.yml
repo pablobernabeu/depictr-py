@@ -58,7 +58,7 @@ jobs:
                   "partials/header.html has changed since mkdocs-material "
                   f"{record['version']}.\n"
                   "Re-diff overrides/partials/header.html against the new upstream "
-                  "template, re-apply the App link and moved-palette blocks, then "
+                  "template, re-apply the version chip, the App link and the moved-palette blocks, then "
                   "update [tool.depictr.mkdocs-material-fork] in pyproject.toml.\n"
                   f"  expected {record['partials_header_sha256']}\n  installed {actual}"
               )

@@ -1,12 +1,14 @@
-"""One rule for the grouping variable of every grouped plot.
+"""One rule for the grouping variable of the grouped exploratory plots.
 
-The grouped plots used to treat a grouping column in as many ways as there were
-functions. A numeric code raised in some and was silently ungrouped in others.
-A missing group was drawn as a grey group of its own or vanished without a
-word. An unused category kept its slot in the palette, so the levels after it
-took other colours than in the R twin. :func:`_prepare_group` applies the R
-twin's ``prepare_group()`` rule in every one of them, so the same data give the
-same groups and colours in every function and in both packages.
+:func:`_prepare_group` applies the R twin's ``prepare_group()`` rule to the
+``group`` of :func:`depictr.explore_distribution`,
+:func:`depictr.explore_categorical`, :func:`depictr.scatter_trend`,
+:func:`depictr.ecdf_plot`, :func:`depictr.ridgeline_plot`,
+:func:`depictr.group_comparison_plot` and :func:`depictr.raincloud_plot`. A
+numeric code with no more than 20 distinct values is a group like any other,
+a missing group is dropped with a warning and an unused category takes no
+slot in the palette, so the same data give the same groups and colours in
+each of these functions and in their R counterparts.
 """
 
 from __future__ import annotations

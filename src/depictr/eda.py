@@ -102,15 +102,15 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     """
     if x not in data.columns:
         raise KeyError(f"{x!r} is not a column of `data`.")
-    # An unknown kind matched neither layer and left an empty panel, and a text
-    # column was drawn as a density of its category codes. The R twin refuses
-    # both, and its is.numeric() is FALSE for a logical column.
+    # An unknown kind would match neither layer and leave an empty panel, and a
+    # text column has no density to draw. The R twin refuses both, and its
+    # is.numeric() is FALSE for a logical column.
     if kind not in ("density", "histogram", "both"):
         raise ValueError("`kind` must be 'density', 'histogram' or 'both'.")
     if not is_numeric_dtype(data[x]) or is_bool_dtype(data[x]):
         raise TypeError("`x` must be a numeric variable.")
     # The grouped density's light default is kept apart from the 0.6 of every
-    # other fill, so that an explicit alpha reaches it too. It was fixed at 0.2.
+    # other fill, so that an explicit alpha reaches it too.
     density_alpha = 0.2 if alpha is None else alpha
     alpha = 0.6 if alpha is None else alpha
     if group:
@@ -180,7 +180,8 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
         the plot and its palette. A category that a group never takes is drawn
         as a bar of height zero, so every bar keeps its own slot.
     proportion : bool
-        Show proportions within each group rather than raw counts.
+        Show proportions within each group rather than raw counts. It applies
+        only with a ``group``: without one, the bars show counts.
     title : str, optional
 
     Returns
@@ -254,7 +255,7 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
         ones are dropped raise ``ValueError``.
     method : {"pearson", "spearman", "kendall"}
         The correlation coefficient, computed by
-        :meth:`pandas.DataFrame.corr` over the pairwise-complete
+        ``pandas.DataFrame.corr`` over the pairwise-complete
         observations, as the R twin's default ``use =
         "pairwise.complete.obs"`` computes it. Spearman's and Kendall's
         coefficients measure monotone association, which suits skewed or
@@ -287,9 +288,9 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
             or digits < 0):
         raise ValueError("`digits` must be a whole number of 0 or more.")
     num = data[cols] if cols else data.select_dtypes("number")
-    # Text failed inside pandas with "could not convert string to float", and a
-    # datetime was correlated as the integers that store it. The wording is the
-    # R twin's, as in its explore_pairs().
+    # Text cannot be correlated, and a datetime would be correlated as the
+    # integers that store it. The wording is that of the R twin's
+    # correlation_heatmap().
     not_numeric = [c for c in num.columns if not is_numeric_dtype(num[c])]
     if not_numeric:
         raise TypeError(
@@ -297,8 +298,8 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
             f"{', '.join(str(c) for c in not_numeric)}."
         )
     # A correlation is undefined for a constant column, so pandas fills the
-    # whole row and column with NaN, which the label formatter then rendered as
-    # the literal string "nan". Drop those columns and say so.
+    # whole row and column with NaN, which the labels would print as the
+    # literal string "nan". Drop those columns and say so.
     const = [c for c in num.columns if num[c].dropna().nunique() < 2]
     if const:
         warnings.warn(
@@ -308,7 +309,7 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
             stacklevel=2,
         )
         num = num.drop(columns=const)
-    # A single column was drawn as one tile labelled 1.00. The R twin's check
+    # A single column would draw one tile labelled 1.00. The R twin's check
     # and message.
     if num.shape[1] < 2:
         raise ValueError("Need at least two numeric columns to compute correlations.")
@@ -332,8 +333,7 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
         # Each label is black or white, whichever contrasts more with its tile
         # as the fill scale paints it, the scale's grey for an undefined
         # correlation included. The r = 1 diagonal is the darkest tile on the
-        # ramp, where the near-black every label used to be drawn in sat at
-        # 2.4:1.
+        # ramp, where a near-black label would sit at 2.4:1.
         long["label_colour"] = _legible_text_colour(
             _scale_fills(fill_scale, long["r"]))
         p = (p + geom_text(aes(label="label", color="label_colour"), size=8)
@@ -364,6 +364,9 @@ def missingness_map(data, sort=True, legend_inside=False, title=None):
         so a legend there sits over a solid "Present" block and hides no missing
         marks.
     title : str, optional
+        Plot title. When none is given (``None`` or an empty string), the title
+        gives the share of all values that are missing, such as "2.2% of all
+        values are missing".
 
     Returns
     -------

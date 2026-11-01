@@ -1,13 +1,13 @@
 """Colourblind-aware palettes shared by every depictr plot.
 
-The qualitative palette is the Okabe-Ito set (Okabe & Ito, 2008), a categorical
-scheme that stays distinguishable under the common forms of colour-vision
-deficiency, led here by the depictr brand blue. The sequential and diverging
-palettes are perceptually ordered single-hue and red-blue ramps. These are the
-defaults behind :func:`depictr.theme.scale_colour_depictr` and the whole package,
-so every figure shares one accessible colour language.
+The qualitative palette is based on the Okabe-Ito set (Okabe & Ito, 2008), a
+categorical scheme that stays distinguishable under the common forms of
+colour-vision deficiency. It is led by the depictr brand blue. The sequential
+and diverging palettes are perceptually ordered single-hue and red-blue ramps.
+These are the defaults behind :func:`depictr.theme.scale_colour_depictr` and the
+whole package, so every figure shares one accessible colour language.
 
-The guarantee is a property of the eight Okabe-Ito colours, not of any number of
+The guarantee is a property of the eight built-in colours, not of any number of
 colours: past eight, :func:`depictr_palette` has to interpolate between them, and
 the interpolated colours sit close enough together to fail
 :func:`depictr.cvd.palette_safety` (nine colours come within a CIEDE2000
@@ -29,8 +29,9 @@ import warnings
 import matplotlib.colors as mcolors
 import numpy as np
 
-# The qualitative palette: the Okabe-Ito colours, led by the depictr brand blue
-# (#005b96) in place of the lighter standard blue so the brand reads first.
+# The qualitative palette, based on the Okabe-Ito colours: the depictr brand blue
+# (#005b96) leads in place of their lighter blue so the brand reads first, and a
+# grey takes the place of their black.
 OKABE_ITO: list[str] = [
     "#005b96",  # blue (brand)
     "#e69f00",  # orange
@@ -89,8 +90,8 @@ def depictr_accent() -> str:
     """Return the depictr accent colour as a hex string.
 
     The accent marks a single element against the brand blue, such as the
-    flagged points of :func:`depictr.outlier_plot` and the missing cells of
-    :func:`depictr.missingness_map`. It is the Okabe-Ito vermillion, as in the
+    flagged points of [`depictr.outlier_plot`][] and the missing cells of
+    [`depictr.missingness_map`][]. It is the Okabe-Ito vermillion, as in the
     R twin, which stays distinguishable from the brand blue under the common
     colour-vision deficiencies and reaches 3.87:1 against white.
 
@@ -122,10 +123,15 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
                     order: str = "default") -> list[str]:
     """Return a depictr palette.
 
+    The qualitative palette is based on the Okabe-Ito set and keeps six of its
+    eight colours. The depictr brand blue (``#005b96``) takes the place of its
+    blue (``#0072b2``) and leads the palette, and a grey (``#999999``) takes the
+    place of its black.
+
     In the default order the second colour is the orange (``#e69f00``), at
     2.25:1 against white. Any figure on white whose colour tells two or more
     groups apart therefore fails the ``geometry_contrast`` row of
-    :func:`depictr.check_figure`. No more than three of the eight colours pass
+    [`depictr.check_figure`][]. No more than three of the eight colours pass
     every colour row of that audit together.
 
     ``order="contrast"`` puts those three first: the brand blue, the vermillion
@@ -134,9 +140,9 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     then pass every colour row, contrast against white included. They stay at
     least 14.01 apart in CIEDE2000 under every vision type, 6.86 apart in
     lightness and 3.06:1 against white. Four groups keep 3:1 against white,
-    but the bluish green and the vermillion are 3.31 apart in lightness, which
+    but the bluish green and the reddish purple are 3.31 apart in lightness, which
     fails ``greyscale_separability``. Under this order, the second group is
-    drawn in the vermillion, which is also :func:`depictr.depictr_accent`.
+    drawn in the vermillion, which is also [`depictr.depictr_accent`][].
     The default order is unchanged, and the R twin gives the same order.
 
     The R twin can make the order the default for every plot through its
@@ -150,8 +156,8 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     n : int, optional
         Number of colours to return, a single number of at least 1. A
         fraction is truncated, as in the R twin, so 2.7 gives two colours. For
-        the qualitative palette ``None`` (the default) returns the full
-        Okabe-Ito set, and an ``n`` larger than the available colours is
+        the qualitative palette ``None`` (the default) returns all eight
+        colours, and an ``n`` larger than the available colours is
         interpolated. The sequential and diverging palettes are ramps and
         accept any ``n`` (defaulting to 7).
     kind : {"qualitative", "sequential", "diverging"}
@@ -175,10 +181,10 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     Warns
     -----
     UserWarning
-        When ``n`` exceeds the eight Okabe-Ito colours and the qualitative
+        When ``n`` exceeds the eight built-in colours and the qualitative
         palette is therefore interpolated. The colourblind-safety guarantee
         covers the eight base colours only; an interpolated palette fails
-        :func:`depictr.cvd.palette_safety`. Facet the groups, or use the
+        [`depictr.cvd.palette_safety`][]. Facet the groups, or use the
         sequential ramp, when there are more than eight of them. Also when
         ``order="contrast"`` and ``n`` exceeds four, since the fifth colour,
         the orange, falls below 3:1 against white.
@@ -192,8 +198,10 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     ['#005b96', '#d55e00', '#cc79a7']
     """
     if n is not None:
-        # depictr_palette(-1) gave seven colours and (0) none, and a fraction
-        # failed inside the slicing or the ramp. The R twin's check and message.
+        # Unchecked, depictr_palette(-1) would give seven colours and (0) none,
+        # and an untruncated fraction would fail inside the slicing or the
+        # ramp. The R twin's check and message, and, as there, a fraction is
+        # truncated.
         if (isinstance(n, bool) or not isinstance(n, numbers.Real)
                 or not math.isfinite(n) or n < 1):
             raise ValueError("`n` must be a single positive number.")

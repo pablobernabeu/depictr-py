@@ -228,7 +228,11 @@ def test_check_warns_with_the_checks_the_figure_fails(tmp_path):
     with pytest.warns(UserWarning) as record:
         dp.save_plot(audited_bad(), str(tmp_path / "column.png"), width=8.9,
                      height=6, units="cm", dpi=72, check=True)
-    assert [str(w.message) for w in record] == [expected]
+    # pandas and plotnine can warn during the save too, so only depictr's own
+    # report of the failed checks is compared.
+    reports = [str(w.message) for w in record
+               if str(w.message).startswith("The figure fails")]
+    assert reports == [expected]
     # In a composition, each failure names its panel.
     with pytest.warns(UserWarning, match=r"fails 3 checks .*: panel 2 "
                       r"colour_separability_deutan 0\.11"):

@@ -80,10 +80,10 @@ def _binary_outcome(y_true) -> np.ndarray:
     must have at most two categories, and its last declared category is the
     positive class, the convention ``as_binary()`` follows. Anything else must
     already be coded 0/1, as numbers or as their text, so a 1/2 or -1/1 coding
-    and text such as ``"yes"``/``"no"`` are refused, as R refuses them. Each
-    curve counted the values equal to 1, so a categorical had no positives and
-    met the single-class refusal, and a 1/2 coding was read with 1 as the
-    positive class. A missing value stays missing, for the caller to refuse.
+    and text such as ``"yes"``/``"no"`` are refused, as R refuses them.
+    Counting the values equal to 1 would instead find no positives in a
+    categorical and read a 1/2 coding with 1 as the positive class. A missing
+    value stays missing, for the caller to refuse.
 
     Returns
     -------
@@ -201,8 +201,8 @@ def _calibration_bins(y, score, n_bins, strategy):
 
     ``"quantile"`` cuts at the quantiles of the scores, where numpy's default
     method is R's ``quantile()`` type 7, and merges repeated edges, as the R
-    twin does. ``"uniform"`` cuts [0, 1] into equal widths, the bins
-    scikit-learn's ``calibration_curve()`` gave depictr 0.3.0.
+    twin does. ``"uniform"`` cuts [0, 1] into equal widths, as
+    scikit-learn's ``calibration_curve()`` does by default.
     """
     if strategy == "quantile":
         edges = np.unique(np.quantile(score, np.linspace(0, 1, n_bins + 1)))
@@ -360,8 +360,8 @@ def confusion_matrix_plot(y_true, y_pred, normalise=None, title=None):
         name=("Proportion" if normalise else "Count"),
     )
     # Each count is black or white, whichever contrasts more with its tile as
-    # the fill scale paints it. The busiest cell is the darkest, where the
-    # near-black every count used to be drawn in sat at 1.3:1.
+    # the fill scale paints it. The busiest cell is the darkest, where a
+    # near-black count would sit at 1.3:1.
     long["label_colour"] = _legible_text_colour(
         _scale_fills(fill_scale, long["count"]))
     return (
@@ -417,7 +417,7 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
         assigns them. Tied scores can make edges coincide, and repeated edges
         are merged, so fewer than ``n_bins`` bins may remain. Fewer than two
         raise ``ValueError``. ``"uniform"`` cuts [0, 1] into ``n_bins`` bins
-        of equal width, the bins of depictr 0.3.0, and drops the empty ones.
+        of equal width and drops the empty ones.
         A rare outcome whose scores never approach 1 then leaves fewer points
         than bins, the highest of them often resting on a handful of cases.
     bins : int, optional
@@ -566,7 +566,7 @@ def lift_plot(y_true, y_score, title=None):
     line at 1 is random targeting.
 
     Cases with tied scores are targeted together, as in
-    :func:`depictr.gain_plot` and the R twin, so the curve has a point at the
+    [`depictr.gain_plot`][] and the R twin, so the curve has a point at the
     end of each run of equal scores and does not depend on the order of the
     rows. It starts at the first such point, since lift has no value at a depth
     of zero.
@@ -684,9 +684,8 @@ def threshold_plot(y_true, y_score, title=None):
             )
     _positive_count(y_true,
                     "A threshold sweep needs both positive and negative outcomes.")
-    # Every distinct score, as in the R twin. Past 200 distinct scores the
-    # sweep used to move to 200 quantiles of the scores, which fall between
-    # the points where the metrics change.
+    # Every distinct score, as in the R twin: the metrics change only at a
+    # score, so thresholds between the scores would miss their steps.
     thresholds, tp, fp = _threshold_counts(y_true, y_score)
     n_pos = int((y_true == 1).sum())
     n_neg = int((y_true == 0).sum())

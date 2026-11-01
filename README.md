@@ -24,11 +24,11 @@ two differ.
 
 ## Gallery
 
-A grouped density (the default palette is the colourblind-safe Okabe-Ito set) and
-Kaplan-Meier survival curves with a log-rank test and a number-at-risk table,
-both from a single function call:
+A grouped density (the default palette is a colourblind-safe set based on
+Okabe-Ito) and Kaplan-Meier survival curves with a log-rank test and a
+number-at-risk table, both from a single function call:
 
-![Grouped density of response times by priming condition, in the Okabe-Ito palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
+![Grouped density of response times by priming condition, in the default palette](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-distribution.png)
 
 ![Kaplan-Meier survival curves by treatment arm, with a log-rank test and a number-at-risk table](https://raw.githubusercontent.com/pablobernabeu/depictr-py/main/images/readme-survival.png)
 
@@ -55,10 +55,11 @@ accessible figure.
 
 ## Accessibility by default
 
-The default palette is the Okabe-Ito set, and the package puts that choice to a
-test. It ships a simulator of colour-vision deficiency based on the model of
-Machado, Oliveira and Fernandes (2009), and a CIE-Lab distance test that measures
-how far apart the palette's colours stay under each deficiency:
+The default palette is based on the Okabe-Ito set, and the package puts that
+choice to a test. It ships a simulator of colour-vision deficiency based on the
+model of Machado, Oliveira and Fernandes (2009), and a CIEDE2000
+colour-difference test that measures how far apart the palette's colours stay
+under each deficiency:
 
 ```python
 import depictr as dp
@@ -69,7 +70,7 @@ dp.palette_safety()
 #  'safe': True, 'threshold': 5.0}
 ```
 
-The guarantee belongs to the eight Okabe-Ito colours. A plot with more than
+The guarantee belongs to the eight built-in colours. A plot with more than
 eight groups has to interpolate between them, and the interpolated colours no
 longer clear the distance threshold, so `depictr_palette` warns when it is asked
 for a ninth. Facet the groups, or map them to the sequential ramp, when a figure
@@ -128,8 +129,10 @@ pip install "depictr[all]"
 
 The classification and survival plots delegate to scikit-learn and lifelines,
 each an optional dependency installed only when your plots need it
-(`depictr[classification]`, `depictr[survival]`). The gains, lift and
-calibration curves are computed by depictr itself and need neither. The model
+(`depictr[classification]`, `depictr[survival]`). The PCA, scree, cluster and
+silhouette plots need scikit-learn too, from the same `depictr[classification]`
+extra, while the dendrogram needs only scipy, a core dependency. The gains, lift
+and calibration curves are computed by depictr itself and need neither. The model
 and time-series plots delegate to statsmodels, which plotnine itself requires,
 so it arrives with the core install. The `depictr[models]` extra remains to pin
 the tested statsmodels floor.
@@ -168,8 +171,8 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 dp.survival_plot(ct["time"], ct["event"], group=ct["arm"], logrank=True)
 ```
 
-Every function returns a plotnine object, so the usual grammar-of-graphics
-extensions apply:
+Every plotting function returns a plotnine object, so the usual
+grammar-of-graphics extensions apply:
 
 ```python
 from plotnine import labs
@@ -188,9 +191,14 @@ lives in the repository rather than the wheel, so run it from a clone:
 ```bash
 git clone https://github.com/pablobernabeu/depictr-py
 cd depictr-py
-pip install -e ".[app]"
+pip install -e ".[all]"
 streamlit run app/streamlit_app.py
 ```
+
+The `all` extra brings Streamlit together with scikit-learn and lifelines, which
+most of the classification and multivariate panes and the Kaplan-Meier pane
+need. `pip install -e ".[app]"` installs Streamlit alone, and those panes then
+say which package is missing.
 
 ## Function families
 
@@ -227,8 +235,9 @@ Six functions from the R package have yet to be ported: `optimizer_fixef_plot`
 `palette_preview`, `model_fit_table`, `ts_forecast` and the session-wide
 settings of `depictr_options`. Of those settings, the font has an equivalent in
 plotnine's own option, which every depictr theme reads, so
-`plotnine.options.base_family = "Arial"` sets the font of every plot drawn
-afterwards. `theme_depictr(base_family="Arial")` sets it for one plot.
+`plotnine.options.base_family = "Arial"` sets the font of every plot made
+afterwards. A plot made before the option is set keeps its font.
+`theme_depictr(base_family="Arial")` sets it for one plot.
 
 The functions the two packages share take many of the same arguments, though
 far from all. The
@@ -244,27 +253,57 @@ change what a figure shows or how it is computed.
 Among the model plots, `posterior_plot` draws each posterior as its median with
 66% and 95% intervals, the R function's default widths. It draws no half-eye
 density, which R draws by default when ggdist is installed, and it has none of
-R's `style`, `widths`, `rope` or `pd`. `model_report` draws the coefficients
+R's `style`, `widths`, `rope` or `pd`. `frequentist_bayesian_plot` draws every
+term on one shared axis, where the R function gives each term a panel and an
+x-axis of its own by default. `model_report` draws the coefficients
 on their own scale beside a residual panel and a Q-Q plot, where the R function
-standardises the continuous predictors by default and adds an effects panel.
+standardises the continuous predictors by default and adds an effects panel and
+a subtitle of fit statistics. `effects_plot` draws no rug of the observed
+values, which the R function adds by default. `influence_plot` labels no point
+and draws only the line at zero, where the R function labels the three points
+with the largest Cook's distance and adds reference lines at studentised
+residuals of -2 and 2 and at twice the mean leverage.
 `qq_plot` draws no confidence band, where the R function draws a pointwise 95%
 band by default, and `roc_curve_plot` has neither the confidence band nor the
-Youden point that R's `ci` and `youden` add.
+Youden point that R's `ci` and `youden` add. `threshold_plot` marks no
+threshold, where the R function marks the Youden and maximum-F1 thresholds by
+default.
 
 In the time-series family, `decompose_plot` decomposes a series classically,
 where the R function uses STL by default. `timeseries_plot` draws no forecast,
-which the R function adds with `forecast`. `acf_plot` refuses a series with a
+which the R function adds with `forecast`. It draws a single series, where the R
+function also draws one line per column of a multivariate `ts`, or one per group
+of a long table given through `time`, `value` and `group`. `seasonal_plot`
+draws one line per cycle, the layout of R's `style = "season"`, where the R
+function defaults to the faceted subseries plot with each season's mean.
+`acf_plot` refuses a series with a
 missing value inside it, while the R function computes the correlations across
 the gap from the pairs of observations present, with a warning.
 
 Some defaults differ too. `dumbbell_plot` orders the categories by the value of
 the group's first level, and the R function by the gap between the two groups. `explore_categorical` keeps the order of the levels and, with a
 group, shows proportions within each group, where the R function sorts the bars
-from most to least frequent and shows counts. `explore_distribution` fills a
-grouped density at an alpha of 0.2, where the R function uses its default of
-0.6, so pass `alpha` for the same fill in both. `survival_plot` prints the
-log-rank test by default, where the R package leaves it out, and warns that its
-default will change to match.
+from most to least frequent and shows counts. `explore_distribution` draws a
+density by default, where the R function draws a histogram. It fills a grouped
+density at an alpha of 0.2, where the R function uses its default of 0.6, so
+pass `alpha` for the same fill in both. It also overlays grouped histogram
+bars, where the R function dodges them. `estimation_plot` draws the differences
+alone unless `two_panel=True`, where the R function always draws the two-panel
+Cumming plot. `survival_plot` prints the log-rank test by default, where the R
+package leaves it out, and warns that its default will change to match.
+
+Among the multivariate plots, `cluster_plot` draws neither the convex hulls nor
+the centroid labels that the R function adds by default. `dendrogram_plot`
+merges clusters by Ward's method by default and labels no leaves, where the R
+function uses complete linkage and labels the leaves of any tree with 40 or fewer.
+`silhouette_plot` runs k-means for `k` clusters itself, where the R function
+draws the silhouettes of a clustering computed elsewhere, whose assignments it
+takes in `clusters`.
+
+Among the exploratory plots, `explore_pairs` draws a scatter plot in both
+triangles of its matrix and keeps the first five columns without a warning,
+where the R function prints the correlations above the diagonal and refuses
+more than `max_cols` columns, eight by default.
 
 Compositions in plotnine have no figure-level title, subtitle or collected
 legend, so a grid carries its titles on each panel (the two-panel

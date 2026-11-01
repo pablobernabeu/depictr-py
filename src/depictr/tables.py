@@ -2,9 +2,10 @@
 
 The descriptive table that opens many empirical papers: numeric variables as
 mean (SD), categorical variables as count (percent), optionally split into one
-column per level of a grouping variable. Unlike the rest of depictr this returns
-a pandas DataFrame rather than a plot, ready to pass to a formatter such as
-``DataFrame.to_markdown`` or ``to_latex``.
+column per level of a grouping variable. Like :func:`depictr.tidy_estimates`
+and :func:`depictr.check_figure`, this returns a pandas DataFrame rather than a
+plot, ready to pass to a formatter such as ``DataFrame.to_markdown`` or
+``to_latex``.
 """
 
 from __future__ import annotations
@@ -105,8 +106,8 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
             kept.append(v)
         vars = kept
         if skipped:
-            # The R twin's message, in a warning. The columns used to vanish
-            # without a word.
+            # The R twin's message, in a warning, so that the columns do not
+            # vanish without a word.
             warnings.warn(
                 "summary_table(): skipping high-cardinality column(s): "
                 f"{', '.join(str(v) for v in skipped)}. "
@@ -172,7 +173,8 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
     for v in vars:
         col = data[v]
         if is_datetime64_any_dtype(col):
-            # A date is not a level: expanded as one, it gave a row per day.
+            # A date is not a level: expanded as one, it would give a row per
+            # day.
             fmt = _date_cell_format(col)
             row = {"variable": v, "statistic": "Range"}
             for name in col_names:

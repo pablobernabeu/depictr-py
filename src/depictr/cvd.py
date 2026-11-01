@@ -222,8 +222,9 @@ def _to_rgb01(colours: list[str]) -> np.ndarray:
 def _as_colour_list(colours) -> list:
     """A list of colours, reading a single string as one colour.
 
-    A string is iterable, so ``list("#005b96")`` splits it into characters:
-    the hex code then failed on ``"#"``, and ``"rgb"`` became three colours.
+    A string is iterable, so ``list("#005b96")`` would split it into
+    characters: a hex code would fail on ``"#"``, and ``"rgb"`` would become
+    three colours.
     """
     return [colours] if isinstance(colours, str) else list(colours)
 
@@ -271,15 +272,23 @@ def simulate_cvd(colours: str | list[str], deficiency: str,
         The deficiency to simulate (red-, green- or blue-weak vision).
     severity : float
         Severity in [0, 1]. Zero leaves the colours unchanged and one is the
-        full deficiency. Machado et al. publish a matrix for each tenth of
-        severity, which is used as it stands at 0.1, 0.2 and so on. A severity
-        between two tenths takes the linear interpolation of their matrices,
-        as the authors suggest and as colorspacious does.
+        full deficiency. Machado, Oliveira and Fernandes (2009) publish a
+        matrix for each tenth of severity, which is used as it stands at 0.1,
+        0.2 and so on. A severity between two tenths takes the linear
+        interpolation of their matrices, as the authors suggest and as
+        colorspacious does.
 
     Returns
     -------
     list of str
         The simulated colours as hex strings.
+
+    References
+    ----------
+    Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
+    physiologically-based model for simulation of color vision deficiency. IEEE
+    Transactions on Visualization and Computer Graphics, 15(6), 1291-1298.
+    https://doi.org/10.1109/TVCG.2009.113
 
     Examples
     --------
@@ -330,12 +339,13 @@ def simulate_figure(plot, deficiency: str, severity: float = 1.0,
                     dpi: float = 150) -> np.ndarray:
     """Show a finished figure as a reader with a colour-vision deficiency sees it.
 
-    :func:`simulate_cvd` simulates a list of colours, and this function the
-    figure they end up in, legend, colourbar, text and background included. A
-    copy of the plot is drawn and rasterised with matplotlib's Agg renderer.
-    Every pixel then goes through the same transform: it is decoded from sRGB
-    to linear light, multiplied by Machado et al.'s matrix for the deficiency
-    and severity and encoded again. The alpha channel is kept as drawn.
+    [`simulate_cvd`][depictr.simulate_cvd] simulates a list of colours, and
+    this function the figure they end up in, legend, colourbar, text and
+    background included. A copy of the plot is drawn and rasterised with
+    matplotlib's Agg renderer. Every pixel then goes through the same
+    transform: it is decoded from sRGB to linear light, multiplied by the
+    matrix of Machado, Oliveira and Fernandes (2009) for the deficiency and
+    severity and encoded again. The alpha channel is kept as drawn.
 
     The R twin's ``simulate_figure()`` applies the same matrices to the
     figure's vector elements and returns a gtable to draw or save. A solid
@@ -352,8 +362,9 @@ def simulate_figure(plot, deficiency: str, severity: float = 1.0,
     deficiency : {"protan", "deutan", "tritan"}
         The deficiency to simulate (red-, green- or blue-weak vision).
     severity : float
-        Severity in [0, 1], as for :func:`simulate_cvd`. Zero returns the
-        pixels as drawn, which is the figure under normal vision.
+        Severity in [0, 1], as for [`simulate_cvd`][depictr.simulate_cvd].
+        Zero returns the pixels as drawn, which is the figure under normal
+        vision.
     dpi : float
         The resolution to rasterise at, in dots per inch. The image is the
         figure's width and height in inches times ``dpi`` pixels.
@@ -372,6 +383,13 @@ def simulate_figure(plot, deficiency: str, severity: float = 1.0,
     ValueError
         When ``deficiency``, ``severity`` or ``dpi`` is out of range, or when
         ``plot`` has already been drawn.
+
+    References
+    ----------
+    Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
+    physiologically-based model for simulation of color vision deficiency. IEEE
+    Transactions on Visualization and Computer Graphics, 15(6), 1291-1298.
+    https://doi.org/10.1109/TVCG.2009.113
 
     Examples
     --------
@@ -556,21 +574,21 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     the more likely two categories are to be confused. A palette is reported
     safe when the minimum across all conditions is at least ``threshold``.
 
-    Earlier versions measured the Euclidean distance in CIELAB, known as CIE76,
-    which overstates the difference between saturated colours: the blues
-    ``#005b96`` and ``#0060a8`` are 8.20 apart by CIE76 and 2.69 by CIEDE2000.
-    ggplot2's default palette of five colours passed the check under CIE76,
-    although under deuteranopia its sky blue and its pink come within 2.74 of
-    each other in CIEDE2000.
+    CIE76, the Euclidean distance in CIELAB, overstates the difference between
+    saturated colours: the blues ``#005b96`` and ``#0060a8`` are 8.20 apart by
+    CIE76 and 2.69 by CIEDE2000. ggplot2's default palette of five colours
+    passes the check under CIE76, although under deuteranopia its sky blue and
+    its pink come within 2.74 of each other in CIEDE2000.
 
-    The default ``threshold`` of 5.0 is calibrated against the reference
-    colourblind-safe palette: the Okabe-Ito set's tightest pair (reddish-purple
-    against grey) sits at 6.43 under full deuteranopia, so the cut must lie
-    below that to pass the recommended palette, while still flagging colours that
-    become near-identical under a deficiency. The difference includes lightness,
-    which survives colour-vision deficiency, so two colours that share a hue but
-    differ in lightness are correctly treated as distinguishable. Full severity
-    is the worst case; most colour-vision deficiency is milder.
+    The default ``threshold`` of 5.0 is calibrated against the built-in palette
+    of [`depictr.depictr_palette`][], which is based on the Okabe-Ito set. That
+    palette's tightest pair (reddish-purple against grey) sits at 6.43 under full
+    deuteranopia, so the cut must lie below that to pass the built-in palette,
+    while still flagging colours that become near-identical under a deficiency.
+    The difference includes lightness, which survives colour-vision deficiency,
+    so two colours that share a hue but differ in lightness are correctly
+    treated as distinguishable. Full severity is the worst case; most
+    colour-vision deficiency is milder.
 
     Parameters
     ----------
@@ -582,10 +600,9 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     threshold : float
         The smallest acceptable colour difference, on the scale of ``metric``.
     metric : {"ciede2000", "cie76"}
-        The colour difference to measure: CIEDE2000, the default, or the
-        Euclidean distance in CIELAB that earlier versions measured.
-        ``"cie76"`` is kept so that earlier results can be reproduced, and a
-        later release will remove it.
+        The colour difference to measure: CIEDE2000, the default, or CIE76,
+        the Euclidean distance in CIELAB. ``"cie76"`` is kept so that results
+        computed with it can be reproduced, and a later release will remove it.
 
     Returns
     -------
@@ -614,7 +631,7 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     >>> dp.palette_safety()['safe']
     True
 
-    ggplot2's default palette of five colours, which passed under CIE76.
+    ggplot2's default palette of five colours, which passes under CIE76.
 
     >>> hue5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
     >>> dp.palette_safety(hue5)['safe'], dp.palette_safety(hue5, metric="cie76")['safe']

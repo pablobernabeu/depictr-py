@@ -103,7 +103,7 @@ def ridgeline_plot(data, x, group, title=None):
     progression is easy to follow, and each keeps the colour of its place in
     the group's own order, as in the R twin.
 
-    The overlap is faked with :func:`plotnine.facet_grid`: one narrow row per
+    The overlap is faked with ``plotnine.facet_grid``: one narrow row per
     level, panel spacing pulled negative so neighbouring ridges touch. It stays a
     single ggplot, since plotnine has no dedicated ridgeline geom.
 
@@ -149,7 +149,8 @@ def ridgeline_plot(data, x, group, title=None):
     return (
         ggplot(df, aes(x=x, fill=group))
         # Each facet row holds one level, so there is nothing to stack, and
-        # geom_area's default stacking made the plot many times slower to draw.
+        # geom_area's default stacking would make the plot many times slower
+        # to draw.
         + geom_area(stat="density", position="identity", alpha=0.8,
                     color="white", size=0.3)
         + facet_grid(f"{group} ~ .", scales="free_y")
@@ -218,8 +219,8 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     # The two levels are the two ends of every segment. The first of them
     # orders the categories, and each takes its colour in turn. They are taken
     # as the R twin takes them, over the rows that are drawn: a categorical's
-    # declared order, and otherwise sorted. Taking them in order of first
-    # appearance let the row order of the input rearrange the figure.
+    # declared order, and otherwise sorted, so that the row order of the input
+    # cannot rearrange the figure.
     drawn = data.loc[data[[category, value, group]].notna().all(axis=1), group]
     codes = (drawn.cat.remove_unused_categories()
              if isinstance(drawn.dtype, pd.CategoricalDtype)
@@ -275,7 +276,8 @@ def outlier_plot(data, x, title=None):
     x : str
         Name of the numeric column to inspect.
     title : str, optional
-        Plot title.
+        Plot title. A subtitle always gives the number of outliers flagged, as
+        in "3 outliers beyond 1.5 x IQR".
 
     Returns
     -------
@@ -349,12 +351,12 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     Notes
     -----
     Each interval is the t interval for the group's mean, as in the R twin and
-    in the upper panel of :func:`depictr.estimation_plot`. Its half-width is the
+    in the upper panel of [`depictr.estimation_plot`][]. Its half-width is the
     standard error times the ``1 - (1 - conf_level) / 2`` quantile of the t
     distribution with n - 1 degrees of freedom. It describes the precision
-    of the mean, not the spread of the data. depictr 0.3.0 used 1.96 standard
-    errors, a normal approximation that covers only 81% of the time at n = 3
-    and 88% at n = 5 for a nominal 95%.
+    of the mean, not the spread of the data. The t quantile matters in small
+    groups: 1.96 standard errors, the normal approximation, would cover only
+    81% of the time at n = 3 and 88% at n = 5 for a nominal 95%.
 
     A group with a single observation has no degrees of freedom for the
     interval, so only its mean is drawn and a warning names the group.

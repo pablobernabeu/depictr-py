@@ -1,7 +1,9 @@
 # Classification and survival
 
-Most of the classification metrics come from scikit-learn and the survival
-estimate from lifelines, and depictr redraws both under the shared theme. The survival figure
+The ROC and precision-recall curves and the confusion matrix come from
+scikit-learn and the survival estimate from lifelines, and depictr redraws them
+under the shared theme. The gains, lift, calibration and threshold curves are
+computed by depictr, as in the R twin. The survival figure
 adds a number-at-risk table beneath the curves in one call.
 
 ```python exec="1" html="1" session="clf"

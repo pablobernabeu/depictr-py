@@ -47,8 +47,9 @@ def theme_depictr(base_size: float = 11, grid: str = "xy",
         ``None``, the default, takes plotnine's ``plotnine.options.base_family``,
         which is ``"sans-serif"`` unless it has been set. Setting that option
         once, as in ``plotnine.options.base_family = "Arial"``, sets the font of
-        every depictr plot drawn afterwards, as ``depictr_options(base_family
-        =)`` does in the R twin. A family matplotlib cannot find is replaced by
+        every depictr plot made afterwards, as ``depictr_options(base_family
+        =)`` does in the R twin. A plot made before the option is set keeps its
+        font. A family matplotlib cannot find is replaced by
         its default, DejaVu Sans, with a message from matplotlib's
         ``font_manager`` logger when the plot is drawn.
 
@@ -107,8 +108,8 @@ def _sized_to_the_data(scale, n, order="default"):
     ``function(k) depictr_palette(n %||% k)``. A ninth group is then
     interpolated, and :func:`depictr.palette.depictr_palette` warns, as it
     does for a fifth group in the contrast-first order. Up to eight levels,
-    four in that order, and whenever ``n`` is given, plotnine's own palette is
-    kept, so those figures are drawn exactly as before.
+    four in that order, and whenever ``n`` is given, the manual scale's own
+    palette is kept.
     """
     if n is not None:
         return scale
@@ -142,26 +143,26 @@ def _scale_fills(scale, values) -> list[str]:
 
 def scale_colour_depictr(n: int | None = None, order: str = "default",
                          **kwargs):
-    """A discrete colour scale drawn from :func:`depictr.palette.depictr_palette`.
+    """A discrete colour scale drawn from [`depictr.palette.depictr_palette`][].
 
     Parameters
     ----------
     n : int, optional
         Number of colours to draw. By default, the scale takes as many colours
-        as the plot has groups: the Okabe-Ito colours in order up to eight,
+        as the plot has groups: the built-in colours in order up to eight,
         and past eight a palette interpolated through them. Interpolation loses
         the colourblind-safety guarantee, which covers the eight base colours
-        only, so :func:`depictr.palette.depictr_palette` warns past eight; facet
+        only, so [`depictr.palette.depictr_palette`][] warns past eight; facet
         the groups, or use the sequential ramp, when there are more. Pass ``n``
         to fix the palette's length whatever the number of groups.
     order : {"default", "contrast"}
         ``"contrast"`` draws the groups in the contrast-first order of
-        :func:`depictr.palette.depictr_palette`, with which two or three
-        groups pass every colour row of :func:`depictr.check_figure`. More than
+        [`depictr.palette.depictr_palette`][], with which two or three
+        groups pass every colour row of [`depictr.check_figure`][]. More than
         four groups warn when the plot is drawn. Added to one of depictr's own
         plots, the scale replaces the plot's colour scale.
     **kwargs
-        Passed to :func:`plotnine.scale_color_manual` (for example ``name``).
+        Passed to ``plotnine.scale_color_manual`` (for example ``name``).
 
     Examples
     --------
@@ -184,9 +185,9 @@ def scale_colour_depictr(n: int | None = None, order: str = "default",
 
 
 def scale_fill_depictr(n: int | None = None, order: str = "default", **kwargs):
-    """A discrete fill scale drawn from :func:`depictr.palette.depictr_palette`.
+    """A discrete fill scale drawn from [`depictr.palette.depictr_palette`][].
 
-    See :func:`scale_colour_depictr` for the parameters.
+    See [`scale_colour_depictr`][depictr.scale_colour_depictr] for the parameters.
 
     Examples
     --------

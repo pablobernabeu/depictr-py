@@ -33,11 +33,15 @@ unlinted until somebody remembers to extend the list.
 Every plotting function returns a [plotnine](https://plotnine.org) object (or a
 composition for multi-panel figures), so a plot can be extended with the usual
 `+` syntax. New or changed plots should keep the shared theme (`theme_depictr`)
-and the colourblind-safe Okabe-Ito palette, and where a specialist package
-computes a quantity well, depictr delegates to it and redraws the result, leaving
-the computation where it is. The gallery guides in `docs/gallery/` render their
-plots at build time, so a new family is easiest to review with a guide added
-there.
+and the colourblind-safe palette based on the Okabe-Ito set, and where a
+specialist package computes a quantity well, depictr delegates to it and redraws
+the result, leaving the computation where it is. The gallery guides in
+`docs/gallery/` render their plots at build time, so a new family is easiest to
+review with a guide added there.
+
+In a docstring that the API page shows, cross-reference another depictr
+function as ``[`depictr.name`][]``, which the page turns into a link. A Sphinx
+role such as `:func:` is printed there as text.
 
 ## Submitting a pull request
 

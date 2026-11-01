@@ -144,13 +144,14 @@ def _quantile_qq(model, seed=None):
 
 
 def _residual_and_qq_panels(model, glm_panels, seed):
-    """The residual panel and the Q-Q panel, by the rule the R twin follows.
+    """The residual panel and the Q-Q panel for ``model``.
 
     A GLM, Logit or Probit fit gets the GLM panels unless ``glm_panels`` is
-    false. They are a Q-Q plot of its quantile residuals and a residual panel:
-    binned residuals for a binomial model, and the deviance residuals against
-    the fitted values for other families. Any other model gets the classic
-    panels.
+    false, as in the R twin. They are a Q-Q plot of its quantile residuals and
+    a residual panel: binned residuals for a binomial model, and the deviance
+    residuals against the fitted values for other families. The R twin bins
+    those too, but :func:`depictr.binned_residual_plot` takes binomial models
+    only. Any other model gets the classic panels.
     """
     if glm_panels and (_is_glm(model) or _is_binary(model)):
         if _is_binomial(model):
@@ -180,7 +181,7 @@ def residual_diagnostics_plot(model, title=None, glm_panels=True, seed=None):
     residuals of a binomial or Poisson fit are randomised, so a departure worth
     acting on is one that persists when the panel is drawn again with another
     ``seed``. A binomial model's residual panel is
-    :func:`depictr.binned_residual_plot` (Gelman & Hill, 2007). Other families
+    [`depictr.binned_residual_plot`][] (Gelman & Hill, 2007). Other families
     plot their deviance residuals against the fitted values. The R twin bins
     them too, but the binned plot here takes binomial models only. A family
     other than the binomial, Poisson, Gaussian and Gamma has no quantile
@@ -263,10 +264,10 @@ def model_report(model, title=None, glm_panels=True, seed=None):
     coefficient (forest) plot of the estimates and their confidence intervals,
     a residual panel, and the normal quantile-quantile plot. It is a quick "is
     the model worth trusting, and what does it say" view, with the full set of
-    checks left to :func:`residual_diagnostics_plot`. A GLM, Logit or Probit
-    fit gets the panels that function draws for it: a Q-Q plot of randomised
-    quantile residuals and, for a binomial model, binned residuals in place of
-    the scatter.
+    checks left to [`depictr.residual_diagnostics_plot`][]. A GLM, Logit or
+    Probit fit gets the panels that function draws for it: a Q-Q plot of
+    randomised quantile residuals and, for a binomial model, binned residuals
+    in place of the scatter.
 
     Parameters
     ----------

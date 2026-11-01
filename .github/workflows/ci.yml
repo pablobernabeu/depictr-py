@@ -37,12 +37,10 @@ jobs:
       - name: Install the package with its optional back-ends and test tools
         run: python -m pip install -e ".[all,test]"
 
-      # The whole repository, not src and tests alone. Naming those two left
-      # app/streamlit_app.py and docs/_exec.py linted by nothing, and the app had
-      # been carrying an over-long line that no gate could see. Matching the
-      # scopusflow twin, which already lints everything, means a new top-level
-      # script is covered the day it is added rather than whenever someone
-      # remembers to extend this list.
+      # The whole repository, not src and tests alone, so app/ and docs/ are
+      # linted too and a new top-level script is covered the day it is added
+      # rather than whenever someone remembers to extend a list. This matches the
+      # scopusflow twin, which lints everything.
       - name: Lint
         run: ruff check .
 
@@ -109,11 +107,9 @@ jobs:
           PY
 
   # The floors in pyproject are a promise to anyone resolving against an older
-  # stack, and nothing tested them: three of them were below what plotnine
-  # itself requires, describing a combination no install could produce. This
-  # job installs the declared minima so the promise stays honest. A failure
-  # here means the floors need raising to what actually works, not that the
-  # job is too strict.
+  # stack. This job installs the oldest declared minor series of each core
+  # dependency so the promise stays honest. A failure here means the floors
+  # need raising to what actually works, not that the job is too strict.
   minimum-versions:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest
@@ -135,6 +131,29 @@ jobs:
       # collecting them would fail for a reason unrelated to the core floors.
       # The suite itself skips a back-end it cannot import.
       - name: Run the test suite against the core floors
+        env:
+          MPLBACKEND: Agg   # headless: no display on the runner
+        run: python -m pytest tests -q
+
+  # lifelines declares pandas<3, so the matrix above, which installs the all
+  # extra, never resolves pandas 3. This job leaves out the survival extra, so
+  # pip installs the latest pandas. The survival tests skip without lifelines,
+  # and the doctests in src/ are left out, as in the floors job, since the
+  # example of survival_plot() needs lifelines.
+  latest-pandas:
+    name: Latest pandas, without lifelines
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install the package without the survival back-end
+        run: |
+          python -m pip install -e ".[models,classification,test]"
+          python -c "import pandas; assert int(pandas.__version__.split('.')[0]) >= 3, pandas.__version__"
+      - name: Run the test suite against the latest pandas
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
         run: python -m pytest tests -q

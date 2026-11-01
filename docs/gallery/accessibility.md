@@ -1,8 +1,10 @@
 # Accessibility: a validated colourblind-safe palette
 
-depictr defaults to the Okabe-Ito palette and then measures what that choice
-buys. A Machado-2009 simulator and a CIE-Lab distance test confirm the colours
-stay distinguishable under each colour-vision deficiency. A safe palette is not a
+depictr defaults to a palette based on the Okabe-Ito set and then measures what
+that choice buys. A colour-vision simulator
+([Machado, Oliveira and Fernandes, 2009](https://doi.org/10.1109/TVCG.2009.113))
+and a CIEDE2000 colour-difference test confirm the colours stay distinguishable
+under each colour-vision deficiency. A safe palette is not a
 safe figure, though, so the same machinery also audits a finished plot.
 That is the second half of this page.
 
@@ -119,7 +121,7 @@ colour in both, to within the rounding of an eight-bit channel.
 ## Where the guarantee stops
 
 Eight colours is the guarantee, not a starting point. Asked for more,
-`depictr_palette` interpolates between the Okabe-Ito colours, and the
+`depictr_palette` interpolates between its eight colours, and the
 in-between colours land close enough together that the same check fails them.
 The package warns when that happens, so no colours go out under a promise it
 cannot keep. The report below shows the check agreeing with the warning: eight

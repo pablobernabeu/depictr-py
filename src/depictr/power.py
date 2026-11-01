@@ -43,8 +43,8 @@ _TARGET_POWER = 0.8
 # "Power" on the axis.
 _N_CANDIDATES = ("n", "nlevels", "x", "sample_size", "n_subject")
 _POWER_CANDIDATES = ("power", "mean", "p")
-# pilotr names the focal effect `effect` in power curves and `param` in
-# precision curves. A tidy coefficient table names it `term`.
+# The R package pilotr names the focal effect `effect` in power curves and
+# `param` in precision curves. A tidy coefficient table names it `term`.
 _GROUP_CANDIDATES = ("effect", "param", "term")
 _LOWER_CANDIDATES = ("lower", "ci_low", "conf.low")
 _UPPER_CANDIDATES = ("upper", "ci_high", "conf.high")
@@ -110,20 +110,23 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
 
     A table may hold several curves, one per effect or design, stacked by row.
     Each is drawn as its own line, told apart by colour and line type. The
-    tables pilotr returns are read as they are: ``power_curve_mixed()`` gives
-    ``n_subject``, ``effect``, ``power``, ``power_lo`` and ``power_hi``, and
-    ``precision_curve()`` gives ``n_subject``, ``param`` and the decision
-    probabilities ``p_meaningful`` and ``p_equivalent`` with their own ``_lo``
-    and ``_hi`` bounds, which ``power`` can name. The sample size that pilotr's
-    ``target_n()`` solves from such a curve, and its interval, can be marked on
-    the plot with ``solved``.
+    tables pilotr returns are read as they are. Its Python ``power_curve()``
+    returns a list of dicts holding ``n_subject``, ``power``, ``power_lo`` and
+    ``power_hi`` among other keys. In the R package pilotr,
+    ``power_curve_mixed()`` gives ``n_subject``, ``effect``, ``power``,
+    ``power_lo`` and ``power_hi``, and ``precision_curve()`` gives
+    ``n_subject``, ``param`` and the decision probabilities ``p_meaningful``
+    and ``p_equivalent`` with their own ``_lo`` and ``_hi`` bounds, which
+    ``power`` can name. The sample size that pilotr's ``target_n()`` solves
+    from such a curve, and its interval, can be marked on the plot with
+    ``solved``.
 
     Parameters
     ----------
     data : pandas.DataFrame or list of dict
         A tidy table with one row per sample size (per curve, if there are
         several). A list of dicts, one per row, is read with
-        :class:`pandas.DataFrame`.
+        ``pandas.DataFrame``.
     n : str, optional
         Name of the sample-size column. By default, the first of ``n``,
         ``nlevels``, ``x``, ``sample_size`` and ``n_subject`` present.
@@ -186,8 +189,8 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
 
     >>> p = dp.power_curve_plot(power, solved={"value": 64, "lo": 57, "hi": 72})
 
-    Two curves in one table, laid out as pilotr's ``power_curve_mixed()``
-    returns them, one row per sample size and effect:
+    Two curves in one table, laid out as the R package pilotr's
+    ``power_curve_mixed()`` returns them, one row per sample size and effect:
 
     >>> rows = [
     ...     {"n_subject": n, "effect": e, "power": pw,

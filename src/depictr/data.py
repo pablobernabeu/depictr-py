@@ -56,15 +56,16 @@ def _read(name: str) -> pd.DataFrame:
         values = raw[column]
         kind = col["type"]
         if kind == "factor":
-            factor = pd.Categorical(values, categories=col["levels"],
-                                    ordered=col["ordered"])
             # pandas turns a value outside the categories into a missing value
             # without a word, so a CSV and levels.json that drifted apart would
-            # lose data silently.
-            if factor.isna().sum() != values.isna().sum():
+            # lose data silently. The values are checked before the Categorical
+            # is built, since pandas 3.0 deprecates building one from values
+            # outside its categories.
+            if not values.dropna().isin(col["levels"]).all():
                 raise RuntimeError(f"{name}.{column} holds a value that levels.json "
                                    "does not list. Rerun the export.")
-            out[column] = factor
+            out[column] = pd.Categorical(values, categories=col["levels"],
+                                         ordered=col["ordered"])
         elif kind == "Date":
             out[column] = pd.to_datetime(values, format="%Y-%m-%d")
         elif kind == "character":
@@ -183,8 +184,8 @@ def monthly_sales(seed: int | None = None) -> pd.DataFrame:
 
     144 rows in long format: ``date`` (the first of each month, 2018 to 2023),
     ``series`` (indoor, outdoor) and ``sales``. The R package's
-    ``monthly_sales``. It is not in :data:`DATASETS`, which lists the
-    cross-sectional datasets the web app offers.
+    ``monthly_sales``. It is not in [`DATASETS`][depictr.DATASETS], which
+    lists the cross-sectional datasets the web app offers.
 
     Parameters
     ----------
@@ -200,11 +201,13 @@ def monthly_sales(seed: int | None = None) -> pd.DataFrame:
     return _load("monthly_sales", seed)
 
 
-#: The cross-sectional datasets, by name, offered by the web app and used in the
-#: documentation. ``monthly_sales``, a time series, has its own loader.
 DATASETS = {
     "crop_yield": crop_yield,
     "wellbeing_survey": wellbeing_survey,
     "lexical_decision": lexical_decision,
     "clinical_trial": clinical_trial,
 }
+"""The cross-sectional datasets, by name: a dict from each name to its loader,
+so ``DATASETS["crop_yield"]()`` returns that frame. The web app offers these
+four and the documentation uses them. ``monthly_sales``, a time series, has its
+own loader and is not included."""

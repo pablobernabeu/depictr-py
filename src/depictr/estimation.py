@@ -146,8 +146,20 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
     -------
     plotnine.ggplot or plotnine.composition.Compose
         A single panel by default, or a two-panel composition when
-        ``two_panel=True``. Either carries ``.differences``, a DataFrame of the
-        computed mean differences, their bootstrap intervals, and effect sizes.
+        ``two_panel=True``. Either carries ``.differences``, a DataFrame with
+        one row per non-reference group and the columns ``group``,
+        ``reference``, ``diff`` (the group's mean minus the reference's),
+        ``lower`` and ``upper`` (the bootstrap interval of ``diff``),
+        ``cohens_d`` and ``hedges_g``.
+
+    References
+    ----------
+    Cumming, G. (2012). Understanding the new statistics: Effect sizes, confidence
+    intervals, and meta-analysis. Routledge.
+
+    Hedges, L. V. (1981). Distribution theory for Glass's estimator of effect size
+    and related estimators. Journal of Educational Statistics, 6(2), 107-128.
+    https://doi.org/10.3102/10769986006002107
 
     Examples
     --------
@@ -164,7 +176,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
     if effsize not in {"hedges_g", "cohens_d", "none"}:
         raise ValueError("`effsize` must be 'hedges_g', 'cohens_d' or 'none'.")
     _check_conf_level(conf_level)
-    # A fraction used to fail deep inside NumPy's sampler. A whole number held
+    # A fraction would fail deep inside NumPy's sampler. A whole number held
     # in a float, such as 1e4, is taken as the integer it is.
     if (isinstance(n_boot, bool) or not isinstance(n_boot, numbers.Real)
             or not float(n_boot).is_integer() or n_boot < 1):

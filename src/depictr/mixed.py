@@ -22,6 +22,7 @@ from plotnine import (
     geom_point,
     ggplot,
     labs,
+    scale_x_discrete,
 )
 
 from .palette import depictr_brand
@@ -54,7 +55,8 @@ def random_effects_plot(model, title=None):
     error and the plot adds a 95% interval (the point estimate plus or minus
     1.96 standard errors); without it the points are drawn on their own. If the
     model has more than one random-effect term per group (a random intercept and
-    one or more random slopes), the terms are shown in separate panels.
+    one or more random slopes), the terms are shown in separate panels, each
+    sorted by its own term's effects.
 
     Parameters
     ----------
@@ -117,12 +119,18 @@ def random_effects_plot(model, title=None):
     df = pd.DataFrame(rows)
     has_interval = df["low"].notna().any()
 
-    # One panel per random-effect term; sort the group axis within each term so
-    # the most negative effect sits at the bottom after the flip.
+    # One panel per random-effect term. Sort by term, then by effect, so that in
+    # every panel the most negative effect sits at the bottom after the flip.
     df = df.sort_values(["term", "effect"]).reset_index(drop=True)
-    # A categorical group axis with a per-term ordering: build the level list in
-    # plotting order. When there are several terms the same group appears under
-    # each, so the order is taken from the (already sorted) appearance.
+    n_terms = df["term"].nunique()
+    if n_terms > 1:
+        # One level list shared by the panels would hold each of them in the
+        # first panel's order, so each panel gets its own keys, the group
+        # joined to its term, and the axis shows the group alone. A carriage
+        # return separates the two because it does not plausibly occur in a
+        # group or term name.
+        df["group"] = df["group"] + "\r" + df["term"]
+    # The categorical group axis keeps the sorted order.
     order = list(dict.fromkeys(df["group"]))
     df["group"] = pd.Categorical(df["group"], categories=order, ordered=True)
 
@@ -141,7 +149,11 @@ def random_effects_plot(model, title=None):
         + theme_depictr()
     )
 
-    n_terms = df["term"].nunique()
     if n_terms > 1:
-        p = p + facet_wrap("term", scales="free_y")
+        p = (
+            p
+            + facet_wrap("term", scales="free_y")
+            + scale_x_discrete(
+                labels=lambda keys: [k.split("\r")[0] for k in keys])
+        )
     return p

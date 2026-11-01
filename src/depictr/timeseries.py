@@ -87,7 +87,7 @@ def _as_complete_series(x):
     it, the decomposition misaligns, and every later observation lands on the
     wrong within-period position. Whether to drop or impute is the analyst's
     call, not something to make silently on their behalf. Missing values at
-    either end only shorten the series, so they are trimmed as before.
+    either end only shorten the series, so they are trimmed.
     """
     series = _as_series(x)
     present = series.notna().to_numpy()
@@ -105,9 +105,9 @@ def _as_complete_series(x):
 
 # The index frequencies that imply a seasonal period, matched whole and with
 # their case. pandas names minutes "min" and milliseconds "ms", so a match on
-# the first letter read both as monthly. Months and quarters are named by their
-# start or end ("MS", "ME", "QS-OCT"), and a PeriodIndex names them "M" and
-# "Q-DEC".
+# the first letter would read both as monthly. Months and quarters are named by
+# their start or end ("MS", "ME", "QS-OCT"), and a PeriodIndex names them "M"
+# and "Q-DEC".
 _SEASONAL_PERIODS = {
     "M": 12, "ME": 12, "MS": 12,
     "Q": 4, "QE": 4, "QS": 4,
@@ -118,7 +118,15 @@ _SEASONAL_PERIODS = {
 def _index_period(x):
     """The seasonal period that the frequency of ``x``'s index implies, or None."""
     idx = getattr(x, "index", None)
-    freq = getattr(idx, "freqstr", None) or getattr(idx, "inferred_freq", None)
+    freq = getattr(idx, "freqstr", None)
+    if not freq:
+        # pandas 3.1 warns that inferred_freq will return an offset rather than
+        # a string. An offset names its frequency in freqstr, so either form
+        # gives the same name.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            freq = getattr(idx, "inferred_freq", None)
+        freq = getattr(freq, "freqstr", freq)
     if not freq:
         return None
     # The anchor after the hyphen, as in "Q-DEC", names the month that ends or
@@ -214,7 +222,7 @@ def _seasons(series, period):
         elif period == 4:
             season, names = idx.quarter, [f"Q{q}" for q in range(1, 5)]
         else:
-            season, names = idx.dayofweek + 1, _WEEKDAYS
+            season, names = idx.day_of_week + 1, _WEEKDAYS
         season = np.asarray(season, dtype=int)
         cycle = np.cumsum(np.r_[True, np.diff(season) <= 0])
         return season, cycle, names
@@ -480,12 +488,12 @@ def seasonal_plot(x, period=None, title=None):
         + geom_point(size=1.5)
         + x_scale
         # The cycles are a sequence, not unrelated categories, so they take a
-        # single-hue ramp. It reads in time order and, unlike the eight
-        # Okabe-Ito colours of the qualitative palette, extends to any number
-        # of cycles, although past about six its neighbouring colours blur. It
-        # leaves out the palest colour of the sequential palette, which is
-        # close to invisible as a line. The legend is reversed so the darkest,
-        # most recent cycle sits at the top of the key, matching the R twin.
+        # single-hue ramp. It reads in time order and, unlike the eight colours
+        # of the qualitative palette, extends to any number of cycles, although
+        # past about six its neighbouring colours blur. It leaves out the
+        # palest colour of the sequential palette, which is close to invisible
+        # as a line. The legend is reversed so the darkest, most recent cycle
+        # sits at the top of the key, matching the R twin.
         + scale_color_manual(values=_cycle_palette(n_cycles),
                              name="Cycle", guide=guide_legend(reverse=True))
         + labs(x="Position in period", y="Value", title=title)
@@ -572,7 +580,7 @@ def _moving_average(values, window):
     values = np.asarray(values, dtype=float)
     if window < 2 or window % 2:
         # An odd window is centred already. A negative one takes the same path,
-        # so pandas refuses it with its own error, as it did before.
+        # so pandas refuses it with its own error.
         return pd.Series(values).rolling(window, center=True).mean().to_numpy()
     out = np.full(values.shape, np.nan)
     # np.convolve() swaps its arguments when the weights are the longer of the

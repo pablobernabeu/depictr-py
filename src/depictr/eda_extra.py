@@ -141,8 +141,8 @@ def explore_pairs(data, cols=None, title=None):
 
     Returns
     -------
-    plotnine.ggplot or plotnine.composition.Compose
-        The composed grid from :func:`depictr.compose.arrange_plots`.
+    plotnine.composition.Compose
+        The composed grid from [`depictr.compose.arrange_plots`][].
 
     Examples
     --------

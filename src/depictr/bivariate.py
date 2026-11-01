@@ -50,7 +50,7 @@ def scatter_trend(data, x, y, group=None, method="lm", title=None):
         ``ValueError``. Rows with a missing group are dropped with a warning,
         and categories without rows are left out of the plot and its palette.
     method : str
-        Smoothing method passed to :func:`plotnine.geom_smooth`, for example
+        Smoothing method passed to ``plotnine.geom_smooth``, for example
         ``"lm"`` for a straight line with a band, or ``"lowess"`` for a local
         fit that needs no extra dependency and draws no band.
     title : str, optional
@@ -97,7 +97,7 @@ def explore_bivariate(data, x, y, title=None):
     The plot is selected from the column dtypes:
 
     - two numeric columns give a scatter plot with a trend line
-      (:func:`scatter_trend`);
+      ([`scatter_trend`][depictr.scatter_trend]);
     - one numeric and one categorical column give boxplots of the numeric
       variable across the categories, with the raw points jittered over them;
     - two categorical columns give a tile of joint counts, shaded by frequency.
@@ -106,9 +106,9 @@ def explore_bivariate(data, x, y, title=None):
     column they give a scatter plot with a trend, and against a categorical one
     boxplots of their values across the categories. A boolean column counts as
     categorical, as a logical vector does in the R twin. A duration is drawn as a
-    number in the unit :func:`summary_table` reports it in, named in the axis
-    title, as in ``stay (days)``. The R twin draws a ``difftime`` the same way,
-    in its own units.
+    number in the unit [`summary_table`][depictr.summary_table] reports it in,
+    named in the axis title, as in ``stay (days)``. The R twin draws a
+    ``difftime`` the same way, in its own units.
 
     Parameters
     ----------
@@ -133,10 +133,10 @@ def explore_bivariate(data, x, y, title=None):
         if col not in data.columns:
             raise KeyError(f"{col!r} is not a column of `data`.")
 
-    # A datetime or timedelta column is not numeric to pandas, so it was taken
-    # for a category, and drawing boxes over it raised a TypeError. A boolean
-    # column is numeric to pandas, so it was drawn as a scatter through 0 and
-    # 1, where the R twin's is.numeric() takes a logical column for a category.
+    # Dates and durations are continuous, although pandas does not call them
+    # numeric, and a boolean column is a category, although pandas calls it
+    # numeric, as the R twin's is.numeric() takes a logical column for a
+    # category.
     x_num = _is_continuous(data[x]) and not is_bool_dtype(data[x])
     y_num = _is_continuous(data[y]) and not is_bool_dtype(data[y])
     data, axis_title = _durations_as_numbers(data, (x, y))

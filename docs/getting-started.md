@@ -1,8 +1,8 @@
 # Get started
 
 This guide works through a short analysis with depictr, from a first look at the
-data to a fitted model and its diagnostics. Every function returns a
-[plotnine](https://plotnine.org) object, so anything shown here can be refined
+data to a fitted model and its diagnostics. Every plotting function returns a
+[plotnine](https://plotnine.org) object, so any figure shown here can be refined
 further with the usual `+` syntax.
 
 ## Install
@@ -21,16 +21,19 @@ The exploratory, theme and accessibility tools work with the core install, and
 so do the model and time-series plots: they delegate to statsmodels, which
 plotnine itself requires. The classification and survival plots delegate to
 scikit-learn and lifelines, each an optional extra (`depictr[classification]`,
-`depictr[survival]`). The gains, lift and calibration curves are computed by
-depictr itself and need neither. The `depictr[models]` extra remains to pin the
-tested statsmodels floor.
+`depictr[survival]`). The PCA, scree, cluster and silhouette plots need
+scikit-learn too, from the `depictr[classification]` extra, while the dendrogram
+needs only scipy, a core dependency. The gains, lift and calibration curves are
+computed by depictr itself and need neither. The `depictr[models]` extra remains
+to pin the tested statsmodels floor.
 
 ## The idea
 
-The whole workflow gets one theme, one colourblind-safe palette (the Okabe-Ito
-set) and one calling convention. Specialist computations stay with the packages
-that do them well, and each result is redrawn under the shared theme, so a ROC
-curve, a coefficient plot and a survival curve read as parts of one figure set.
+The whole workflow gets one theme, one colourblind-safe palette (based on the
+Okabe-Ito set) and one calling convention. Specialist computations stay with the
+packages that do them well, and each result is redrawn under the shared theme,
+so a ROC curve, a coefficient plot and a survival curve read as parts of one
+figure set.
 
 ```python
 import depictr as dp
@@ -89,8 +92,12 @@ rules to any list of names.
 `term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source (a
 Bayesian fit, a bootstrap, a table copied from a paper) plot the same way.
 `tidy_estimates` is the shared converter that produces that standard table from
-any fitted model, and every model-family plot accepts either the model or that
-table.
+a fitted model exposing `params` and `conf_int`, such as a statsmodels OLS, GLM
+or MixedLM result. `coefficient_plot`, `compare_models` and
+`frequentist_bayesian_plot` accept either the model or that table. The
+prediction, random-effects and diagnostic plots need the fitted model itself
+(`qq_plot` also takes an array of residuals), and `posterior_plot` takes
+posterior draws.
 
 ```python
 dp.tidy_estimates(model)
@@ -110,10 +117,11 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 
 ## Checking the accessibility claim
 
-The default palette is the Okabe-Ito set, and the claim behind that choice is
-testable. A simulator of colour-vision deficiency, based on the model of Machado,
-Oliveira and Fernandes (2009), and a CIE-Lab distance test measure how far apart
-the palette's colours stay under each form of deficiency.
+The default palette is based on the Okabe-Ito set, and the claim behind that
+choice is testable. A simulator of colour-vision deficiency, based on the model
+of Machado, Oliveira and Fernandes (2009), and a CIEDE2000 colour-difference
+test measure how far apart the palette's colours stay under each form of
+deficiency.
 
 ```python
 dp.palette_safety()
@@ -133,14 +141,15 @@ dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
 ```
 
 The gallery's [accessibility page](gallery/accessibility.md) renders both reports
-in full, and states the one limitation worth knowing: the colourblind-safety
+in full, and states the limitations worth knowing: the colourblind-safety
 guarantee covers hue confusion alone, and two of the palette's colours print as
-the same grey.
+the same grey. The palette's orange, the second colour, also falls below the 3:1
+contrast against white that WCAG asks of a graphical object.
 
 ## Extending and composing
 
-Because every function returns a plotnine object, the grammar-of-graphics
-extensions apply:
+Because every plotting function returns a plotnine object, the
+grammar-of-graphics extensions apply:
 
 ```python
 from plotnine import labs
@@ -171,7 +180,7 @@ from plotnine import ggplot, aes, geom_point
 ```
 
 For a journal that names a font, `dp.theme_depictr(base_family="Arial")` sets
-it on one plot. plotnine's own option sets it on every plot drawn afterwards,
+it on one plot. plotnine's own option sets it on every plot made afterwards,
 depictr's included, as `depictr_options(base_family = )` does in R:
 
 ```python
@@ -179,6 +188,8 @@ import plotnine
 
 plotnine.options.base_family = "Arial"
 ```
+
+A plot made before the option is set keeps its font.
 
 ## Where next
 
