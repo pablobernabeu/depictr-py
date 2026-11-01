@@ -213,7 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `treatment: enhanced` and `soil_ph` reads `soil ph`, where they printed the
   model's names. Except in `model_report()`, `labels="raw"` restores the names.
 - `coefficient_plot()` and `compare_models()` drop a `b_Intercept` term with the
-  intercept.
+  intercept, where they drew it. `intercept=True` keeps it.
 - `compare_models()` draws terms of different models that take the same label
   on one row, where each name had a row of its own. `labels="raw"` keeps a row
   per name.
