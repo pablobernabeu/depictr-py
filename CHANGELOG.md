@@ -208,10 +208,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `coefficient_plot(order="ascending")` puts the largest estimate at the top
   and `"descending"` at the bottom, where they ran the other way, against the
   docstring. Swap the two to keep a 0.3.0 figure.
-- `coefficient_plot()` and `compare_models()` label their terms for a reader,
-  so a factor term reads `treatment: enhanced` and `soil_ph` reads `soil ph`,
-  where they printed the model's names. Both drop a `b_Intercept` term with the
-  intercept, and `labels="raw"` restores the names.
+- `coefficient_plot()`, `compare_models()` and the coefficient panel of
+  `model_report()` label their terms for a reader, so a factor term reads
+  `treatment: enhanced` and `soil_ph` reads `soil ph`, where they printed the
+  model's names. Except in `model_report()`, `labels="raw"` restores the names.
+- `coefficient_plot()` and `compare_models()` drop a `b_Intercept` term with the
+  intercept.
 - `compare_models()` draws terms of different models that take the same label
   on one row, where each name had a row of its own. `labels="raw"` keeps a row
   per name.
