@@ -28,6 +28,24 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # skip-existing below lets a run upload nothing and still pass, so a tag
+      # on a commit that still carries the previous version would build that
+      # version and publish nothing. On any tag, from a release or from a
+      # dispatch on the tag, the version the package declares has to be the
+      # one the tag names. The package version is bumped when a release is
+      # prepared, but CITATION.cff and the changelog heading take the new
+      # version only in the later commit that dates it. The sdist carries
+      # CITATION.cff, so a tag on a commit before that one stops here as well,
+      # before PyPI receives a release that cites the one before.
+      - name: Check that the tag names the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/depictr/__init__.py)
+          cited=$(sed -n 's/^version: "\(.*\)"$/\1/p' CITATION.cff)
+          echo "Tag ${GITHUB_REF_NAME}, package version ${version}, CITATION.cff version ${cited}"
+          test "v${version}" = "${GITHUB_REF_NAME}"
+          test "v${cited}" = "${GITHUB_REF_NAME}"
+          grep -E "^## \[${version//./\\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
       - name: Build the sdist and wheel
         run: |
           python -m pip install --upgrade build

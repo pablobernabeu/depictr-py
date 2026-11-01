@@ -8,9 +8,9 @@ abstract: >-
   convention across the whole statistical workflow (exploratory analysis, model
   estimates, diagnostics, classification, multivariate analysis, survival and
   time series), delegating computation to specialist packages and re-skinning
-  the result. The default Okabe-Ito palette is validated with a colour-vision-
-  deficiency simulator and a CIE-Lab distance check. It is the Python sibling of
-  the depictr R package.
+  the result. The default palette, based on the Okabe-Ito set, is validated with
+  a colour-vision-deficiency simulator and a CIEDE2000 colour-distance check. It
+  is the Python sibling of the depictr R package.
 type: software
 authors:
   - family-names: Bernabeu

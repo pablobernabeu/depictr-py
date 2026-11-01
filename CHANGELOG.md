@@ -463,6 +463,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Okabe-Ito set. The docstring of `depictr_palette()` says that it keeps six of
   that set's eight colours, with the brand blue and a grey in place of its blue
   and black.
+- The abstract in `CITATION.cff`, which Zenodo copies into its record, calls
+  the palette based on the Okabe-Ito set and names the CIEDE2000 distance
+  check, where it called it the Okabe-Ito palette checked by a CIE-Lab
+  distance.
 - The README's Status section lists the differences between the twins that
   change what a figure shows or how it is computed, where it said that they
   share nearly all of an API.
