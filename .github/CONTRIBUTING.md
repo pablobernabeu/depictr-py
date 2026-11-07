@@ -1,12 +1,12 @@
 # Contributing to depictr
 
-Thank you for considering a contribution. Issues and pull requests are both
-welcome, whether they fix a bug, improve the documentation or add a plot.
+Thank you for considering a contribution. Issues and pull requests are welcome,
+whether they fix a bug, improve the documentation or add a plot.
 
 ## Reporting a problem or suggesting a feature
 
 Please open an issue at <https://github.com/pablobernabeu/depictr-py/issues>. A
-small, self-contained example helps a great deal, and for a plotting bug a
+small, self-contained example helps a great deal. For a plotting bug, a
 screenshot of the result is useful too.
 
 ## Setting up for development
@@ -24,20 +24,19 @@ pytest                    # run the test suite
 mkdocs build --strict     # build the docs (runs the gallery examples)
 ```
 
-The linter is pointed at the whole repository, so `app/` and `docs/` are covered
-along with `src/` and `tests/`. Naming directories leaves a new top-level script
-unlinted until somebody remembers to extend the list.
+The linter checks the whole repository, so it covers `app/` and `docs/` as well
+as `src/` and `tests/`. Naming directories instead would leave a new top-level
+script unlinted until somebody remembered to extend the list.
 
 ## Conventions
 
 Every plotting function returns a [plotnine](https://plotnine.org) object (or a
 composition for multi-panel figures), so a plot can be extended with the usual
 `+` syntax. New or changed plots should keep the shared theme (`theme_depictr`)
-and the colourblind-safe palette based on the Okabe-Ito set, and where a
-specialist package computes a quantity well, depictr delegates to it and redraws
-the result, leaving the computation where it is. The gallery guides in
-`docs/gallery/` render their plots at build time, so a new family is easiest to
-review with a guide added there.
+and the colourblind-safe palette based on the Okabe-Ito set. Where a specialist
+package computes a quantity well, depictr delegates to it and redraws the
+result. The gallery guides in `docs/gallery/` render their plots at build time,
+so a new plot family is easiest to review with a guide added there.
 
 In a docstring that the API page shows, cross-reference another depictr
 function as ``[`depictr.name`][]``, which the page turns into a link. A Sphinx

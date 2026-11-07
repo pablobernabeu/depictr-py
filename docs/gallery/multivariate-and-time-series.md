@@ -1,8 +1,9 @@
 # Multivariate and time series
 
-Principal components and clustering (via scikit-learn), and the series, its
-autocorrelation and a seasonal decomposition (via statsmodels), all redrawn in
-the depictr theme.
+The principal components and the clusters come from scikit-learn, and the
+autocorrelation and the seasonal decomposition of the series come from
+statsmodels. depictr draws the series and redraws these results under the
+shared theme.
 
 ```python exec="1" html="1" session="mv"
 import sys; sys.path.insert(0, "docs")
@@ -59,8 +60,9 @@ print(show(p))
 ## Silhouette
 
 Each observation's silhouette width, grouped and ordered by cluster. Wide
-positive bars are well-placed observations, and a negative bar may belong to a
-neighbouring cluster.
+positive bars are well-placed observations, and a bar below zero marks an
+observation that may belong to a neighbouring cluster, because it sits closer
+to that cluster than to its own.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.silhouette_plot(wb, k=3)
@@ -87,8 +89,9 @@ print(show(p, width=8, height=8))
 ## The series with a rolling mean
 
 The same series as a line, with a centred twelve-month moving average over it.
-Twelve is an even window, so the average is the 2×12 one, a twelve-month
-average followed by a two-month one, which centres it on each month.
+Twelve months is an even window, so the overlay is the 2×12 moving average. It
+is a twelve-month average followed by a two-month one, which centres it on each
+month.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.timeseries_plot(series, rolling=12)
@@ -98,10 +101,10 @@ print(show(p))
 ## Autocorrelation
 
 The autocorrelation function, with an approximate 95% band. The trend keeps the
-correlations high at short lags, and the season rides on their slow decay as a
-wave. It dips near lag six, where the series is half a cycle out of step with
-itself. It peaks again at lag twelve, the only multiple of the period within the
-default range of lags.
+correlations high at short lags, and the seasonal cycle adds a wave to their
+slow decay. The wave dips near lag six, where the series is half a cycle out of
+step with itself. It peaks again at lag twelve, the only multiple of the period
+within the default range of lags.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.acf_plot(series)
@@ -119,8 +122,8 @@ print(show(p))
 
 ## The seasonal pattern
 
-One line per year across the months, so the repeating shape and any drift
-between years are easy to read.
+One line per year across the months shows the repeating shape and any change
+from year to year.
 
 ```python exec="1" html="1" source="material-block" session="mv"
 p = dp.seasonal_plot(series, period=12)
