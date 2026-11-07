@@ -8,11 +8,13 @@ This is the Python sibling of [the R package](https://pablobernabeu.github.io/de
 [Open the gallery](gallery/exploring-data.md){ .md-button }
 [Try the web app](app.md){ .md-button }
 
-A single figure set for a paper might otherwise draw on seaborn, scikit-learn, statsmodels, lifelines and ArviZ, each with its own defaults, its own API and its own colour scheme, and only one of those defaulting to colourblind-safe colours. depictr does that theming work once, and returns plotnine objects, so a plot can be refined further with the usual `+` syntax. Where a specialist package already computes a quantity well, depictr delegates to it and redraws the result under the shared theme, so you keep the trusted computation and gain a coherent, accessible figure.
+A single figure set for a paper might otherwise draw on seaborn, scikit-learn, statsmodels, lifelines and ArviZ, each with its own defaults, API and colour scheme. Only one of them uses colourblind-safe colours by default. depictr does the theming once and returns plotnine objects that can be refined further with the usual `+` syntax. Where a specialist package already computes a quantity well, depictr delegates the computation to it and redraws the result under the shared theme.
 
 ## Accessibility by default
 
-The default palette is based on the Okabe-Ito set, and the package measures how well that choice holds up. A built-in simulator and a colour-distance test confirm that the palette stays legible under each form of colour-vision deficiency. The guarantee belongs to the eight built-in colours. A figure with more groups than that has to interpolate between them, and depictr warns at the point of interpolation, so the interpolated colours are never passed off as safe. The guarantee also stops at hue confusion and says nothing about greyscale. `check_figure` measures both on the figure in front of you, along with its text size at print width and the contrast of its text and geometry. The [accessibility page](gallery/accessibility.md) of the gallery renders the safety report and a full audit.
+The default palette is based on the Okabe-Ito set. The package's simulator of colour-vision deficiency and its colour-distance test confirm that the palette stays legible under each form of deficiency. The colourblind-safety guarantee covers the eight built-in colours. A figure with more than eight groups needs colours interpolated between them, and depictr warns when it interpolates. The guarantee also covers only hue confusion and makes no claim about greyscale.
+
+`check_figure` audits the figure itself. It measures the figure's colour separability under each dichromacy and in greyscale, its text size at the printed width and the contrast of its text and geometry. The [accessibility page](gallery/accessibility.md) of the gallery shows the safety report and a figure audit.
 
 ## Install
 
@@ -23,7 +25,7 @@ pip install depictr
 pip install "depictr[all]"
 ```
 
-The classification and survival plots, and every multivariate plot but the dendrogram, delegate to optional back-ends, so the core install stays light. The model plots use statsmodels, which arrives with plotnine. The [Get started](getting-started.md) guide lists the extras.
+The classification and survival plots, and every multivariate plot except the dendrogram, delegate to optional back-ends. The model plots use statsmodels, which is installed with plotnine. The [Get started](getting-started.md) guide lists the extras.
 
 ## A first plot
 
@@ -41,8 +43,8 @@ p = dp.explore_distribution(ld, "RT", group="condition", kind="both")
 print(show(p))
 ```
 
-That figure was drawn when this page was built, as every figure on the site is,
-so the code above it is the code that produced it.
+That figure, like every figure on the site, was drawn from the code above it
+when the page was built.
 
 ## Where to look next
 
