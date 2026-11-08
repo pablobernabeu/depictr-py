@@ -6,10 +6,12 @@ labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
+### Describe the bug
+
 A clear description of what went wrong and what you expected instead.
 
-**Reproducible example**
+### Reproducible example
+
 A small, self-contained example helps a great deal. If it involves a plot, a
 screenshot of the result is useful too.
 
@@ -17,7 +19,8 @@ screenshot of the result is useful too.
 # your example here
 ```
 
-**Environment**
+### Environment
+
 <details>
 
 ```
@@ -29,5 +32,6 @@ screenshot of the result is useful too.
 
 </details>
 
-**Anything else**
+### Anything else
+
 Any other context that might help.

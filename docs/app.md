@@ -20,9 +20,10 @@ Every plot the app draws is a plotnine object from the same functions
 documented in the [API reference](api.md). For any figure you reach by clicking,
 you can paste the call beside it into a script and get the same figure back.
 The app writes each call from the arguments it passes to the plot, so the two
-always agree. The calls assume `import depictr as dp`, and those for the demo
-time series also assume numpy as `np` and pandas as `pd`. A model pane shows the
-lines that fit the model before its call, so the snippet runs as it stands:
+always agree. The calls assume `import depictr as dp`. Those for an uploaded CSV
+also assume pandas as `pd`, and those for the demo time series assume numpy as
+`np` and pandas as `pd`. A model pane shows the lines that fit the model before
+its call, so the snippet runs as it stands:
 
 ```python
 import statsmodels.formula.api as smf
@@ -50,10 +51,10 @@ the two curves are as easy to tell apart as in the first screenshot.
 
 Choosing 'Upload a CSV' in the sidebar loads a file of your own. The app tries
 UTF-8 first, then cp1252 and then latin-1, because Excel on Windows saves a CSV
-in the cp1252 code page, where an accented letter is not valid UTF-8. Whenever
-the encoding is not UTF-8, the call the app shows names it, as in
-`pd.read_csv(your_file, encoding='cp1252')`, so pasting the call reads the file
-the same way.
+in the system's code page (cp1252 in Western Europe), where an accented letter
+is not valid UTF-8. Whenever the encoding is not UTF-8, the call the app shows
+names it, as in `pd.read_csv(your_file, encoding='cp1252')`, so pasting the
+call reads the file the same way.
 
 For a file that cannot be read as a CSV, such as an empty one, the app shows a
 message saying why. When the data lack a kind of column that a plot needs, the
@@ -72,8 +73,8 @@ streamlit run app/streamlit_app.py
 ```
 
 The `all` extra installs Streamlit together with scikit-learn and lifelines,
-which most of the classification and multivariate panes and the Kaplan-Meier
-pane need. `pip install -e ".[app]"` installs Streamlit alone, and those panes
-then say which package is missing.
+which the ROC, precision-recall and confusion-matrix panes, most of the
+multivariate panes and the Kaplan-Meier pane need. `pip install -e ".[app]"`
+installs Streamlit alone, and those panes then say which package is missing.
 
 The app runs on your own machine, so nothing you load leaves it.

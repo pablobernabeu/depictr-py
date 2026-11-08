@@ -47,8 +47,8 @@ p = dp.explore_bivariate(ld, "condition", "RT")
 print(show(p))
 ```
 
-For two numeric columns, it draws a scatter with a fitted trend. In
-`scatter_trend`, a group splits the trend line.
+For two numeric columns, it draws a scatter with a fitted trend. Given a
+`group`, `scatter_trend` fits one trend line per group.
 
 ```python exec="1" html="1" source="material-block" session="eda"
 cy = dp.crop_yield()

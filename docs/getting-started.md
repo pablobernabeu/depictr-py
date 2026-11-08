@@ -8,9 +8,9 @@ the usual `+` syntax.
 ## Install
 
 The first command below installs the core (plotnine, pandas, numpy, matplotlib
-and scipy), and the second adds the optional computation back-ends. The double
-quotes keep zsh, the default shell on macOS, from reading the brackets as a
-filename pattern.
+and scipy), and the second adds the optional computation back-ends and
+Streamlit, which the web app uses. The double quotes keep zsh, the default
+shell on macOS, from reading the brackets as a filename pattern.
 
 ```bash
 pip install depictr
@@ -23,9 +23,9 @@ plotnine itself. The classification and survival plots use scikit-learn and
 lifelines, which come with the optional extras `depictr[classification]` and
 `depictr[survival]`. The PCA, scree, cluster and silhouette plots need
 scikit-learn too, from the `depictr[classification]` extra, while the
-dendrogram needs only scipy, a core dependency. The gains, lift and calibration
-curves are computed by depictr itself and need neither. The `depictr[models]`
-extra only sets the tested minimum version of statsmodels.
+dendrogram needs only scipy, a core dependency. The gains, lift, calibration
+and threshold curves are computed by depictr itself and need neither. The
+`depictr[models]` extra only sets the tested minimum version of statsmodels.
 
 ## The idea
 

@@ -1,9 +1,10 @@
 # Multivariate and time series
 
-The principal components and the clusters come from scikit-learn, and the
-autocorrelation and the seasonal decomposition of the series come from
-statsmodels. depictr draws the series and redraws these results under the
-shared theme.
+The principal components, the k-means clusters and the silhouette widths come
+from scikit-learn, and the hierarchical clustering behind the dendrogram comes
+from scipy. The autocorrelation and the seasonal decomposition of the series
+come from statsmodels. depictr draws the series and redraws these results under
+the shared theme.
 
 ```python exec="1" html="1" session="mv"
 import sys; sys.path.insert(0, "docs")

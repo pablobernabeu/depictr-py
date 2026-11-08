@@ -18,14 +18,14 @@ The default palette is based on the Okabe-Ito set. The package's simulator of co
 
 ## Install
 
-depictr is on [PyPI](https://pypi.org/project/depictr/). The first command below installs the core (plotnine, pandas, numpy, matplotlib and scipy), and the second adds the optional computation back-ends. The double quotes keep zsh, the default shell on macOS, from reading the brackets as a filename pattern.
+depictr is on [PyPI](https://pypi.org/project/depictr/). The first command below installs the core (plotnine, pandas, numpy, matplotlib and scipy), and the second adds the optional computation back-ends and Streamlit, which the web app uses. The double quotes keep zsh, the default shell on macOS, from reading the brackets as a filename pattern.
 
 ```bash
 pip install depictr
 pip install "depictr[all]"
 ```
 
-The classification and survival plots, and every multivariate plot except the dendrogram, delegate to optional back-ends. The model plots use statsmodels, which is installed with plotnine. The [Get started](getting-started.md) guide lists the extras.
+The ROC, precision-recall and confusion-matrix plots, the survival plots and every multivariate plot except the dendrogram delegate to optional back-ends. The model plots use statsmodels, which is installed with plotnine. The [Get started](getting-started.md) guide lists the extras.
 
 ## A first plot
 

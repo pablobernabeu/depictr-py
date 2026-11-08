@@ -3,8 +3,9 @@
 The ROC and precision-recall metrics and the confusion matrix are computed by
 ``scikit-learn`` (the de-facto standard), and the figures are re-drawn under
 the depictr theme, so a ROC curve sits in the same visual language as the rest
-of a report. The cumulative gains, lift and calibration curves are computed
-here with numpy, as the R twin computes them, and need no optional dependency.
+of a report. The cumulative gains, lift, calibration and threshold curves are
+computed here with numpy, as the R twin computes them, and need no optional
+dependency.
 
 Install the optional dependency with ``pip install "depictr[classification]"``.
 """
@@ -671,7 +672,6 @@ def threshold_plot(y_true, y_score, title=None):
     >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
     >>> p = dp.threshold_plot(ct["adverse_event"], score)
     """
-    _require_sklearn()
     y_true, y_score = _outcome_and_score(_binary_outcome(y_true), y_score)
     # A missing score would rank as a run of its own and a missing outcome
     # would count as neither class, so the cumulative counts need both.

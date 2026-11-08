@@ -385,7 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `ridgeline_plot()` draws much faster.
-- `calibration_plot()` no longer needs scikit-learn.
+- `calibration_plot()` and `threshold_plot()` no longer need scikit-learn.
 - `coefficient_plot()` accepts `order="none"`, and `calibration_plot()` accepts
   `bins`, the R twin's names for model order and `n_bins`.
 - `pca_plot()` names a misspelt `group` column and the argument in its

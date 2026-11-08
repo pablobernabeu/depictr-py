@@ -120,8 +120,9 @@ plot makes that substitution.
 
 depictr is on [PyPI](https://pypi.org/project/depictr/). The first command
 below installs the core (plotnine, pandas, numpy, matplotlib and scipy), and the
-second adds the optional computation back-ends. The double quotes keep zsh, the
-default shell on macOS, from reading the brackets as a filename pattern.
+second adds the optional computation back-ends and Streamlit, which the web app
+uses. The double quotes keep zsh, the default shell on macOS, from reading the
+brackets as a filename pattern.
 
 ```bash
 pip install depictr
@@ -130,8 +131,8 @@ pip install "depictr[all]"
 
 The classification and survival plots delegate to scikit-learn and lifelines.
 Each is an optional dependency, installed with the `depictr[classification]` or
-`depictr[survival]` extra when your plots need it. The gains, lift and
-calibration curves are computed by depictr itself and need neither. The PCA,
+`depictr[survival]` extra when your plots need it. The gains, lift, calibration
+and threshold curves are computed by depictr itself and need neither. The PCA,
 scree, cluster and silhouette plots also need scikit-learn, from the same
 `depictr[classification]` extra, and the dendrogram needs only scipy, a core
 dependency. The model and time-series plots delegate to statsmodels, which
@@ -196,10 +197,10 @@ pip install -e ".[all]"
 streamlit run app/streamlit_app.py
 ```
 
-The `all` extra installs Streamlit with scikit-learn and lifelines, which most
-of the classification and multivariate panes and the Kaplan-Meier pane need.
-`pip install -e ".[app]"` installs Streamlit alone, and those panes then report
-which package is missing.
+The `all` extra installs Streamlit with scikit-learn and lifelines, which the
+ROC, precision-recall and confusion-matrix panes, most of the multivariate
+panes and the Kaplan-Meier pane need. `pip install -e ".[app]"` installs
+Streamlit alone, and those panes then report which package is missing.
 
 ## Function families
 

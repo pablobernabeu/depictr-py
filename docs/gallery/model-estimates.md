@@ -1,8 +1,8 @@
 # Model estimates and diagnostics
 
-Fit a model once, then plot it in several ways: a coefficient forest, the
-predicted effect of a predictor, an estimation plot of a group difference and a
-panel of regression diagnostics.
+Plots of fitted models and their data: a coefficient forest, the predicted
+effect of a predictor, an estimation plot of a group difference and a panel of
+regression diagnostics.
 
 ```python exec="1" html="1" session="models"
 import sys; sys.path.insert(0, "docs")
@@ -139,7 +139,8 @@ print(show(p))
 ```
 
 In `frequentist_bayesian_plot`, the frequentist estimate and the posterior share
-a row and are told apart by colour. Only the posterior shows the full shape.
+a row and are told apart by colour. The posterior is drawn as its median with
+inner 66% and outer 95% credible intervals.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.frequentist_bayesian_plot(model, draws)
