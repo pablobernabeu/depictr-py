@@ -1,27 +1,27 @@
 # API reference
 
-Every public name in `depictr` is documented here, grouped along the path an analysis takes:
-look at the data, reduce it or follow it over time, read the model, check the model, judge a
-classifier, set the look, and compose and save the result. The groups follow the
+Every public name in `depictr` is documented here, grouped in the order in which an analysis
+proceeds: look at the data, reduce it or follow it over time, read the model, check the model,
+judge a classifier, set the look, and compose and save the result. The groups follow the
 [R package's reference index](https://pablobernabeu.github.io/depictr/reference/) in the same
 order, so a function can be looked up in the same place on either site.
 
-The two indexes are cut slightly differently in the few places where the Python package's own
-families do not line up with the R one. Time series has no group of its own here, and those
-functions close the 'Multivariate, survival and time series' group. The R index's 'Diagnostics
-and classification' is split in two, because the ROC and precision-recall curves and the
-confusion matrix are computed by scikit-learn and reached through a separate install extra. R's
-'Uncertainty and power' has no counterpart either, and the posterior
-and power curves are documented with the other model estimates they are drawn from. What the R
-index calls 'Theming, accessibility and reporting' appears here as 'Theme, palette and
-accessibility', covering the theme, the colour-vision checks, the figure audit and the label
-helper, while plot composition and saving move to the last group beside the datasets and the
-one-figure model report stays with the diagnostics it collects. The estimation plot and the
-summary table, which the R index places under 'Exploring data', open the 'Estimation and model
+The two indexes differ slightly in the few places where the Python package's families do not
+match the R package's. Time series has no group of its own here, and its functions come last in
+the 'Multivariate, survival and time series' group. The R index's 'Uncertainty and power' has no
+counterpart either, and the posterior and power curves are documented with the other model
+estimates they are drawn from. The R index's 'Diagnostics and classification' is split in two,
+because the ROC and precision-recall curves and the confusion matrix are computed by
+scikit-learn, which a separate install extra provides. The R index's 'Theming, accessibility and
+reporting' appears here as 'Theme, palette and accessibility', which covers the theme, the
+colour-vision checks, the figure audit and the label helper. From the same R group, plot
+composition and saving move to the last group here, beside the datasets, and the one-figure
+model report is placed with the diagnostics it collects. The estimation plot and the summary
+table, which the R index places under 'Exploring data', come first in the 'Estimation and model
 estimates' group here.
 
-Everything listed under a group heading is importable straight from `depictr`. The same plots are
-shown rendered, with the code that produced them, in the [gallery](gallery/exploring-data.md).
+Everything listed under a group heading is importable directly from `depictr`. The same plots
+are shown rendered, with the code that produced them, in the [gallery](gallery/exploring-data.md).
 
 ## Exploratory analysis
 
@@ -104,10 +104,10 @@ gallery.
 
 ## Classification
 
-The standard classification curves and tables, all redrawn under the shared
-theme. The ROC and precision-recall curves and the confusion matrix are computed
-by scikit-learn, and the gains, lift, calibration and threshold curves as the R
-twin computes them.
+The standard classification curves and tables, redrawn under the shared theme.
+The ROC and precision-recall curves and the confusion matrix are computed by
+scikit-learn, and the gains, lift, calibration and threshold curves as the R
+package computes them.
 
 These plots are shown, with the code that produced them, on the
 [classification and survival](gallery/classification-and-survival.md) page of
@@ -125,8 +125,8 @@ the gallery.
 
 The shared theme and the colourblind-safe palette, the tools that verify the
 palette stays distinguishable under colour-vision deficiency, the audit that
-checks a finished figure rather than the palette it was built from, and the
-helper that tidies model term names into labels.
+checks a finished figure, and the helper that tidies model term names into
+labels.
 
 The palette, the colour-vision checks and the figure audit are shown in use on the
 [accessibility](gallery/accessibility.md) page of the gallery.
@@ -147,12 +147,12 @@ The palette, the colour-vision checks and the figure audit are shown in use on t
 
 ## Composition and data
 
-Compose several plots into one figure or save one to disk, and the datasets used
-throughout the documentation. These are the R package's own synthetic datasets,
-shipped as files, so an example gives the same numbers in both packages.
+Plot composition and saving, and the datasets used throughout the documentation.
+These are the R package's own synthetic datasets, included as files, so an
+example gives the same numbers in both packages.
 
-The datasets are used throughout the [gallery](gallery/exploring-data.md),
-where every figure is drawn from one of them.
+Every figure in the [gallery](gallery/exploring-data.md) is drawn from one of
+these datasets.
 
 ::: depictr.arrange_plots
 ::: depictr.save_plot

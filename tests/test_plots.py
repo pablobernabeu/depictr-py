@@ -631,14 +631,14 @@ def test_gain_and_lift_refuse_a_missing_outcome_or_score():
             fn(y, score_missing)
 
 
-def test_gains_lift_and_calibration_need_no_scikit_learn(monkeypatch):
-    # The three are computed in numpy, so they draw without the optional
+def test_gains_lift_calibration_and_threshold_need_no_scikit_learn(monkeypatch):
+    # The four are computed in numpy, so they draw without the optional
     # [classification] extra.
     for name in ("sklearn", "sklearn.calibration", "sklearn.metrics"):
         monkeypatch.setitem(sys.modules, name, None)
     y, score = _continuous_scores()
     for p in (dp.gain_plot(y, score), dp.lift_plot(y, score),
-              dp.calibration_plot(y, score)):
+              dp.calibration_plot(y, score), dp.threshold_plot(y, score)):
         assert _builds(p)
 
 
@@ -697,7 +697,6 @@ def test_threshold_metrics_match_the_r_twin(case):
     # changes, and F1 was missing where no positive case was predicted
     # positive. The R twin evaluates the metrics at every distinct score, with
     # F1 taken as 0 there.
-    pytest.importorskip("sklearn")
     data, at, expected = _R_THRESHOLDS[case]
     y, score = data()
     wide = (dp.threshold_plot(y, score).data
@@ -716,7 +715,6 @@ def test_threshold_plot_draws_each_metric_as_a_step():
     # score is at or above the threshold, so between two adjacent scores every
     # metric keeps its value at the upper one: a "vh" step, as in the R twin,
     # where a line drew slopes through values no threshold gives.
-    pytest.importorskip("sklearn")
     y, score = _short_scores()
     p = dp.threshold_plot(y, score)
     assert isinstance(p.layers[-1].geom, geom_step)
@@ -728,7 +726,6 @@ def test_threshold_plot_refuses_a_missing_value_or_a_length_mismatch():
     # The counts are cumulative over the cases ranked by score, so a missing
     # score or outcome would be ranked or counted as if it were a value, and
     # vectors of different lengths have no pairing.
-    pytest.importorskip("sklearn")
     y, score = _short_scores()
     score_missing = score.copy()
     score_missing[3] = np.nan

@@ -1,10 +1,11 @@
 """Documentation files that nothing else in the suite reads.
 
-The README's table of exported functions, the forked header template of the
-site and the comments in its stylesheet are written by hand, so an export left
-out of the table, a template fallen behind the mkdocs-material it was taken
-from, or a contrast ratio quoted from a sibling package's colours would pass
-every other check.
+The README's table of exported functions, the version in the site header, the
+forked header template of the site and the comments in its stylesheet are
+written by hand, so an export left out of the table, a header naming the
+release before, a template fallen behind the mkdocs-material it was taken from,
+or a contrast ratio quoted from a sibling package's colours would pass every
+other check.
 """
 
 import hashlib
@@ -20,6 +21,7 @@ README = REPO / "README.md"
 BRAND_CSS = REPO / "docs" / "stylesheets" / "brand.css"
 HEADER = REPO / "overrides" / "partials" / "header.html"
 DOCS_WORKFLOW = REPO / ".github" / "workflows" / "docs.yml"
+MKDOCS = REPO / "mkdocs.yml"
 FORK_GUARD = "Check the header override against the mkdocs-material it forked"
 
 
@@ -42,6 +44,16 @@ def test_the_readme_table_of_exported_functions_lists_every_export():
     exported = {name for name in depictr.__all__ if name != "__version__"}
     assert not exported - listed, f"exported but unlisted: {sorted(exported - listed)}"
     assert not listed - exported, f"listed but not exported: {sorted(listed - exported)}"
+
+
+def test_the_site_header_names_the_version_the_package_reports():
+    # extra.version in mkdocs.yml fills the version chip beside the title. It
+    # is bumped by hand on release, where the About page takes its version from
+    # the package, so a missed bump would put the release before in the header.
+    # Read as text, so the suite needs no YAML parser.
+    chip = re.search(r'^extra:\n  version: "([^"]+)"$', _repository_file(MKDOCS), re.M)
+    assert chip, "mkdocs.yml has no extra.version"
+    assert chip.group(1) == depictr.__version__
 
 
 def _fork_record():

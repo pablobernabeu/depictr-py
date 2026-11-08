@@ -1,10 +1,9 @@
 # The web app
 
-A Streamlit app gives depictr a gallery and a low-friction way to try the
-package without writing code. It loads one of the bundled datasets, or a CSV you
-upload, draws the chosen plot, shows the exact Python call that produced it, and
-offers a colour-vision toggle that re-renders the figure as each deficiency would
-see it.
+A Streamlit app gives depictr a gallery and a way to try the package without
+writing code. It loads one of the bundled datasets or a CSV you upload, draws
+the chosen plot and shows the exact Python call that produced it. A
+colour-vision selector shows the figure under a simulated deficiency.
 
 ## What it puts on screen
 
@@ -12,17 +11,19 @@ The sidebar holds the data, the 'Simulate vision' selector, a 'Legend inside
 plot' checkbox and the palette's worst-case colour distance. The checkbox draws
 the legend inside the panel for the plots that take `legend_inside`. The main pane
 holds the plot family, the plot, its variables, the figure and the call that
-produced it. Here it is with the crop-yield trial loaded and an empirical
-cumulative distribution split by treatment.
+produced it. The screenshot shows the app with the crop-yield trial loaded and
+an empirical cumulative distribution split by treatment.
 
-![The depictr app with the crop-yield dataset loaded. The sidebar shows the dataset selector, a colour-vision selector reading "normal", an unticked "Legend inside plot" checkbox and the palette's worst-case colour distance of 6.43. The main pane shows the first rows of the data, selectors reading Exploratory, ECDF, yield and treatment, a cumulative distribution with a blue curve for the standard treatment and an orange one for the enhanced treatment, and beside it the call dp.ecdf_plot(dp.crop_yield(), 'yield', group='treatment', legend_inside=False).](assets/app-plot-pane.png){ width="820" }
+![The depictr app with the crop-yield dataset loaded. The sidebar shows the dataset selector, a colour-vision selector reading 'normal', an unticked 'Legend inside plot' checkbox and the palette's worst-case colour distance of 6.43. The main pane shows the first rows of the data, selectors reading Exploratory, ECDF, yield and treatment, a cumulative distribution with a blue curve for the standard treatment and an orange one for the enhanced treatment, and beside it the call dp.ecdf_plot(dp.crop_yield(), 'yield', group='treatment', legend_inside=False).](assets/app-plot-pane.png){ width="820" }
 
-The call beside the figure is the point of the whole pane. Whatever you arrive
-at by clicking, you can paste into a script and get the same figure back.
+Every plot the app draws is a plotnine object from the same functions
+documented in the [API reference](api.md). For any figure you reach by clicking,
+you can paste the call beside it into a script and get the same figure back.
 The app writes each call from the arguments it passes to the plot, so the two
-always agree. The calls assume `import depictr as dp`, and the demo time series
-also numpy as `np` and pandas as `pd`. A model pane shows the lines that fit the
-model before its call, so the snippet runs as it stands:
+always agree. The calls assume `import depictr as dp`. Those for an uploaded CSV
+also assume pandas as `pd`, and those for the demo time series assume numpy as
+`np` and pandas as `pd`. A model pane shows the lines that fit the model before
+its call, so the snippet runs as it stands:
 
 ```python
 import statsmodels.formula.api as smf
@@ -36,31 +37,33 @@ leaves bare every name that needs no quoting.
 ## The colour-vision selector
 
 Changing 'Simulate vision' in the sidebar re-renders the figure as a reader with
-that deficiency would see it, through the same Machado-2009 simulation the
-[accessibility page](gallery/accessibility.md) reports on. Below is the identical
-plot with the selector set to deuteranopia. The blue is barely touched and the
-orange has moved towards mustard. Surviving that shift is what the palette is
-chosen for, and the two curves stay as easy to tell apart as before. The app
-draws the simulated figure with `dp.simulate_figure`, so a script can produce
-the same view.
+the chosen deficiency would see it, through the same Machado-2009 simulation the
+[accessibility page](gallery/accessibility.md) reports on. The app draws the
+simulated figure with `dp.simulate_figure`, so a script can produce the same
+view. Below is the identical plot simulated for deuteranopia, with the selector
+set to 'deutan'. The blue barely changes and the orange moves towards mustard.
+The palette's colours are chosen to stay distinguishable under that shift, and
+the two curves are as easy to tell apart as in the first screenshot.
 
-![The same app view with the colour-vision selector set to "deutan". The cumulative distribution is redrawn with the enhanced-treatment curve shifted from orange to mustard yellow while the standard-treatment curve stays blue, and the two remain clearly distinguishable.](assets/app-colour-vision.png){ width="820" }
+![The same app view with the colour-vision selector set to 'deutan'. The cumulative distribution is redrawn with the enhanced-treatment curve shifted from orange to mustard yellow while the standard-treatment curve stays blue, and the two remain easy to tell apart.](assets/app-colour-vision.png){ width="820" }
 
 ## Your own data
 
-Choosing 'Upload a CSV' in the sidebar loads a file of your own. Excel on
-Windows saves a CSV in the cp1252 code page, where an accented letter is not
-valid UTF-8, so the app tries UTF-8 first, then cp1252 and then latin-1.
-Whenever the encoding is not UTF-8, the call the app shows names it, as in
-`pd.read_csv(your_file, encoding='cp1252')`, so pasting the call reads the file
-the same way. A file that cannot be read as a CSV, such as an empty one, gets a
-message saying why. A plot that needs a kind of column the data lack says so
-and draws nothing. The classification curves, for instance, need an outcome
-coded 0/1.
+Choosing 'Upload a CSV' in the sidebar loads a file of your own. The app tries
+UTF-8 first, then cp1252 and then latin-1, because Excel on Windows saves a CSV
+in the system's code page (cp1252 in Western Europe), where an accented letter
+is not valid UTF-8. Whenever the encoding is not UTF-8, the call the app shows
+names it, as in `pd.read_csv(your_file, encoding='cp1252')`, so pasting the
+call reads the file the same way.
+
+For a file that cannot be read as a CSV, such as an empty one, the app shows a
+message saying why. When the data lack a kind of column that a plot needs, the
+app says so and draws nothing. The classification curves, for instance, need an
+outcome coded 0/1.
 
 ## Run it
 
-The app lives in the repository rather than the wheel, so run it from a clone:
+The app is in the repository but not in the wheel, so run it from a clone:
 
 ```bash
 git clone https://github.com/pablobernabeu/depictr-py
@@ -69,12 +72,9 @@ pip install -e ".[all]"
 streamlit run app/streamlit_app.py
 ```
 
-The `all` extra brings Streamlit together with scikit-learn and lifelines, which
-most of the classification and multivariate panes and the Kaplan-Meier pane
-need. `pip install -e ".[app]"` installs Streamlit alone, and those panes then
-say which package is missing.
+The `all` extra installs Streamlit together with scikit-learn and lifelines,
+which the ROC, precision-recall and confusion-matrix panes, most of the
+multivariate panes and the Kaplan-Meier pane need. `pip install -e ".[app]"`
+installs Streamlit alone, and those panes then say which package is missing.
 
-The app runs on your own machine, so nothing you load leaves it. Every plot it
-draws is a plotnine object from the same functions documented in the
-[API reference](api.md), so anything you find there can
-be reproduced in a script with the call the app shows you.
+The app runs on your own machine, so nothing you load leaves it.

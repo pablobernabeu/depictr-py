@@ -19,8 +19,8 @@ ld = dp.lexical_decision()
 
 ## Cumulative distribution by group
 
-An empirical cumulative distribution, with the legend tucked into the
-bottom-right the curves leave empty once they saturate.
+An empirical cumulative distribution, with the legend placed in the bottom-right
+corner that the curves leave empty once they saturate.
 
 ```python exec="1" html="1" source="material-block" session="eda"
 p = dp.ecdf_plot(ld, "RT", group="condition", legend_inside=True)
@@ -47,8 +47,8 @@ p = dp.explore_bivariate(ld, "condition", "RT")
 print(show(p))
 ```
 
-For two numeric columns it draws a scatter with a fitted trend, and a group
-splits the trend line.
+For two numeric columns, it draws a scatter with a fitted trend. Given a
+`group`, `scatter_trend` fits one trend line per group.
 
 ```python exec="1" html="1" source="material-block" session="eda"
 cy = dp.crop_yield()

@@ -1,8 +1,8 @@
 # Model estimates and diagnostics
 
-Fit a model once, then read it from several angles: a coefficient forest, the
-predicted effect of a predictor, an estimation plot of a group difference, and a
-panel of regression diagnostics.
+Plots of fitted models and their data: a coefficient forest, the predicted
+effect of a predictor, an estimation plot of a group difference and a panel of
+regression diagnostics.
 
 ```python exec="1" html="1" session="models"
 import sys; sys.path.insert(0, "docs")
@@ -24,8 +24,9 @@ model = smf.ols(
 
 ## Coefficient forest
 
-A dot-and-whisker forest of the coefficients. The treatment row is labelled
-`treatment: enhanced`, which names the level compared with the reference.
+A point-and-interval forest plot of the coefficients. The treatment row is
+labelled `treatment: enhanced`, which names the level compared with the
+reference.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.coefficient_plot(model, title="Drivers of crop yield")
@@ -96,8 +97,8 @@ print(show(p))
 
 ## Binned residuals for a logistic model
 
-Raw residuals from a logistic fit take few values, so the mean residual per
-fitted-value bin against a two-standard-error band is the readable check.
+Raw residuals from a logistic fit take few values, so the plot shows the mean
+residual per fitted-value bin against a two-standard-error band.
 
 ```python exec="1" html="1" source="material-block" session="models"
 import statsmodels.api as sm
@@ -124,9 +125,8 @@ print(show(p))
 
 ## Posteriors and the frequentist overlay
 
-A Bayesian fit or a bootstrap gives a sample of draws per term rather than a
-single interval. Here the draws are simulated around the fitted estimates to
-stand in for a posterior.
+A Bayesian fit or a bootstrap gives a sample of draws per term. Here the draws
+are simulated around the fitted estimates to stand in for a posterior.
 
 ```python exec="1" html="1" source="material-block" session="models"
 import numpy as np
@@ -138,8 +138,9 @@ p = dp.posterior_plot(draws)
 print(show(p))
 ```
 
-The frequentist estimate and the posterior share a row and are told apart by
-colour, so only the posterior shows the full shape.
+In `frequentist_bayesian_plot`, the frequentist estimate and the posterior share
+a row and are told apart by colour. The posterior is drawn as its median with
+inner 66% and outer 95% credible intervals.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.frequentist_bayesian_plot(model, draws)
@@ -151,9 +152,9 @@ print(show(p))
 A power curve read from a table you have already computed, here three effect
 sizes from a two-sample t-test power calculation. depictr does no power
 calculation of its own, so statsmodels supplies the table and depictr draws it.
-The dashed reference line at 0.8 marks the conventional target, and the sample
-size at which each curve crosses it is the number needed per group to detect
-that effect.
+The dashed reference line at 0.8 marks the conventional target. The sample size
+at which each curve crosses it is the number needed per group to detect that
+effect.
 
 ```python exec="1" html="1" source="material-block" session="models"
 import pandas as pd
@@ -188,9 +189,9 @@ print(show(p, width=9, height=8))
 
 ## Arranging plots
 
-Any plots can be placed in one figure with `arrange_plots`, the building block
-behind the composed reports above. It tags the panels A, B and so on, as the R
-function does.
+Any plots can be placed in one figure with `arrange_plots`, which the composed
+reports above also use. It tags the panels A, B and so on, as the R function
+does.
 
 ```python exec="1" html="1" source="material-block" session="models"
 p = dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)

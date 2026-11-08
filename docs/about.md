@@ -55,18 +55,18 @@ carries the same metadata in machine-readable form.
 
 depictr is developed by Pablo Bernabeu, a researcher in the Department of
 Education at the University of Oxford. His work spans cognitive psychology and
-neuroscience, linguistics, education and digital technologies, drawing on a
-range of methods that include behavioural and EEG experiments, corpus analysis
-and computational modelling. He is a Fellow of the Software Sustainability
-Institute (2020), recognised for his work on R-based tools for data
-presentation, and holds a PhD in Psychology from Lancaster University.
+neuroscience, linguistics, education and digital technologies. His methods
+include behavioural and EEG experiments, corpus analysis and computational
+modelling. He is a Fellow of the Software Sustainability Institute (2020),
+recognised for his work on R-based tools for data presentation, and holds a PhD
+in Psychology from Lancaster University.
 
-More about his work is at [pablobernabeu.github.io](https://pablobernabeu.github.io),
+More about his work is on [his website](https://pablobernabeu.github.io),
 on [GitHub](https://github.com/pablobernabeu) and via
 [ORCID 0000-0003-1083-2460](https://orcid.org/0000-0003-1083-2460).
 
-depictr has a sibling [R package](https://pablobernabeu.github.io/depictr/) that
-shares the same design.
+A sibling [R package](https://pablobernabeu.github.io/depictr/) shares the same
+design.
 
 ## Licence
 
@@ -74,7 +74,7 @@ depictr is released under the MIT licence, whose full text is on this site's
 [licence page](licence.md) and in the repository's
 [`LICENSE`](https://github.com/pablobernabeu/depictr-py/blob/main/LICENSE) file.
 The licence permits use, modification and redistribution, commercially or not,
-provided the copyright and permission notice travel with the code.
+provided the copyright and permission notices are included with the code.
 
 ## Versioning and archival
 
@@ -82,15 +82,15 @@ Releases are tagged on
 [GitHub](https://github.com/pablobernabeu/depictr-py/releases) and archived on
 Zenodo. The concept DOI,
 <https://doi.org/10.5281/zenodo.21266311>, always
-resolves to the latest archived version, so a citation that uses it does not go
-stale. The [changelog](changelog.md) records what changed in each release.
+resolves to the latest archived release. The [changelog](changelog.md) records
+what changed in each release.
 
 ## Contributing and support
 
 Bug reports and feature requests are welcome on the
-[issues page](https://github.com/pablobernabeu/depictr-py/issues), where a
-small, self-contained example (and, for a plotting bug, a screenshot) makes a
-problem much easier to act on. The
+[issues page](https://github.com/pablobernabeu/depictr-py/issues). A small,
+self-contained example, with a screenshot for a plotting bug, makes a problem
+much easier to act on. The
 [contributing guide](https://github.com/pablobernabeu/depictr-py/blob/main/.github/CONTRIBUTING.md)
 explains how to set up a development install and what conventions a pull
 request should follow.

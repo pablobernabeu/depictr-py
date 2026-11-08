@@ -1,10 +1,10 @@
 # Classification and survival
 
 The ROC and precision-recall curves and the confusion matrix come from
-scikit-learn and the survival estimate from lifelines, and depictr redraws them
-under the shared theme. The gains, lift, calibration and threshold curves are
-computed by depictr, as in the R twin. The survival figure
-adds a number-at-risk table beneath the curves in one call.
+scikit-learn, and the survival estimate comes from lifelines. depictr redraws
+them under the shared theme. The gains, lift, calibration and threshold curves
+are computed by depictr, as in the R twin. A single call draws the survival
+curves with a number-at-risk table beneath them.
 
 ```python exec="1" html="1" session="clf"
 import sys; sys.path.insert(0, "docs")
@@ -37,7 +37,7 @@ print(show(p))
 
 ## Precision-recall on a rare outcome
 
-When the positive class is rare the precision-recall curve is more informative
+When the positive class is rare, the precision-recall curve is more informative
 than the ROC curve, because it ignores the many true negatives.
 
 ```python exec="1" html="1" source="material-block" session="clf"
@@ -47,8 +47,8 @@ print(show(p))
 
 ## Gains, lift and choosing a threshold
 
-The cumulative gains and lift charts read off how many positives a ranked
-campaign captures at each depth.
+The cumulative gains and lift charts show how many positive cases are captured
+as more of the score-ordered population is targeted.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.gain_plot(ct["adverse_event"], score)
@@ -60,8 +60,8 @@ p = dp.lift_plot(ct["adverse_event"], score)
 print(show(p))
 ```
 
-The threshold plot sweeps the decision cut-off, so the trade-off between the
-metrics as the operating point moves can be read straight off the curves.
+The threshold plot sweeps the decision threshold across the range of scores and
+plots how each metric trades off against the others.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.threshold_plot(ct["adverse_event"], score)
@@ -70,10 +70,10 @@ print(show(p))
 
 ## Calibration
 
-A calibration curve asks whether a predicted probability of, say, 0.3 is borne
-out by an event in about 30% of such cases, so it needs probabilities from a
-fitted model rather than the ranking score the charts above are happy with. We
-fit a logistic regression and pass its predicted probabilities.
+A calibration curve checks whether a predicted probability of, say, 0.3 is
+borne out by an event in about 30% of such cases. It therefore needs
+probabilities from a fitted model, whereas the charts above need only a ranking
+score. We fit a logistic regression and pass its predicted probabilities.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 from sklearn.linear_model import LogisticRegression
@@ -105,9 +105,9 @@ print(show(p, width=6))
 ## Survival
 
 Kaplan-Meier curves with a log-rank test and a number-at-risk table. The dotted
-steps are 95% confidence limits, built on the log-log scale as in the R
-package, and each + marks a censored patient. The legend sits in the empty
-top-right the descending curves leave behind.
+steps are 95% confidence limits, built on the log-log scale as in the R twin,
+and each + marks a censored patient. The descending curves leave the top-right
+corner empty, and `legend_inside=True` puts the legend there.
 
 ```python exec="1" html="1" source="material-block" session="clf"
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
