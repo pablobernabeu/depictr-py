@@ -5,8 +5,8 @@
 # repository as a trusted publisher with workflow file "publish.yml" and
 # environment "pypi" (the depictr project already exists on PyPI, so this is a
 # regular trusted publisher, not a pending one). The workflow runs when a
-# GitHub release is published; the manual trigger exists so a release cut
-# before this workflow was added can still be shipped from the same commit.
+# GitHub release is published. The manual trigger, run on the release's tag,
+# gives a fresh run when a failed one cannot simply be re-run.
 name: Publish to PyPI
 
 on:
@@ -24,8 +24,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
       # skip-existing below lets a run upload nothing and still pass, so a tag
@@ -54,7 +54,7 @@ jobs:
         run: |
           python -m pip install --upgrade twine
           python -m twine check dist/*
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: dist
           path: dist/
@@ -68,7 +68,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: dist
           path: dist/
