@@ -36,9 +36,13 @@ jobs:
         # pandas<3, and pandas 2 publishes no wheels for 3.15, so pip builds
         # pandas 2.3.3 from source, which crashed in its datetime extension
         # (run 43722004351). Without lifelines, pandas 3 installs from its
-        # wheel, and the survival tests skip.
+        # wheel, the survival tests skip and the example of survival_plot(),
+        # which needs lifelines, is left out.
         include:
-          - {os: ubuntu-latest, python-version: "3.15", extras: "models,classification,app,test"}
+          - os: ubuntu-latest
+            python-version: "3.15"
+            extras: "models,classification,app,test"
+            pytest-args: "--deselect src/depictr/survival.py::depictr.survival.survival_plot"
           - {os: windows-latest, python-version: "3.13"}
           - {os: macos-latest, python-version: "3.13"}
 
@@ -67,7 +71,7 @@ jobs:
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
         run: |
-          python -m pytest -q --cov=depictr --cov-report=term
+          python -m pytest -q --cov=depictr --cov-report=term ${{ matrix.pytest-args }}
           # Surface the overall figure in the job summary so it can be read at
           # a glance rather than dug out of the log. Coverage is reported, not
           # gated: there is deliberately no fail-under threshold.
