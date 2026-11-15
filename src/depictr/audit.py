@@ -39,6 +39,7 @@ from .cvd import (
     _min_pairwise_delta_e,
     _rgb_to_lab,
     _srgb_to_linear,
+    _warn_cie76,
     simulate_cvd,
 )
 
@@ -266,7 +267,8 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     metric : {"ciede2000", "cie76"}
         The colour difference the colour separability checks measure:
         CIEDE2000, the default, or CIE76, the Euclidean distance in CIELAB.
-        ``"cie76"`` is kept so that results computed with it can be
+        ``"cie76"`` is deprecated and gives a ``FutureWarning`` once per
+        session. It is kept so that results computed with it can be
         reproduced, and a later release will remove it.
     max_text_pt : float, optional
         The largest acceptable printed text size, in points, or None, the
@@ -375,6 +377,8 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     if max_text_pt is not None:
         _positive_scalar(max_text_pt, "max_text_pt")
     _check_metric(metric)
+    if metric == "cie76":
+        _warn_cie76()
 
     settings = (width_cm, render_width_cm, min_delta_e, min_text_pt, metric,
                 max_text_pt)

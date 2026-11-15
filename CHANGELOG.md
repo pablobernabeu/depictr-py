@@ -404,8 +404,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 - `metric="cie76"` in `palette_safety()` and `check_figure()`, kept to
-  reproduce colour distances computed before this release. The default,
-  `"ciede2000"`, replaces it, and a later release will remove it.
+  reproduce colour distances computed before this release, gives a
+  `FutureWarning` once per session. The default, `"ciede2000"`, replaces it,
+  and a later release will remove it.
 - The `seed` argument of the dataset loaders, which no longer generate data.
   Passing a value raises a `FutureWarning` and has no effect.
 - The log-rank subtitle that `survival_plot()` prints by default for grouped

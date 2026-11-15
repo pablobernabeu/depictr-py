@@ -339,6 +339,7 @@ def test_the_audit_reports_the_numbers_its_r_twin_reports():
         "Colour is a continuous scale, which these checks do not audit."}
 
 
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_a_figure_in_ggplot2s_five_colours_fails_the_deuteranopia_row():
     # ggplot2's default colours for five groups, scales::hue_pal()(5). Under
     # deuteranopia the sky blue and the pink come 2.74 apart in CIEDE2000. The
@@ -358,6 +359,44 @@ def test_a_figure_in_ggplot2s_five_colours_fails_the_deuteranopia_row():
     assert old["verdict"].tolist()[:4] == ["pass"] * 4
 
 
+def test_metric_cie76_warns_once_per_session_that_it_is_deprecated(monkeypatch):
+    # CHANGELOG.md lists the option under 'Deprecated'. The warning is given
+    # the first time either function is asked for it in a session, and it
+    # points at the caller's line.
+    from depictr import cvd
+
+    deprecated = (r'^`metric="cie76"` is deprecated, and a later release will '
+                  r'remove it\. Use the default, `metric="ciede2000"`\.$')
+
+    def cie76_warnings(call):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            call()
+        return [w for w in caught if "cie76" in str(w.message)]
+
+    monkeypatch.setattr(cvd, "_cie76_warned", False)
+    with pytest.warns(FutureWarning, match=deprecated) as record:
+        dp.palette_safety(metric="cie76")
+    assert [w.filename for w in record] == [__file__]
+    assert cie76_warnings(lambda: dp.palette_safety(metric="cie76")) == []
+    assert cie76_warnings(
+        lambda: dp.check_figure(good_figure(), metric="cie76")) == []
+
+    monkeypatch.setattr(cvd, "_cie76_warned", False)
+    with pytest.warns(FutureWarning, match=deprecated) as record:
+        dp.check_figure(good_figure(), metric="cie76")
+    assert [w.filename for w in record] == [__file__]
+    assert cie76_warnings(lambda: dp.palette_safety(metric="cie76")) == []
+
+    # The default measure gives no warning.
+    monkeypatch.setattr(cvd, "_cie76_warned", False)
+    assert cie76_warnings(dp.palette_safety) == []
+    assert cie76_warnings(lambda: dp.check_figure(good_figure())) == []
+    assert cie76_warnings(lambda: dp.palette_safety(metric="ciede2000")) == []
+    assert cvd._cie76_warned is False
+
+
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_metric_cie76_restores_the_1976_distance():
     # The numbers the audit reported before it measured CIEDE2000, pinned in
     # the R suite as well. Only the four colour rows depend on the metric.

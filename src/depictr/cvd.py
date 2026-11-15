@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import math
 import numbers
+import warnings
 
 import matplotlib.colors as mcolors
 import numpy as np
@@ -203,6 +204,29 @@ def _check_metric(metric) -> None:
     """Refuse a colour difference that the package does not measure."""
     if not isinstance(metric, str) or metric not in _METRICS:
         raise ValueError("`metric` must be 'ciede2000' or 'cie76'.")
+
+
+# Whether this session has given the warning that metric="cie76" is
+# deprecated. palette_safety() and check_figure() give it the first time
+# either is asked for the 1976 distance.
+_cie76_warned = False
+
+
+def _warn_cie76() -> None:
+    """Warn, once per session, that ``metric="cie76"`` is deprecated.
+
+    Called by palette_safety() and check_figure() when they are asked for the
+    1976 distance. CHANGELOG.md lists the option under 'Deprecated'.
+    """
+    global _cie76_warned
+    if _cie76_warned:
+        return
+    _cie76_warned = True
+    warnings.warn(
+        '`metric="cie76"` is deprecated, and a later release will remove it. '
+        'Use the default, `metric="ciede2000"`.',
+        FutureWarning, stacklevel=3,
+    )
 
 
 def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
@@ -601,7 +625,8 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
         The smallest acceptable colour difference, on the scale of ``metric``.
     metric : {"ciede2000", "cie76"}
         The colour difference to measure: CIEDE2000, the default, or CIE76,
-        the Euclidean distance in CIELAB. ``"cie76"`` is kept so that results
+        the Euclidean distance in CIELAB. ``"cie76"`` is deprecated and gives a
+        ``FutureWarning`` once per session. It is kept so that results
         computed with it can be reproduced, and a later release will remove it.
 
     Returns
@@ -631,15 +656,17 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     >>> dp.palette_safety()['safe']
     True
 
-    ggplot2's default palette of five colours, which passes under CIE76.
+    ggplot2's default palette of five colours fails under CIEDE2000.
 
     >>> hue5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
-    >>> dp.palette_safety(hue5)['safe'], dp.palette_safety(hue5, metric="cie76")['safe']
-    (False, True)
+    >>> dp.palette_safety(hue5)['safe']
+    False
     """
     from .palette import depictr_palette
 
     _check_metric(metric)
+    if metric == "cie76":
+        _warn_cie76()
 
     # `colours or ...` would have swapped in the default palette for an empty
     # list, reporting on eight colours the caller never passed.
