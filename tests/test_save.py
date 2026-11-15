@@ -225,9 +225,12 @@ def test_check_warns_with_the_checks_the_figure_fails(tmp_path):
         "(threshold 6.00) and redundant_encoding 0.00 (threshold 1.00). "
         "Pass that width to check_figure() as both width_cm and "
         "render_width_cm for the full report.")
+    # Saved at 100 dpi, the resolution the audit draws at. At 72 dpi the 4 pt
+    # text is 4 pixels high, and matplotlib 3.11.2 on macOS raised 'failed to
+    # load glyph' drawing it (job 132835817126), as no other platform did.
     with pytest.warns(UserWarning) as record:
         dp.save_plot(audited_bad(), str(tmp_path / "column.png"), width=8.9,
-                     height=6, units="cm", dpi=72, check=True)
+                     height=6, units="cm", dpi=100, check=True)
     # pandas and plotnine can warn during the save too, so only depictr's own
     # report of the failed checks is compared.
     reports = [str(w.message) for w in record
@@ -238,7 +241,7 @@ def test_check_warns_with_the_checks_the_figure_fails(tmp_path):
                       r"colour_separability_deutan 0\.11"):
         dp.save_plot(dp.arrange_plots(audited_good(), audited_bad()),
                      str(tmp_path / "both.png"), width=8.9, height=6,
-                     units="cm", dpi=72, check=True)
+                     units="cm", dpi=100, check=True)
 
 
 def test_check_takes_the_saved_width_in_any_unit():
