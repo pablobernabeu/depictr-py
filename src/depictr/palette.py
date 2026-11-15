@@ -4,16 +4,14 @@ The qualitative palette is based on the Okabe-Ito set (Okabe & Ito, 2008), a
 categorical scheme that stays distinguishable under the common forms of
 colour-vision deficiency. It is led by the depictr brand blue. The sequential
 and diverging palettes are perceptually ordered single-hue and red-blue ramps.
-These are the defaults behind :func:`depictr.theme.scale_colour_depictr` and the
-whole package, so every figure shares one accessible colour language.
+They are the defaults of ``scale_colour_depictr()`` and of every depictr plot,
+so all figures share the same accessible colours.
 
-The guarantee is a property of the eight built-in colours, not of any number of
-colours: past eight, :func:`depictr_palette` has to interpolate between them, and
-the interpolated colours sit close enough together to fail
-:func:`depictr.cvd.palette_safety` (nine colours come within a CIEDE2000
-difference of 4.96 and ten within 1.87, against a threshold of 5). Rather than
-let a package built on accessibility make a claim it stops honouring, that case
-warns and says what to do instead.
+The guarantee holds for the eight built-in colours only. Past eight,
+``depictr_palette()`` interpolates between them, and the interpolated colours
+are close enough together to fail ``palette_safety()``: nine colours come
+within a CIEDE2000 difference of 4.96 and ten within 1.87, against a threshold
+of 5. That case therefore warns and says what to do instead.
 
 Okabe, M., & Ito, K. (2008). Color universal design (CUD): How to make figures
 and presentations that are friendly to colorblind people.
@@ -91,9 +89,9 @@ def depictr_accent() -> str:
 
     The accent marks a single element against the brand blue, such as the
     flagged points of [`depictr.outlier_plot`][] and the missing cells of
-    [`depictr.missingness_map`][]. It is the Okabe-Ito vermillion, as in the
-    R twin, which stays distinguishable from the brand blue under the common
-    colour-vision deficiencies and reaches 3.87:1 against white.
+    [`depictr.missingness_map`][]. It is the Okabe-Ito vermillion, which
+    stays distinguishable from the brand blue under the common colour-vision
+    deficiencies and reaches 3.87:1 against white.
 
     Examples
     --------
@@ -143,10 +141,10 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     but the bluish green and the reddish purple are 3.31 apart in lightness, which
     fails ``greyscale_separability``. Under this order, the second group is
     drawn in the vermillion, which is also [`depictr.depictr_accent`][].
-    The default order is unchanged, and the R twin gives the same order.
+    The default order is unchanged.
 
-    The R twin can make the order the default for every plot through its
-    options. Python has none, so add
+    The R package can make the order the default for every plot through its
+    options. This package has no such option, so add
     ``dp.scale_colour_depictr(order="contrast")``, or the fill scale, to each
     plot that should use it. plotnine then says that it replaces the plot's
     colour scale.
@@ -155,7 +153,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     ----------
     n : int, optional
         Number of colours to return, a single number of at least 1. A
-        fraction is truncated, as in the R twin, so 2.7 gives two colours. For
+        fraction is truncated, so 2.7 gives two colours. For
         the qualitative palette ``None`` (the default) returns all eight
         colours, and an ``n`` larger than the available colours is
         interpolated. The sequential and diverging palettes are ramps and
@@ -183,7 +181,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     UserWarning
         When ``n`` exceeds the eight built-in colours and the qualitative
         palette is therefore interpolated. The colourblind-safety guarantee
-        covers the eight base colours only; an interpolated palette fails
+        covers the eight base colours only. An interpolated palette fails
         [`depictr.cvd.palette_safety`][]. Facet the groups, or use the
         sequential ramp, when there are more than eight of them. Also when
         ``order="contrast"`` and ``n`` exceeds four, since the fifth colour,

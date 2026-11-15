@@ -1,12 +1,11 @@
 """Readable labels for the terms of a fitted model.
 
-A model names its coefficients for the computer: patsy writes a factor level as
+A model names its coefficients for software: patsy writes a factor level as
 ``treatment[T.enhanced]``, an interaction as ``rainfall:treatment[T.enhanced]``
-and a quoted column as ``Q("region")[T.North]``. :func:`format_terms` turns
-such names into labels a reader can take in, following the R twin's rules, and
-the helpers below give :func:`depictr.coefficient_plot` and
-:func:`depictr.compare_models` their default labels and their ``labels`` and
-``interaction`` arguments.
+and a quoted column as ``Q("region")[T.North]``. ``format_terms()`` turns such
+names into labels that read easily, by the R package's rules, and the helpers
+below give ``coefficient_plot()`` and ``compare_models()`` their default labels
+and their ``labels`` and ``interaction`` arguments.
 
 A factor's coefficient is labelled with its variable and level, as
 ``treatment: enhanced``, whatever the number of levels. The row then says
@@ -185,10 +184,10 @@ def format_terms(x, interaction: str = "times", strip_prefix: bool = True,
     """Tidy raw coefficient names for display.
 
     Cleans up the term names that modelling functions produce so that they read
-    well on a plot, following the rules of the R twin's ``format_terms()``. The
+    well on a plot, following the rules of the R package's ``format_terms()``. The
     intercept is renamed ``Intercept``, a ``b_`` or ``bs_`` prefix (as brms adds)
     is stripped from each component of an interaction, interaction colons are
-    written with a chosen symbol, and underscores are shown as spaces, so
+    written with a chosen symbol and underscores are shown as spaces, so
     ``word_frequency`` becomes ``word frequency``.
 
     The names patsy and formulaic give a formula's terms are read as well. A

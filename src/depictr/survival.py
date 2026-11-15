@@ -1,10 +1,10 @@
 """Kaplan-Meier survival plots.
 
-The estimate and the log-rank test come from ``lifelines``; the figure is drawn
-under the depictr theme as a single call -- the survminer/ggsurvfit pattern that
-Python otherwise leaves to manual assembly. The confidence limits and the
-censor marks are drawn as the R twin draws them, and the limits are computed
-with its formulas. ``risk_table=True`` draws a number-at-risk table beneath the
+The estimate and the log-rank test come from ``lifelines``, and the figure is
+drawn with the depictr theme in a single call, as survminer and ggsurvfit draw
+it in R, where Python otherwise leaves it to be assembled by hand. The
+confidence limits and the censor marks are drawn, and the limits computed, as
+in the R package. ``risk_table=True`` draws a number-at-risk table beneath the
 curves, and the counts are also returned on the plot (``plot.at_risk``) for
 composing a table of your own.
 
@@ -188,19 +188,18 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         since dropping or imputing it is the analyst's decision.
     event : array-like
         Event indicator, coded 0/1 (0 = censored, 1 = event) or with the
-        ``survival::Surv()`` 1/2 coding (1 = censored, 2 = event), the two
-        codings the R twin accepts. Booleans read as 0/1. The coding is judged
-        over all observations together, and any other coding raises, a code
-        that is not a whole number among them. An observation whose event is
-        missing records neither an event nor a censoring, so it is dropped
-        with a warning.
+        ``survival::Surv()`` 1/2 coding (1 = censored, 2 = event). Booleans
+        read as 0/1. The coding is judged over all observations together, and
+        any other coding raises, a code that is not a whole number included.
+        An observation whose event is missing records neither an event nor a
+        censoring, so it is dropped with a warning.
     group : array-like, optional
-        Group label per observation; one curve per group, plus a log-rank test
-        of the difference. Observations with a missing group are dropped with a
+        Group label per observation, with one curve per group and a log-rank
+        test of the difference. Observations with a missing group are dropped with a
         warning, since they belong to no arm.
     conf_level : float or None
         Confidence level of the pointwise limits drawn as dotted steps around
-        each curve, as the R twin draws them, strictly between 0 and 1.
+        each curve, strictly between 0 and 1.
         ``None`` leaves them out.
     risk_table : bool
         Add a number-at-risk table as a thin strip beneath the curves.
@@ -213,13 +212,13 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
     x_lab, y_lab : str
         Axis labels.
     censor_marks : bool
-        Mark each censored observation with a "+" at the survival level
+        Mark each censored observation with a ``+`` at the survival level
         current at its time.
     logrank : bool or None
         Whether to print the log-rank test of the group difference as a
         subtitle when there are groups. ``None``, the default, prints it and
         raises a ``FutureWarning``, since a future release will make ``False``
-        the default, as in the R twin. The statistic and p-value are attached
+        the default, as in the R package. The statistic and p-value are attached
         to the plot whenever there are groups, whatever this argument says.
     conf_type : {"log-log", "log", "plain"}
         The scale on which the limits are built from se, the Greenwood
@@ -231,8 +230,7 @@ def survival_plot(time, event, group=None, conf_level=0.95, risk_table=False,
         range, and ``"log"`` draws ``S * exp(±z * se)``, capped at 1, as R's
         ``survival::survfit()`` does by default. The limits are 1 while the
         estimate is 1, and where a curve falls to 0, they keep the values of
-        the step before. The formulas and these two rules are the R twin's, so
-        the twins draw the same limits.
+        the step before.
 
     Returns
     -------

@@ -2,10 +2,10 @@
 statistical visualisation.
 
 depictr gives one consistent, accessible, plotnine-based look to the whole
-statistical workflow -- exploratory analysis, model estimates, diagnostics,
-classification, multivariate analysis, survival and time series -- so a coherent
-figure set no longer means stitching together half a dozen libraries with
-mismatched defaults. Every plotting function returns a plotnine object you can
+statistical workflow: exploratory analysis, model estimates, diagnostics,
+classification, multivariate analysis, survival and time series. A consistent
+set of figures then no longer needs half a dozen libraries with different
+defaults. Every plotting function returns a plotnine object you can
 extend with ``+``, and a colourblind-safe palette based on the Okabe-Ito set is
 the default, validated by a built-in colour-vision-deficiency safety check.
 

@@ -1,12 +1,12 @@
 """Plots for mixed-effects models fitted with statsmodels.
 
-The estimation is left to statsmodels' ``MixedLM``; this module reads the fitted
-result and re-draws it under the depictr theme. The one plot here is the
-caterpillar plot of the predicted random effects (the BLUPs), the standard way to
-look at how group levels deviate from the population fit.
+statsmodels' ``MixedLM`` fits the model, and this module draws the fitted
+result with the depictr theme. The one plot here is the caterpillar plot of the
+predicted random effects (the BLUPs), the standard way to look at how group
+levels deviate from the population fit.
 
-``statsmodels`` arrives with the core install (plotnine itself requires it);
-the ``depictr[models]`` extra remains to pin the tested floor.
+``statsmodels`` comes with the core install, since plotnine requires it. The
+``depictr[models]`` extra states the tested floor.
 """
 
 from __future__ import annotations
@@ -45,15 +45,15 @@ def random_effects_plot(model, title=None):
 
     Each point is one group level's predicted random effect, the deviation of
     that group from the population fit. Levels are sorted by their effect, so the
-    plot reads as a tilted ladder from the most negative to the most positive
-    group, against a zero reference line. A group whose interval clears zero
-    stands apart from the average; one straddling zero does not.
+    points rise from the most negative to the most positive group, against a
+    zero reference line. A group whose interval excludes zero differs from the
+    average, and one whose interval includes zero does not.
 
-    The points come straight from ``model.random_effects``. When the fit exposes
+    The points are those of ``model.random_effects``. When the fit exposes
     the conditional covariance of each group's effects
     (``model.random_effects_cov``), the diagonal gives a conditional standard
     error and the plot adds a 95% interval (the point estimate plus or minus
-    1.96 standard errors); without it the points are drawn on their own. If the
+    1.96 standard errors). Without it, the points are drawn on their own. If the
     model has more than one random-effect term per group (a random intercept and
     one or more random slopes), the terms are shown in separate panels, each
     sorted by its own term's effects.
@@ -74,7 +74,7 @@ def random_effects_plot(model, title=None):
     -----
     The interval is the conditional one around each predicted effect, not a
     confidence interval for a fixed parameter. It reflects how precisely that
-    group's effect is pinned down given the fitted variance components.
+    group's effect is estimated, given the fitted variance components.
 
     Examples
     --------

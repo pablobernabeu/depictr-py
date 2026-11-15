@@ -1,10 +1,9 @@
-"""The shared depictr theme and colour/fill scales for plotnine.
+"""The shared depictr theme and colour and fill scales for plotnine.
 
-Every plotting function builds on :func:`theme_depictr` and the depictr scales,
-so figures across the whole workflow share one consistent, accessible look
-without the caller setting anything. The theme is a light refinement of
-plotnine's ``theme_minimal``: subtle gridlines, comfortable margins, and centred,
-bold titles (including legend titles).
+Every plotting function uses ``theme_depictr()`` and the depictr scales, so all
+figures share one consistent, accessible look without the caller setting
+anything. The theme adjusts plotnine's ``theme_minimal``: light gridlines,
+adjusted margins and centred bold titles, legend titles included.
 """
 
 from __future__ import annotations
@@ -48,10 +47,10 @@ def theme_depictr(base_size: float = 11, grid: str = "xy",
         which is ``"sans-serif"`` unless it has been set. Setting that option
         once, as in ``plotnine.options.base_family = "Arial"``, sets the font of
         every depictr plot made afterwards, as ``depictr_options(base_family
-        =)`` does in the R twin. A plot made before the option is set keeps its
-        font. A family matplotlib cannot find is replaced by
-        its default, DejaVu Sans, with a message from matplotlib's
-        ``font_manager`` logger when the plot is drawn.
+        =)`` does in the R package. A plot made before the option is set keeps
+        its font. A family matplotlib cannot find is replaced by its default,
+        DejaVu Sans, with a message from matplotlib's ``font_manager`` logger
+        when the plot is drawn.
 
     Returns
     -------
@@ -152,7 +151,7 @@ def scale_colour_depictr(n: int | None = None, order: str = "default",
         as the plot has groups: the built-in colours in order up to eight,
         and past eight a palette interpolated through them. Interpolation loses
         the colourblind-safety guarantee, which covers the eight base colours
-        only, so [`depictr.palette.depictr_palette`][] warns past eight; facet
+        only, so [`depictr.palette.depictr_palette`][] warns past eight. Facet
         the groups, or use the sequential ramp, when there are more. Pass ``n``
         to fix the palette's length whatever the number of groups.
     order : {"default", "contrast"}
@@ -221,8 +220,8 @@ def legend_inside(corner="top right"):
 
     Places the legend in a corner the plot's geometry usually leaves empty, on
     a solid white panel with a light border, so the figure needs no separate
-    legend column.
-    The functions that expose a ``legend_inside`` argument add this for you.
+    legend column. The functions that expose a ``legend_inside`` argument add
+    this for you.
 
     Parameters
     ----------

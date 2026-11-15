@@ -4,13 +4,13 @@ A Bayesian fit or a bootstrap gives a sample of draws for each parameter rather
 than a single estimate and a closed-form interval. These two functions summarise
 that sample as a forest: the median as a point, with a thick inner band and a
 thin outer band for two credible intervals. The default bands are the central
-66% and 95%, chosen so the eye reads the bulk of the posterior (the inner band)
-without losing the tails (the outer band). The pair is the default ``.width``
-of the R package ggdist (Kay, 2024), which the R twin draws with.
+66% and 95%, so that the inner band shows the bulk of the posterior and the
+outer band its tails. The pair is the default ``.width`` of the R package
+ggdist (Kay, 2024), which depictr's R package draws with.
 
-:func:`frequentist_bayesian_plot` puts a frequentist estimate alongside the
+``frequentist_bayesian_plot()`` draws a frequentist estimate beside the
 posterior, one row per shared term, so the two ways of quantifying uncertainty
-sit side by side for the same model.
+can be compared for the same model.
 
 Kay, M. (2024). ggdist: Visualizations of distributions and uncertainty in the
 grammar of graphics. IEEE Transactions on Visualization and Computer Graphics,
@@ -66,8 +66,9 @@ def _draws_to_frame(draws) -> pd.DataFrame:
 def _summarise_draws(draws, labels=None) -> pd.DataFrame:
     """Median and the two credible intervals for every parameter column.
 
-    Returns a tidy frame with columns ``term``, ``median``, and the inner/outer
-    interval bounds. ``labels`` remaps the raw parameter names to display names.
+    Returns a tidy frame with columns ``term``, ``median`` and the inner and
+    outer interval bounds. ``labels`` remaps the raw parameter names to display
+    names.
     """
     frame = _draws_to_frame(draws)
     inner_lo, inner_hi = (1 - _INNER) / 2, (1 + _INNER) / 2
@@ -110,17 +111,17 @@ def posterior_plot(draws, labels=None, title=None):
     Each parameter is one row: the median as a point, a thick inner band for the
     central 66% credible interval and a thin outer band for the central 95%.
     Both are equal-tailed (quantile) intervals, which leave the same share of
-    the draws in either tail. The first parameter reads at the top.
+    the draws in either tail. The first parameter is at the top.
 
     Parameters
     ----------
     draws : pandas.DataFrame or dict of array-like
         The draws, one column (or dict entry) per parameter. A dict maps a
-        parameter name to a 1-D array of draws; the arrays may differ in length.
+        parameter name to a 1-D array of draws. The arrays may differ in length.
     labels : dict, optional
         Remap raw parameter names to display names, ``{raw: shown}``. Names not
-        in the mapping are left unchanged; a key that matches no parameter
-        warns, since a mistyped one would otherwise silently do nothing.
+        in the mapping are left unchanged. A key that matches no parameter
+        warns, since a mistyped one would otherwise do nothing.
     title : str, optional
         Plot title.
 
@@ -163,8 +164,8 @@ def frequentist_bayesian_plot(frequentist, bayesian, title=None):
 
     For each term the two sources share a row, offset slightly so they do not
     overlap. The frequentist side shows the point estimate with its confidence
-    interval; the Bayesian side shows the posterior median with the inner 66% and
-    outer 95% credible intervals. The sources are told apart by colour (brand
+    interval, and the Bayesian side shows the posterior median with the inner 66%
+    and outer 95% credible intervals. The sources are told apart by colour (brand
     blue for frequentist, the palette's orange for Bayesian).
 
     Only terms present in both sources are drawn. The frequentist confidence

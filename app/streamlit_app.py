@@ -1,9 +1,9 @@
-"""depictr gallery: a Streamlit shop window for the package.
+"""depictr gallery: a Streamlit app that shows what the package draws.
 
-Pick a bundled dataset (or upload a CSV), choose a plot, and see the depictr
-figure together with the exact Python call that made it. A colourblind-vision
-toggle re-renders the whole figure as each deficiency would be seen, so a reader
-can judge the accessibility of the default palette on the figure itself.
+Pick a bundled dataset or upload a CSV, choose a plot and see the depictr figure
+together with the exact Python call that made it. A colour-vision selector
+redraws the whole figure as a reader with each deficiency would see it, so the
+accessibility of the default palette can be judged on the figure itself.
 
 Run with:  streamlit run app/streamlit_app.py
 """
@@ -68,7 +68,7 @@ def draw(fn: str, *args, setup: str = "", **kwargs):
     """Call ``dp.<fn>`` and show its figure beside the call that made it.
 
     The call is written from the arguments the function receives, so the two
-    cannot drift apart. ``setup`` holds any lines the call needs first, such as
+    always match. ``setup`` holds any lines the call needs first, such as
     a model fit.
     """
     plot = getattr(dp, fn)(*map(_value, args),

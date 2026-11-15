@@ -1,20 +1,19 @@
 """Colour-vision-deficiency simulation and a palette safety check.
 
-The simulator follows the physiologically-based model of Machado, Oliveira and
+The simulator follows the physiologically based model of Machado, Oliveira and
 Fernandes (2009), which maps a colour to the colour a person with a given form
 and severity of colour-vision deficiency would perceive. The transformation is
 defined on linear-light RGB, so a colour is decoded from sRGB to linear RGB (the
 IEC 61966-2-1 transfer functions), transformed, then re-encoded.
 
-This drives three things: :func:`simulate_figure`, which shows a whole figure
-as a reader with a deficiency sees it and backs the colour-vision toggle in the
-web app, :func:`palette_safety`, which checks that the colours in a palette stay
-far enough apart for each deficiency that they remain distinguishable, and the
-colour-separability rows of :func:`depictr.audit.check_figure`, which asks the
-same question of a finished figure. depictr uses them to validate its default
-palette rather than merely assert that it is safe. How far apart two colours
-are is measured with the CIEDE2000 formula, as Sharma, Wu and Dalal (2005) set
-it out.
+Three parts of depictr use it. ``simulate_figure()`` shows a whole figure as
+a reader with a deficiency sees it, and the web app's colour-vision selector
+uses it. ``palette_safety()`` checks that the colours of a palette stay far
+enough apart under each deficiency to remain distinguishable. The
+colour-separability rows of ``check_figure()`` ask the same question of a
+finished figure. depictr uses them to test its default palette, rather than
+only asserting that it is safe. How far apart two colours are is measured
+with the CIEDE2000 formula, as Sharma, Wu and Dalal (2005) set it out.
 
 Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
 physiologically-based model for simulation of color vision deficiency. IEEE
@@ -291,7 +290,7 @@ def simulate_cvd(colours: str | list[str], deficiency: str,
     colours : str or list of str
         Colours (any matplotlib-readable form) to transform. A single string
         is one colour, and an empty list gives an empty list back, as in the
-        R twin.
+        R package.
     deficiency : {"protan", "deutan", "tritan"}
         The deficiency to simulate (red-, green- or blue-weak vision).
     severity : float
@@ -364,17 +363,16 @@ def simulate_figure(plot, deficiency: str, severity: float = 1.0,
     """Show a finished figure as a reader with a colour-vision deficiency sees it.
 
     [`simulate_cvd`][depictr.simulate_cvd] simulates a list of colours, and
-    this function the figure they end up in, legend, colourbar, text and
+    this function simulates a whole figure, its legend, colourbar, text and
     background included. A copy of the plot is drawn and rasterised with
     matplotlib's Agg renderer. Every pixel then goes through the same
     transform: it is decoded from sRGB to linear light, multiplied by the
     matrix of Machado, Oliveira and Fernandes (2009) for the deficiency and
     severity and encoded again. The alpha channel is kept as drawn.
 
-    The R twin's ``simulate_figure()`` applies the same matrices to the
-    figure's vector elements and returns a gtable to draw or save. A solid
-    region comes out in the same colour in both, to within the rounding of an
-    eight-bit channel.
+    The R package's ``simulate_figure()`` applies the same matrices to the
+    figure's vector elements, so a solid region comes out in the same colour
+    in both, to within the rounding of an eight-bit channel.
 
     Parameters
     ----------
@@ -606,21 +604,21 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
 
     The default ``threshold`` of 5.0 is calibrated against the built-in palette
     of [`depictr.depictr_palette`][], which is based on the Okabe-Ito set. That
-    palette's tightest pair (reddish-purple against grey) sits at 6.43 under full
-    deuteranopia, so the cut must lie below that to pass the built-in palette,
-    while still flagging colours that become near-identical under a deficiency.
-    The difference includes lightness, which survives colour-vision deficiency,
-    so two colours that share a hue but differ in lightness are correctly
-    treated as distinguishable. Full severity is the worst case; most
-    colour-vision deficiency is milder.
+    palette's closest pair, the reddish purple and the grey, is 6.43 apart
+    under full deuteranopia, so the threshold must lie below 6.43 for the
+    built-in palette to pass, while still flagging colours that become nearly
+    identical under a deficiency. The difference includes lightness, which
+    survives colour-vision deficiency, so two colours that share a hue but
+    differ in lightness are correctly treated as distinguishable. Full
+    severity is the worst case. Most colour-vision deficiency is milder.
 
     Parameters
     ----------
     colours : str or list of str, optional
         The palette to test. Defaults to the depictr qualitative palette. Needs
-        at least two colours: a pairwise distance over fewer than two has no
-        value, not an infinitely safe one. A single string is one colour, so
-        it raises with that message.
+        at least two colours, since fewer than two have no pairwise distance,
+        and raises ``ValueError`` otherwise. A single string is one colour, so
+        it raises too.
     threshold : float
         The smallest acceptable colour difference, on the scale of ``metric``.
     metric : {"ciede2000", "cie76"}

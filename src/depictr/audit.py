@@ -1,19 +1,19 @@
 """An accessibility and honesty audit of a finished figure.
 
-:func:`palette_safety` can promise that the eight colours depictr ships stay
-apart under colour-vision deficiency. It knows nothing about the figure in front
-of you: how many of those colours it uses, what you replaced them with, how
-small the text becomes once the figure is squeezed into a journal column, or
+``palette_safety()`` can promise that the eight colours depictr ships stay
+apart under colour-vision deficiency. It knows nothing about a given figure:
+how many of those colours it uses, what you replaced them with, how small the
+text becomes once the figure is reduced to the width of a journal column, or
 whether the only thing separating two groups is their colour.
-:func:`check_figure` reads the built plot and answers those questions with
+``check_figure()`` reads the built plot and answers those questions with
 numbers.
 
-The audit introspects a built plot rather than re-deriving what it thinks the
-plot ought to contain, so it also sees whatever was added after depictr handed
-the plot back: a replacement scale, a different theme, an extra layer. Drawing
-the figure once supplies everything. The layers' data give the colours that
-encode groups, and the matplotlib artists give the text that will actually be
-drawn, at the point size and in the colour it will be drawn in.
+The audit reads the built plot, rather than working out what the plot ought
+to contain, so it also sees whatever was added after depictr returned the
+plot: a replacement scale, a different theme, an extra layer. Drawing the
+figure once supplies everything. The layers' data give the colours that
+encode groups, and the matplotlib artists give the text as it will be drawn,
+at its point size and in its colour.
 
 World Wide Web Consortium. (2023). Web content accessibility guidelines (WCAG)
 2.2. W3C Recommendation. https://www.w3.org/TR/WCAG22/
@@ -74,14 +74,14 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     """Audit a finished figure for accessibility and honesty.
 
     Checks a figure as it will be submitted, rather than the palette it was
-    built from. Every row carries the value it measured next to the threshold it
-    was measured against, so a verdict can be argued with rather than merely
-    accepted. A check passes when the measured value is at least the threshold.
+    built from. Every row gives the value it measured next to the threshold it
+    was measured against, so a reader can see by how much a check passed or
+    failed. A check passes when the measured value is at least the threshold.
     The one exception is ``text_size_max``, a ceiling added when
     ``max_text_pt`` is given, which passes when the measured value is at most
     its threshold. A check with nothing to measure, such as colour separability
     on a figure that encodes nothing by colour, reports ``NaN`` and a verdict
-    of ``"not applicable"`` instead of a free pass.
+    of ``"not applicable"`` rather than passing.
 
     Colours and text are measured as drawn. A translucent colour is composited
     over the background it is drawn on with the alpha it is drawn with, so it
@@ -90,7 +90,8 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     crossbars and smooths apply a layer's alpha to their fill and leave the
     outline opaque. Lines, paths, segments, error bars and reference lines
     apply it to their colour, and points apply it to both. Any other geom is
-    taken to apply it to both, the cautious assumption. A colour that carries
+    taken to apply it to both, so that its colours are measured at their
+    palest. A colour that carries
     its own alpha keeps it, as plotnine draws it. A colour drawn at several
     alphas within one layer is measured at the smallest. Where marks overlap
     one another, the colour that shows depends on what lies beneath it, and
@@ -140,7 +141,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ``text_contrast`` is the WCAG 2.2 contrast ratio of the text that falls
     furthest short of its own threshold. Each text is measured against the
     background it is drawn on: a facet strip's fill for strip text, the legend
-    box's fill for legend text, and the plot background for the rest. A
+    box's fill for legend text and the plot background for the rest. A
     translucent fill is measured as the colour it shows over what lies beneath
     it, and so is text drawn with an alpha. Text that is large at its printed
     size, 18 pt or 14 pt in bold, is held to 3:1, and other text to 4.5:1, as
@@ -160,9 +161,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     across the layers that draw the encoding colours. They are gathered as the
     colours are. A layer contributes the values it maps to a discrete scale, or
     the two or more it draws, and a shape or line type set as a constant is
-    left out. Zero means the distinction between groups is carried by colour
-    alone, the single most common way an otherwise careful figure becomes
-    unreadable.
+    left out. Zero means that colour alone tells the groups apart, so a reader
+    who cannot see the difference between the colours cannot tell the groups
+    apart either.
 
     ``annotation_text_size`` is the smallest point size of the text drawn
     inside the panel, scaled as ``text_size`` is and held to the same
@@ -176,20 +177,19 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     the panel and inside it, scaled as ``text_size`` is. It is the one row
     that passes at or below its threshold.
 
-    **Limitations of the default palette.** The eight-colour qualitative
-    palette clears the colour-separability checks comfortably and fails
-    ``greyscale_separability``: its orange (``#e69f00``) and sky blue
-    (``#56b4e9``) differ by only 0.79 in lightness, so they print as the same
-    grey. The colourblind-safety guarantee depictr makes is about hue confusion,
-    and it was never a claim about greyscale. A figure that may be printed in
-    black and white should use fewer groups, or a sequential palette, or add a
-    redundant shape or line type; the four leading colours are not safe in
-    greyscale either, since the bluish green and the vermillion differ by 3.55.
-    The threshold has been left where it is rather than moved to let the
-    package's own defaults through.
+    The default palette of eight colours passes the colour-separability
+    checks and fails ``greyscale_separability``. Its orange (``#e69f00``) and
+    sky blue (``#56b4e9``) differ by only 0.79 in lightness, so they print as
+    the same grey. The colourblind-safety guarantee that depictr makes concerns
+    confusion between hues, not greyscale. A figure that may be printed in
+    black and white should use fewer groups, a sequential palette or a
+    redundant shape or line type. The first four colours are not safe in
+    greyscale either, since the bluish green and the vermillion differ by 3.55
+    in lightness. The threshold is not lowered to let the package's own
+    palette pass.
 
-    The palette falls short on contrast as well. Four of its eight colours are
-    below the 3:1 against white that WCAG asks of a graphical object: the
+    Four of the palette's eight colours are also below the 3:1 against white
+    that WCAG asks of a graphical object: the
     orange at 2.25:1, the sky blue at 2.31:1, the grey at 2.85:1 and the yellow
     at 1.32:1. The orange is the second colour, so a default figure on white
     whose colour tells two or more groups apart fails ``geometry_contrast``,
@@ -202,25 +202,25 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ``order="contrast"``. Up to three groups then pass every colour row, and
     four keep 3:1 against white.
 
-    **Auditing at the printed size.** Text is drawn in points, so the size it
-    prints at depends on the two widths. A figure drawn at the size it will be
+    Text is drawn in points, so the size it prints at depends on the two
+    widths. A figure drawn at the size it will be
     printed, as [`depictr.save_plot`][] draws one given
     ``width=8.9, units="cm"``, needs no scaling. Pass the saved width as both
     ``width_cm`` and ``render_width_cm``, or leave both at their defaults.
     Given alone, ``width_cm`` audits the figure as though it had been drawn
-    seven inches wide and then shrunk to fit. [`depictr.save_plot`][] with
+    seven inches wide and then reduced to that width. [`depictr.save_plot`][] with
     ``check=True`` audits a figure at the width it saves it at, given as both.
 
     The default ``min_text_pt`` of 6 is lenient. As their guidelines stood on
     30 September 2026, PLOS asked for text of 8 to 12 pt and APA Style for 8 to
-    14 pt. Elsevier asked for 7 pt as a rule of thumb, and Nature for 5 to 7
-    pt, with panel labels at 8 pt. Pass the floor of the journal the figure is
+    14 pt. Elsevier suggested 7 pt, and Nature asked for 5 to 7 pt, with
+    panel labels at 8 pt. Pass the floor of the journal the figure is
     for as ``min_text_pt``, and its ceiling, where it sets one, as
     ``max_text_pt``. Nature's 7 pt applies to all text but the panel labels,
     and a panel label drawn as a panel's title or annotation is measured with
     the rest. The four pages are listed under References.
 
-    **Compositions.** A composition, such as [`depictr.arrange_plots`][],
+    A composition, such as those that [`depictr.arrange_plots`][],
     [`depictr.residual_diagnostics_plot`][] and [`depictr.model_report`][]
     return, is audited panel by panel. Each panel has its own scales, theme
     and text, so each is audited as it would be on its own. The reports are
@@ -234,19 +234,18 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     grids [`depictr.arrange_plots`][] builds. A ``plot_spacer()`` draws no
     figure of its own and takes no number. A panel's legend is measured with
     the panel. Only the panels are measured, so anything a composition draws
-    around them is not. The R twin numbers the panels of a patchwork by the
-    same rule. The panel tags [`depictr.arrange_plots`][] adds belong to the
-    panels' own plots in this twin, so each tag is measured with its panel,
-    by ``text_size_max`` too. The R twin's patchwork draws its tags around the
-    panels, where they are not measured, so a composition arranged with
-    ``tag_levels=None`` is the one whose report matches the R twin's.
+    around them is not. The panel tags that [`depictr.arrange_plots`][] adds
+    belong to the panels' own plots, so each tag is measured with its panel,
+    by ``text_size_max`` too. The R package draws its tags around the panels,
+    where they are not measured, so its report matches this one for a
+    composition arranged with ``tag_levels=None``.
 
     Parameters
     ----------
     plot : plotnine.ggplot or plotnine.composition.Compose
         A plot, as returned by any depictr plotting function, including one
-        extended afterwards with ``+``, or a multi-panel composition (see
-        "Compositions" above).
+        extended afterwards with ``+``, or a multi-panel composition (see the
+        paragraphs on compositions above).
     width_cm : float
         The width, in centimetres, that the figure will occupy in the finished
         document. Defaults to 17.78 cm, the seven inches
@@ -263,7 +262,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     min_text_pt : float
         The smallest acceptable printed text size, in points, for the text
         around the panel and the text inside it alike. Defaults to 6, below the
-        floor most journals set (see "Auditing at the printed size" above).
+        floors of PLOS, APA Style and Elsevier given above.
     metric : {"ciede2000", "cie76"}
         The colour difference the colour separability checks measure:
         CIEDE2000, the default, or CIE76, the Euclidean distance in CIELAB.
@@ -332,21 +331,21 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     >>> report.loc[report["verdict"] != "pass", "check"].tolist()
     ['annotation_text_size']
 
-    The same figure destined for an 8.9 cm journal column, where the text is
-    half the size it looks on screen.
+    The same figure printed in an 8.9 cm journal column, where the text is
+    half the size it is drawn at.
 
     >>> shrunk = dp.check_figure(good, width_cm=8.9)
     >>> shrunk.loc[shrunk["check"] == "text_size", "verdict"].item()
     'fail'
 
-    Saved at 8.9 cm in the first place, with ``save_plot(width=8.9,
-    units="cm")``, it is drawn at the size it prints, so both widths are 8.9.
+    Saved at 8.9 cm with ``save_plot(width=8.9, units="cm")``, it is drawn at
+    the size it prints, so both widths are 8.9.
 
     >>> saved = dp.check_figure(good, width_cm=8.9, render_width_cm=8.9)
     >>> saved.loc[saved["check"] == "text_size", "verdict"].item()
     'pass'
 
-    Nature allowed no text above 7 pt but the panel labels. The axis titles
+    Nature allowed no text above 7 pt except the panel labels. The axis titles
     here are 11 pt, so the ceiling row fails.
 
     >>> nature = dp.check_figure(good, max_text_pt=7)

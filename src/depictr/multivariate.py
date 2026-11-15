@@ -1,9 +1,9 @@
 """Multivariate plots: PCA, clustering and dendrograms, themed consistently.
 
-The decompositions and clusterings come from the de-facto standard packages --
-``scikit-learn`` for PCA, k-means and silhouettes, ``scipy`` for hierarchical
-linkage -- and the figures are re-drawn under the depictr theme, so a biplot or a
-scree plot sits in the same visual language as the rest of a report. Numeric
+The decompositions and clusterings come from ``scikit-learn`` (PCA, k-means
+and silhouettes) and ``scipy`` (hierarchical linkage), and the figures are drawn
+with the depictr theme, so a biplot or a scree plot looks like the other figures
+of a report. Numeric
 columns are standardised (zero mean, unit variance) before any decomposition, so
 no single variable dominates through its scale alone.
 
@@ -109,9 +109,9 @@ def pca_plot(data, cols=None, group=None, title=None):
     data : pandas.DataFrame
         The data.
     cols : list of str, optional
-        Numeric columns to decompose; defaults to all numeric columns.
+        Numeric columns to decompose. Defaults to all numeric columns.
     group : str, optional
-        A column mapped to the colour of the observation points. Kept aside from
+        A column mapped to the colour of the observation points. Left out of
         the decomposition, which uses only the numeric ``cols``.
     title : str, optional
         Plot title.
@@ -128,7 +128,7 @@ def pca_plot(data, cols=None, group=None, title=None):
     Notes
     -----
     Each arrow is a variable's loadings on the two components, multiplied by a
-    factor that all the arrows share, as in the R twin. The factor makes the
+    factor that all the arrows share. The factor makes the
     largest coordinate of any arrow three quarters of the largest absolute
     score. Both axes use that one factor, as base R's ``biplot()`` uses one
     ratio for both, and the aspect ratio is fixed at 1. An arrow's angle on the
@@ -215,8 +215,8 @@ def _arrow():
 def scree_plot(data, cols=None, title=None):
     """Scree plot: variance explained per component, with the cumulative line.
 
-    Bars give the proportion of variance each principal component explains; an
-    overlaid line and points give the running cumulative proportion. Both share
+    Bars give the proportion of variance each principal component explains, and
+    an overlaid line and points give the running cumulative proportion. Both share
     the (0, 1) y-axis. The columns used are standardised and rows with a
     missing value in any of them are dropped, as in
     [`pca_plot`][depictr.pca_plot].
@@ -225,7 +225,7 @@ def scree_plot(data, cols=None, title=None):
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Numeric columns to decompose; defaults to all numeric columns.
+        Numeric columns to decompose. Defaults to all numeric columns.
     title : str, optional
 
     Returns
@@ -268,10 +268,9 @@ def scree_plot(data, cols=None, title=None):
 def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
     """k-means clusters drawn on the first two principal components.
 
-    k-means is run on the standardised data in all of its dimensions, as the
-    R twin's ``cluster_plot()`` runs it by default, and with the settings
-    [`silhouette_plot`][depictr.silhouette_plot] uses, so the two functions
-    show the same partition for the same ``k``. The principal components
+    k-means is run on the standardised data in all of its dimensions, with
+    the settings [`silhouette_plot`][depictr.silhouette_plot] uses, so the two
+    functions show the same partition for the same ``k``. The principal components
     serve only to display it. Points are drawn at their PC1 and PC2 scores,
     coloured by cluster, and each centroid is marked by a larger outlined
     point at the projection of its k-means centre. The axis labels report the
@@ -281,7 +280,7 @@ def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Numeric columns to use; defaults to all numeric columns.
+        Numeric columns to use. Defaults to all numeric columns.
     k : int
         Number of clusters. Ignored when ``clusters`` is supplied.
     title : str, optional
@@ -313,7 +312,7 @@ def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
 
     k-means settles in a local optimum. scikit-learn's algorithm and random
     starts differ from those of R's ``kmeans()``, so on data without clear
-    clusters the two twins can still assign some points differently for the
+    clusters the two packages can still assign some points differently for the
     same ``k``.
 
     Examples
@@ -378,9 +377,9 @@ def cluster_plot(data, cols=None, k=3, title=None, clusters=None):
 def dendrogram_plot(data, cols=None, method="ward", title=None):
     """Hierarchical-clustering dendrogram drawn from a scipy linkage.
 
-    The linkage is computed by scipy and the dendrogram coordinates it returns
-    are redrawn as line segments under the depictr theme, so the tree matches the
-    rest of the figure set. Leaves are not labelled, since the intent is to read
+    The linkage is computed by scipy, and the dendrogram coordinates it returns
+    are drawn as line segments with the depictr theme, so the tree matches the
+    other figures. Leaves are not labelled, since the intent is to read
     the overall merge structure rather than individual observations. The
     columns used are standardised, rows with a missing value in any of them
     are dropped and the linkage is computed on Euclidean distances.
@@ -389,7 +388,7 @@ def dendrogram_plot(data, cols=None, method="ward", title=None):
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Numeric columns to cluster on; defaults to all numeric columns.
+        Numeric columns to cluster on. Defaults to all numeric columns.
     method : str
         Linkage method passed to ``scipy.cluster.hierarchy.linkage``
         (for example ``"ward"``, ``"average"``, ``"complete"``).
@@ -441,14 +440,14 @@ def silhouette_plot(data, cols=None, k=3, title=None):
     k-means is run on the standardised data and the silhouette width of each
     observation is drawn as a horizontal bar, sorted within its cluster and
     coloured by cluster. A dashed reference line marks the mean silhouette width,
-    a quick read on how well-separated the clustering is overall. Rows with a
+    a summary of how well separated the clusters are. Rows with a
     missing value in any of the columns used are dropped.
 
     Parameters
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Numeric columns to use; defaults to all numeric columns.
+        Numeric columns to use. Defaults to all numeric columns.
     k : int
         Number of clusters.
     title : str, optional

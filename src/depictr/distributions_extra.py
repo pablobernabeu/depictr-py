@@ -45,8 +45,8 @@ from .theme import (
 def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
     """Empirical cumulative distribution function, one step curve per group.
 
-    The ECDF reads off the proportion of observations at or below each value, so
-    it shows the whole distribution without the smoothing choices a density makes.
+    The ECDF gives the proportion of observations at or below each value, so it
+    shows the whole distribution without the smoothing choices a density makes.
     Curves that sit to the right are shifted towards larger values.
 
     Parameters
@@ -63,7 +63,7 @@ def ecdf_plot(data, x, group=None, legend_inside=False, title=None):
         the plot and its palette.
     legend_inside : bool
         When ``True`` and a ``group`` is given, place the legend in the
-        bottom-right, which an ECDF leaves empty once it saturates.
+        bottom-right, which an ECDF leaves empty once it reaches 1.
     title : str, optional
         Plot title.
 
@@ -101,10 +101,10 @@ def ridgeline_plot(data, x, group, title=None):
     ridges overlap a little. Reading top to bottom gives a quick sense of how the
     distribution shifts across levels. Levels are ordered by their median so the
     progression is easy to follow, and each keeps the colour of its place in
-    the group's own order, as in the R twin.
+    the group's own order, as in the R package.
 
-    The overlap is faked with ``plotnine.facet_grid``: one narrow row per
-    level, panel spacing pulled negative so neighbouring ridges touch. It stays a
+    The overlap is made with ``plotnine.facet_grid``: one narrow row per level,
+    with negative panel spacing so that neighbouring ridges touch. It stays a
     single ggplot, since plotnine has no dedicated ridgeline geom.
 
     Parameters
@@ -114,7 +114,7 @@ def ridgeline_plot(data, x, group, title=None):
     x : str
         Name of the numeric column.
     group : str
-        The grouping column; one ridge is drawn per level. A numeric code
+        The grouping column, with one ridge per level. A numeric code
         counts as a group, but a numeric column with more than 20 distinct
         values raises ``ValueError``. Rows with a missing group are dropped
         with a warning, and categories without rows are left out of the plot
@@ -188,9 +188,9 @@ def dumbbell_plot(data, category, value, group, legend_inside=False, title=None)
     value : str
         The numeric column plotted along the x-axis.
     group : str
-        A two-level grouping column; its levels are the two points. They are
+        A two-level grouping column, whose levels are the two points. They are
         taken in a categorical's declared order, and otherwise sorted, as in
-        the R twin. The first level is the start of each segment, orders the
+        the R package. The first level is the start of each segment, orders the
         categories and takes the first colour of the palette.
     legend_inside : bool
         When ``True``, place the two-group legend in the top-right of the panel
@@ -277,7 +277,7 @@ def outlier_plot(data, x, title=None):
         Name of the numeric column to inspect.
     title : str, optional
         Plot title. A subtitle always gives the number of outliers flagged, as
-        in "3 outliers beyond 1.5 x IQR".
+        in ``3 outliers beyond 1.5 x IQR``.
 
     Returns
     -------
@@ -323,7 +323,7 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
     """Group means with confidence intervals over the raw points.
 
     The estimate-with-uncertainty alternative to a bar chart: each group shows its
-    raw observations (jittered), the mean, and a confidence interval for the mean.
+    raw observations (jittered), the mean and a confidence interval for the mean.
     Showing the spread of the data alongside the estimate guards against reading
     too much into a difference in means.
 
@@ -350,7 +350,7 @@ def group_comparison_plot(data, x, group, title=None, conf_level=0.95):
 
     Notes
     -----
-    Each interval is the t interval for the group's mean, as in the R twin and
+    Each interval is the t interval for the group's mean, as in the R package and
     in the upper panel of [`depictr.estimation_plot`][]. Its half-width is the
     standard error times the ``1 - (1 - conf_level) / 2`` quantile of the t
     distribution with n - 1 degrees of freedom. It describes the precision
