@@ -28,3 +28,7 @@ jobs:
       - run: |
           python diag/report_workaround.py force_autohint || echo "exit status $?"
           python diag/report_workaround.py no_hinting || echo "exit status $?"
+      - run: python diag/report_ft2font.py || echo "exit status $?"
+      - run: |
+          brew list --versions freetype || brew install freetype
+          python diag/report_ctypes.py
