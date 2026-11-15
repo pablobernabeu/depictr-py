@@ -1,7 +1,6 @@
 """Tests for save_plot(): files that pass journals' technical checks."""
 
 import re
-import sys
 import warnings
 
 import matplotlib
@@ -184,10 +183,15 @@ def audited_good():
 
 
 def audited_bad():
+    # The figure names DejaVu Sans, which ships with matplotlib, so that it is
+    # drawn in the same font on every platform. plotnine lists Helvetica first
+    # among its sans-serif fonts, and on macOS matplotlib 3.11.2 raises 'failed
+    # to load glyph' when it hints the system's Helvetica at 7 pixels per em or
+    # fewer, as the 5 pt text is at 72 dpi (run 43726985192).
     return (ggplot(CY, aes("rainfall", "yield", colour="treatment"))
             + geom_point()
             + scale_colour_manual(values=["#d62728", "#309208"])
-            + dp.theme_depictr(base_size=5))
+            + dp.theme_depictr(base_size=5, base_family="DejaVu Sans"))
 
 
 def test_check_audits_at_the_saved_width_given_as_both_widths(tmp_path,
@@ -217,13 +221,6 @@ def test_check_audits_at_the_saved_width_given_as_both_widths(tmp_path,
         "Smallest text 8.80 pt, drawn at 8.90 cm and printed at 8.90 cm.")
 
 
-# On macOS, matplotlib 3.11.2 raised 'failed to load glyph' while plotnine laid
-# out the small text of this figure for the save, at 72 and at 100 dpi (jobs
-# 132835817126 and 132842785270). The audit before the save drew the same
-# figure without error there, and the save passes on Linux and Windows. The
-# cause is not known, so the test is expected to fail on macOS until it is.
-@pytest.mark.xfail(sys.platform == "darwin", strict=False,
-                   reason="matplotlib on macOS: 'failed to load glyph'")
 def test_check_warns_with_the_checks_the_figure_fails(tmp_path):
     # A row with nothing to measure, here the text inside the panel, is not a
     # failure.
