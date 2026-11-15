@@ -50,7 +50,8 @@ def _require_statsmodels():
 
 
 def _is_fitted_model(obj) -> bool:
-    """True for a fitted statsmodels result (OLS/GLM), as opposed to raw data."""
+    """True for a fitted statsmodels result with influence measures, such as an
+    OLS or GLM fit, as opposed to raw data."""
     return hasattr(obj, "get_influence") and hasattr(obj, "model")
 
 
@@ -162,7 +163,7 @@ def _quantile_residuals(model, seed=None):
 
     The supported families are those of the R twin's ``quantile_residuals()``:
     binomial (including Logit and Probit fits), Poisson, Gaussian and Gamma.
-    For any other model the deviance residuals come back, flagged, so that a
+    For any other model, the deviance residuals come back, flagged, so that a
     caller can label them as such.
 
     Parameters
@@ -365,11 +366,11 @@ def _model_terms(model):
     ``data.design_info``, and from 0.15 as ``data.model_spec``, which holds a
     formulaic ModelSpec when the formula engine is formulaic. Each names the
     terms and the columns they fill, and the intercept is the term
-    "Intercept" or "1". The spec is read according to its own type, because
-    statsmodels' FormulaManager reads one through whichever engine is set at
-    the time, which need not be the engine that built it. A model fitted from
-    arrays has no terms, so each column stands for itself, and the intercept
-    is the constant column statsmodels found.
+    ``"Intercept"`` or ``"1"``. The spec is read according to its own type,
+    because statsmodels' FormulaManager reads one through whichever engine is
+    set at the time, which need not be the engine that built it. A model fitted
+    from arrays has no terms, so each column stands for itself, and the
+    intercept is the constant column statsmodels found.
 
     Returns
     -------
@@ -431,8 +432,8 @@ def _has_coefficient_covariance(obj) -> bool:
     """True for a fitted statsmodels result that holds its coefficients' covariance.
 
     With the design, that covariance is all a VIF needs. WLS and GLS results
-    lack the influence machinery that _is_fitted_model() looks for, so a fit
-    of any of statsmodels' linear regression models counts as well, as a
+    lack the ``get_influence()`` method that _is_fitted_model() looks for, so a
+    fit of any of statsmodels' linear regression models counts as well, as a
     weighted lm() does in the R twin.
     """
     from statsmodels.regression.linear_model import RegressionModel

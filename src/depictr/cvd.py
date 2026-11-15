@@ -259,8 +259,9 @@ def _machado_matrix(deficiency: str, severity: float) -> np.ndarray:
     the supplementary page suggests and as colorspacious and R's
     ``colorspace::interpolate_cvd_transform()`` do, so 0.25 lies halfway
     between the matrices for 0.2 and 0.3. Severities 0 and 1 take their
-    matrices exactly as published, which keeps full-severity results bit for
-    bit. The R twin's ``.cvd_matrix()`` computes the same expressions.
+    matrices exactly as published, so full-severity results use the published
+    values unchanged. The R twin's ``.cvd_matrix()`` computes the same
+    expressions.
     """
     table = _MACHADO[deficiency]
     scaled = 10 * severity
@@ -334,9 +335,9 @@ def simulate_cvd(colours: str | list[str], deficiency: str,
 
 
 def _simulate_pixels(rgba: np.ndarray, deficiency: str, severity: float) -> np.ndarray:
-    """A copy of an RGBA image in [0, 1], its colours as a deficiency sees them.
+    """A copy of an RGBA image in [0, 1], its colours as seen with a deficiency.
 
-    Each pixel takes the transform that :func:`simulate_cvd` applies to a
+    Each pixel takes the transform that ``simulate_cvd()`` applies to a
     colour, without rounding to eight bits, and keeps its alpha.
     """
     seen = np.array(rgba, dtype=float)
@@ -568,7 +569,7 @@ def _min_pairwise_delta_e(colours: list[str], groups=None,
     distance in CIELAB. ``groups``, when given, labels each colour, and a pair
     whose labels are equal is skipped: ``check_figure`` labels each drawn
     colour with the colour it was declared as, so that one group drawn in two
-    ways is not set against itself.
+    ways is not compared with itself.
     """
     lab = _rgb_to_lab(colours)
     best, pair = np.inf, (0, 0)
@@ -607,9 +608,9 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     palette's closest pair, the reddish purple and the grey, is 6.43 apart
     under full deuteranopia, so the threshold must lie below 6.43 for the
     built-in palette to pass, while still flagging colours that become nearly
-    identical under a deficiency. The difference includes lightness, which
-    survives colour-vision deficiency, so two colours that share a hue but
-    differ in lightness are correctly treated as distinguishable. Full
+    identical under a deficiency. The difference includes lightness, which a
+    colour-vision deficiency does not remove, so two colours that share a hue
+    but differ in lightness are correctly treated as distinguishable. Full
     severity is the worst case. Most colour-vision deficiency is milder.
 
     Parameters

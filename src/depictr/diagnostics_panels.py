@@ -71,8 +71,8 @@ def _check_model(model, func_name: str) -> None:
 def _residuals_vs_fitted(model, title=None):
     """Residuals against fitted values, with a lowess smoother and a zero line.
 
-    A flat smoother near zero means the linear fit has caught the structure. A
-    bend or funnel points to a missing term or non-constant variance. A GLM,
+    A flat smoother near zero means the residuals show no systematic pattern. A
+    bend or funnel suggests a missing term or non-constant variance. A GLM,
     Logit or Probit fit plots its deviance residuals against its fitted means.
     """
     resid, label = _raw_residuals(model)
@@ -88,11 +88,11 @@ def _residuals_vs_fitted(model, title=None):
 
 
 def _scale_location(model, title=None):
-    """Scale-location plot: sqrt of the absolute studentised residuals vs fitted.
+    """Scale-location plot: sqrt(|studentised residual|) against fitted values.
 
-    Taking the square root of the absolute residual flattens the cloud, so a
-    rising or falling smoother reads as a change in spread (heteroscedasticity)
-    rather than in level.
+    Taking the square root of the absolute residual makes its distribution less
+    skewed, so a rising or falling smoother shows a change in spread
+    (heteroscedasticity) rather than in level.
     """
     fitted = _fitted_values(model)
     root_abs = np.sqrt(np.abs(_studentised_residuals(model)))
@@ -110,9 +110,9 @@ def _scale_location(model, title=None):
 def _residuals_vs_leverage(model, title=None):
     """Studentised residuals against leverage, with a zero line.
 
-    Leverage measures how unusual an observation's predictors are. A point that
-    sits far right and far from zero is the kind that can pull the fit on its
-    own, so it is worth a second look.
+    Leverage measures how unusual an observation's predictors are. A point
+    with high leverage and a residual far from zero can change the fitted
+    coefficients substantially on its own, so it should be checked.
     """
     infl = model.get_influence()
     df = pd.DataFrame({
@@ -149,7 +149,7 @@ def _residual_and_qq_panels(model, glm_panels, seed):
     false, as in the R twin. They are a Q-Q plot of its quantile residuals and
     a residual panel: binned residuals for a binomial model, and the deviance
     residuals against the fitted values for other families. The R twin bins
-    those too, but :func:`depictr.binned_residual_plot` takes binomial models
+    those too, but ``depictr.binned_residual_plot()`` takes binomial models
     only. Any other model gets the classic panels.
     """
     if glm_panels and (_is_glm(model) or _is_binary(model)):

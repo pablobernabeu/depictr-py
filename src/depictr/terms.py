@@ -319,9 +319,9 @@ def _design_labels(model, interaction: str) -> dict:
     The design records where each factor's name ends and its level begins, so
     a level holding a colon or a bracket is labelled whole. The R twin builds
     the same map from the model matrix. Each label is also keyed under a
-    ``b_`` prefix, so a brms-style table lines up with the fit. A column that
-    names no level, and any fit without a patsy design, is left to
-    :func:`format_terms`. If the rebuilt names ever differ from the design's
+    ``b_`` prefix, so a brms-style table gets the same labels as the fit. A
+    column that names no level, and any fit without a patsy design, is left to
+    ``format_terms()``. If the rebuilt names ever differ from the design's
     own, the map is dropped, so a change in patsy cannot mislabel a column.
     """
     info = _design_info(model)
@@ -394,7 +394,7 @@ def _term_labels(terms, labels, auto: dict, interaction: str) -> list[str]:
 
     ``labels="raw"`` keeps the names as the model gives them. Otherwise, a term
     takes its label from the ``labels`` dict, then from ``auto``, the factor
-    labels read from a model's design, then from :func:`format_terms`.
+    labels read from a model's design, then from ``format_terms()``.
     """
     terms = [str(t) for t in terms]
     if _is_raw(labels):

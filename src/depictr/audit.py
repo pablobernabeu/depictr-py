@@ -127,9 +127,9 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     diverging ramps, over a rainbow (Crameri et al., 2020).
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
-    between those same colours, which is what survives printing in black and
-    white. It is the absolute difference in lightness, whichever ``metric`` the
-    colour rows use.
+    between those same colours, which is the difference that remains when the
+    figure is printed in black and white. It is the absolute difference in
+    lightness, whichever ``metric`` the colour rows use.
 
     ``text_size`` is the smallest point size of the text the theme draws around
     the panel: axis labels and titles, legends, facet strips, titles and
@@ -168,7 +168,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     ``annotation_text_size`` is the smallest point size of the text drawn
     inside the panel, scaled as ``text_size`` is and held to the same
     ``min_text_pt``. That text comes from layers such as ``geom_text`` and
-    ``geom_label``, from annotations, and from depictr's own cell values and
+    ``geom_label``, from annotations and from depictr's own cell values and
     labels. Its contrast is not measured, since it sits on the marks rather
     than on one background.
 
@@ -397,10 +397,10 @@ def _composition_panels(composition):
     """The panels of a composition, depth-first in the order it holds them.
 
     Reached by iterating over the composition, as plotnine documents, so the
-    walk does not depend on how a composition stores its plots. A nested
-    composition is walked where it stands. A ``plot_spacer()`` draws no figure
-    of its own, so it is not a panel, as a patchwork spacer is not in the R
-    twin.
+    order does not depend on how a composition stores its plots. The panels of
+    a nested composition take its place in that order. A ``plot_spacer()``
+    draws no figure of its own, so it is not a panel, as a patchwork spacer is
+    not in the R twin.
     """
     from plotnine.composition import Compose, plot_spacer
 
@@ -520,7 +520,7 @@ def _composite(colour, background: str, alpha: float = 1.0) -> str:
     Each channel, scaled to run from 0 to 1, is
     ``alpha * colour + (1 - alpha) * background``,
     then scaled to 8 bits with ``floor(255 * drawn + 0.5)``. The R twin does
-    the same arithmetic in the same order, so the two agree to the last bit.
+    the same arithmetic in the same order, so the two give the same 8-bit values.
     matplotlib's ``to_hex`` rounds half to even and would disagree with R at
     some alphas, 0.3 and 0.7 among them. ``alpha`` multiplies the colour's own
     alpha.
@@ -573,7 +573,7 @@ def _relative_luminance(colours) -> np.ndarray:
     The linearisation is the sRGB transfer function that ``_srgb_to_linear``
     applies everywhere else in the package, with its 0.04045 breakpoint, which
     is the one the WCAG 2.2 definition of relative luminance prints. Before May
-    2021 that definition printed 0.03928, and the W3C's note on the change says
+    2021, that definition printed 0.03928, and the W3C's note on the change says
     the old value had no practical effect: no 8-bit channel value lies between
     the two, so no ratio differs.
     """
@@ -596,12 +596,12 @@ def _legible_text_colour(fills) -> list[str]:
 
     Against a fill of relative luminance L, black reaches (L + 0.05) / 0.05 and
     white 1.05 / (L + 0.05). The two tie at L = 0.179, where each reaches
-    4.58:1, so the better of the two clears the 4.5:1 that WCAG 2.2 asks of
-    text (success criterion 1.4.3) on any fill. A near-black cannot promise
-    that: against fills of luminance 0.18 to 0.22, neither ``#1a1a1a`` nor
-    white reaches 4.5:1. It colours the cell labels of
-    :func:`depictr.confusion_matrix_plot` and
-    :func:`depictr.correlation_heatmap`. The R twin's ``.legible_text_colour()``
+    4.58:1, so the better of the two reaches the 4.5:1 that WCAG 2.2 asks of
+    text (success criterion 1.4.3) on any fill. A near-black does not
+    guarantee that: against fills of luminance 0.18 to 0.22, neither
+    ``#1a1a1a`` nor white reaches 4.5:1. It colours the cell labels of
+    ``depictr.confusion_matrix_plot()`` and
+    ``depictr.correlation_heatmap()``. The R twin's ``.legible_text_colour()``
     makes the same choice, black on a tie.
     """
     fills = list(np.atleast_1d(fills))
@@ -625,8 +625,8 @@ class _Encoding(NamedTuple):
     ``sets`` holds the drawn colours of the colour and of the fill aesthetic
     across all layers, each a sorted list of ``(drawn, declared)`` pairs, and
     leaves out an aesthetic that encodes nothing. ``marks`` holds one drawn
-    colour per encoded group, for the geometry check, ``redundant`` the
-    non-colour channels that vary alongside the colours, and ``abstain`` the
+    colour per encoded group, for the geometry check. ``redundant`` holds the
+    non-colour channels that vary alongside the colours and ``abstain`` the
     detail the colour rows give when nothing encodes.
     """
 
@@ -644,9 +644,10 @@ def _alpha_targets(geom) -> set[str]:
     crossbars and smooths pass the layer's alpha to the fill alone and draw the
     outline, the whiskers and the median or fitted line opaque. Paths (lines,
     steps), segments, error bars, line ranges and the reference lines pass it
-    to the colour. Points and point ranges pass it to both, and so does any
-    geom not named here, the cautious assumption for a geom whose drawing has
-    not been read. The R twin keeps the same table for ggplot2's geoms.
+    to the colour. Points and point ranges pass it to both. Any geom not named
+    here, whose drawing code has not been read, is taken to pass it to both,
+    so that no colour is measured as more opaque than it may be drawn. The R
+    twin keeps the same table for ggplot2's geoms.
     """
     from plotnine import (
         geom_abline,
@@ -795,8 +796,8 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
     mapping, and a colour passed through an identity scale is drawn as given.
     A layer that draws one such colour alone carries nothing, since the audit
     cannot tell it from decoration. A continuous scale is a smooth ramp, where
-    neighbouring colours are meant to be close, so measuring the distance
-    between them would only ever say that a gradient is a gradient.
+    neighbouring colours are meant to be close, so the distance between them
+    says nothing about whether groups can be told apart.
 
     Shape and line type are gathered by the same rule from the layers that draw
     the encoding colours. Either counts as varying alongside them when those
@@ -804,7 +805,7 @@ def _figure_colour_encoding(plot, background: str) -> _Encoding:
 
     Every colour is taken as drawn over ``background``, the panel, at the alpha
     its geom applies to it. The sets are sorted, so that a tie between two
-    equally close pairs resolves the same way in both engines.
+    equally close pairs resolves the same way in both packages.
 
     When nothing encodes by colour, the colour rows abstain, and their detail
     says why. It tells a figure that draws its colour or fill from a continuous
@@ -925,7 +926,7 @@ def _text_as_drawn(artist) -> tuple[float, str, float] | None:
     """A text artist's point size, declared colour and alpha, as drawn.
 
     None when it draws nothing: when it is hidden or blank, when its colour or
-    size does not parse, or when it is fully transparent. When the artist has
+    size does not parse or when it is fully transparent. When the artist has
     an alpha of its own, matplotlib draws the text in it and ignores the
     colour's alpha, which counts only when the artist has none.
     """
@@ -948,7 +949,7 @@ def _panel_text(figure) -> list[float]:
     plotnine draws a layer's text, and an annotation's, with ``Axes.text``, so
     the text inside each panel is what its axes holds in ``Axes.texts``, and
     the theme's text never is. A text that draws nothing is left out, as
-    :func:`_figure_text` leaves it out. The R twin walks the panel cells of
+    ``_figure_text()`` leaves it out. The R twin reads the panel cells of
     the rendered table for the same text.
     """
     return [drawn[0] for ax in figure.axes for artist in ax.texts
@@ -960,9 +961,9 @@ def _figure_text(figure, plot_bg: str) -> list[_Text]:
 
     Reads the matplotlib text artists, which is where the resolved point size
     and colour of a label exist, and where an element the theme defines but the
-    figure never draws simply does not appear.
+    figure never draws does not appear.
 
-    Text an axes owns directly is skipped and left to :func:`_panel_text`,
+    Text an axes owns directly is skipped and left to ``_panel_text()``,
     which is where layer and annotation text are. Tick labels, axis titles and
     the legend belong to the axis, the figure or the legend rather than to
     ``Axes.texts``.
@@ -1035,7 +1036,7 @@ def _row(check: str, measured, threshold: float, detail: str,
 
 def _min_pairwise_gap(values: np.ndarray,
                       groups=None) -> tuple[float, tuple[int, int]]:
-    """Smallest pairwise gap in one dimension, walked in the twin's order.
+    """Smallest pairwise gap in one dimension, with pairs in the R twin's order.
 
     A pair whose ``groups`` are equal is skipped, as in
     ``_min_pairwise_delta_e``.
@@ -1062,7 +1063,7 @@ def _separability_rows(sets: dict[str, list[tuple[str, str]]],
 
     Each set holds the drawn colours of one aesthetic, and only colours
     declared differently are paired, so a group is never compared with itself.
-    The rows report the closest pair over the sets, the first set winning a
+    The rows report the closest pair over the sets, the first set taken on a
     tie. ``metric`` is the colour difference of the four colour rows, and the
     greyscale row is a lightness gap either way. ``abstain`` is the detail
     every row gives when no set encodes.

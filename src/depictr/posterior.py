@@ -46,7 +46,7 @@ _OUTER = 0.95
 def _draws_to_frame(draws) -> pd.DataFrame:
     """Coerce a draws container to a DataFrame, one column per parameter.
 
-    Accepts a :class:`pandas.DataFrame` (returned as-is) or a mapping from
+    Accepts a ``pandas.DataFrame`` (returned as-is) or a mapping from
     parameter name to a 1-D array of draws. The arrays in a mapping may differ
     in length, so they are aligned into a frame column by column.
     """
@@ -162,7 +162,7 @@ def posterior_plot(draws, labels=None, title=None):
 def frequentist_bayesian_plot(frequentist, bayesian, title=None):
     """Overlay a frequentist estimate against a Bayesian posterior per term.
 
-    For each term the two sources share a row, offset slightly so they do not
+    For each term, the two sources share a row, offset slightly so they do not
     overlap. The frequentist side shows the point estimate with its confidence
     interval, and the Bayesian side shows the posterior median with the inner 66%
     and outer 95% credible intervals. The sources are told apart by colour (brand

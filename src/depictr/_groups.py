@@ -1,10 +1,9 @@
 """One rule for the grouping variable of the grouped exploratory plots.
 
-:func:`_prepare_group` applies the R twin's ``prepare_group()`` rule to the
-``group`` of :func:`depictr.explore_distribution`,
-:func:`depictr.explore_categorical`, :func:`depictr.scatter_trend`,
-:func:`depictr.ecdf_plot`, :func:`depictr.ridgeline_plot`,
-:func:`depictr.group_comparison_plot` and :func:`depictr.raincloud_plot`. A
+``_prepare_group()`` applies the R twin's ``prepare_group()`` rule to the
+``group`` of ``explore_distribution()``, ``explore_categorical()``,
+``scatter_trend()``, ``ecdf_plot()``, ``ridgeline_plot()``,
+``group_comparison_plot()`` and ``raincloud_plot()``. A
 numeric code with no more than 20 distinct values is a group like any other,
 a missing group is dropped with a warning and an unused category takes no
 slot in the palette, so the same data give the same groups and colours in
@@ -42,7 +41,7 @@ def _prepare_group(data, group):
     other. A numeric column with more than 20 distinct values raises, though,
     since one group per value of a continuous variable is never what was
     meant. Rows whose group is missing belong to no group, and they are dropped
-    with a warning in :func:`depictr.survival_plot`'s words. Categories left
+    with the warning that ``depictr.survival_plot()`` gives. Categories left
     without rows are removed, so they take no slot in the legend or the
     palette. Each remaining level is given its colour by name, so it keeps that
     colour in every layer. Codes stored as floats, as a missing value leaves
@@ -64,7 +63,7 @@ def _prepare_group(data, group):
         A new frame of the rows with a group, whose group column is now a
         categorical of the levels in use, followed by those levels in order
         and a dict giving each level its colour from
-        :func:`depictr.depictr_palette`.
+        ``depictr.depictr_palette()``.
     """
     if group not in data.columns:
         raise KeyError(f"{group!r} is not a column of `data`.")

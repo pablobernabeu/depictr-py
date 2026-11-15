@@ -105,8 +105,8 @@ def _choose(label, options, why, **kwargs):
     """A selectbox the pane cannot draw without.
 
     Given no options, ``st.selectbox`` returns None, and the plot fails on
-    ``data[None]`` with the bare message "None". With no options, this raises
-    instead, and the handler at the foot of the file shows ``why``, what the
+    ``data[None]`` with the bare message 'None'. With no options, this raises
+    instead, and the handler at the end of the file shows ``why``, what the
     pane needs, in place of a figure.
     """
     options = list(options)
@@ -201,7 +201,7 @@ def _column(name):
 
 
 def _opt(label, options):
-    """A '(none)' + options selectbox returning None for '(none)'."""
+    """A selectbox of '(none)' and the options, returning None for '(none)'."""
     choice = st.selectbox(label, ["(none)"] + list(options))
     return None if choice == "(none)" else choice
 
@@ -212,8 +212,8 @@ def _term(name):
     patsy reads a bare name as Python, so a keyword (crop_yield's ``yield``)
     or a name that is not an identifier (one with a space) must be quoted. A
     name that NFKC normalisation changes must be quoted too, since Python
-    normalises identifiers when it compiles them, and a bare "ﬁeld" would look
-    up a column "field". Any other name stays bare, keeping the model's term
+    normalises identifiers when it compiles them, and a bare 'ﬁeld' would look
+    up a column 'field'. Any other name stays bare, keeping the model's term
     names and the call free of quoting. A JSON string is also a valid Python
     string literal, escapes included, so ``json.dumps`` quotes any name safely.
     """

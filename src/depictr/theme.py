@@ -105,7 +105,7 @@ def _sized_to_the_data(scale, n, order="default"):
     past the eighth in the missing-value colour. With ``n`` unset, the palette
     here is asked for as many colours as the plot has levels, as in the R twin's
     ``function(k) depictr_palette(n %||% k)``. A ninth group is then
-    interpolated, and :func:`depictr.palette.depictr_palette` warns, as it
+    interpolated, and ``depictr.palette.depictr_palette()`` warns, as it
     does for a fifth group in the contrast-first order. Up to eight levels,
     four in that order, and whenever ``n`` is given, the manual scale's own
     palette is kept.

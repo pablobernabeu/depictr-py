@@ -147,7 +147,7 @@ def _ratio_label(model) -> str:
     exp() of a logit coefficient is an odds ratio. exp() of a log-link
     coefficient is a rate ratio in a count model and a risk ratio in a
     binomial one. Anything else, a data frame or an identity link among them,
-    is "exp(Estimate)": exp() of a slope on log(y), for one, is a ratio of
+    is ``"exp(Estimate)"``: exp() of a slope on log(y), for one, is a ratio of
     geometric means. The R twin names them the same way.
     """
     if isinstance(model, pd.DataFrame):
@@ -173,7 +173,7 @@ def _ratio_label(model) -> str:
 
 
 def _reference_position(reference_line, exponentiate: bool):
-    """Where the reference line goes: 0, 1 for ratios, or None for no line."""
+    """Where the reference line goes: 0, 1 for ratios or None for no line."""
     if reference_line is None:
         return 1.0 if exponentiate else 0.0
     value = float(reference_line)
@@ -239,7 +239,7 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
                      interaction: str = "times"):
     """Forest (dot-and-whisker) plot of model coefficients.
 
-    By default each term is labelled for a reader. The coefficient of a factor
+    By default, each term is labelled for a reader. The coefficient of a factor
     level names its variable and level, so patsy's ``treatment[T.enhanced]``
     is drawn as ``treatment: enhanced``, the contrast of enhanced with the
     reference level, and ``rainfall:treatment[T.enhanced]`` as

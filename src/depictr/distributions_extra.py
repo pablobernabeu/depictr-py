@@ -1,6 +1,6 @@
 """Grouped-distribution EDA plots, themed consistently.
 
-These extend the basic distribution view in :mod:`depictr.eda` with comparisons
+These extend the basic distribution view in ``depictr.eda`` with comparisons
 across groups: empirical cumulative curves, overlapping ridgelines, paired
 dumbbells, outlier flagging and group means with confidence intervals. Each is a
 one-call function returning a single plotnine object you can extend with ``+``.

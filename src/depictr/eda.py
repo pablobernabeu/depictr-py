@@ -49,7 +49,7 @@ class _geom_density_linekey(geom_density):
     """A density geom whose legend key is a coloured line, not a filled box.
 
     ``geom_density`` inherits ``geom_polygon``'s legend drawer, which always
-    draws a filled rectangle. Borrowing ``geom_path``'s drawer makes the key a
+    draws a filled rectangle. Using ``geom_path``'s drawer makes the key a
     short coloured line segment that matches the curve it labels.
     """
 

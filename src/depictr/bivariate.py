@@ -173,7 +173,7 @@ def explore_bivariate(data, x, y, title=None):
 
 def _durations_as_numbers(data, cols):
     """Return ``data`` with each timedelta column among ``cols`` as a number in
-    the unit :func:`summary_table` reports it in, and each column's axis title,
+    the unit ``summary_table()`` reports it in, and each column's axis title,
     which names that unit.
 
     A number in a stated unit is how the R twin draws a ``difftime``, for which

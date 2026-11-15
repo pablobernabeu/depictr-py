@@ -126,7 +126,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     blue (``#0072b2``) and leads the palette, and a grey (``#999999``) takes the
     place of its black.
 
-    In the default order the second colour is the orange (``#e69f00``), at
+    In the default order, the second colour is the orange (``#e69f00``), at
     2.25:1 against white. Any figure on white whose colour tells two or more
     groups apart therefore fails the ``geometry_contrast`` row of
     [`depictr.check_figure`][]. No more than three of the eight colours pass
@@ -154,7 +154,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     n : int, optional
         Number of colours to return, a single number of at least 1. A
         fraction is truncated, so 2.7 gives two colours. For
-        the qualitative palette ``None`` (the default) returns all eight
+        the qualitative palette, ``None`` (the default) returns all eight
         colours, and an ``n`` larger than the available colours is
         interpolated. The sequential and diverging palettes are ramps and
         accept any ``n`` (defaulting to 7).
@@ -174,7 +174,7 @@ def depictr_palette(n: int | None = None, kind: str = "qualitative",
     ------
     ValueError
         For an ``n`` below 1 or not a number, an unknown ``kind`` or
-        ``order``, or ``order="contrast"`` with a ramp.
+        ``order`` or ``order="contrast"`` with a ramp.
 
     Warns
     -----

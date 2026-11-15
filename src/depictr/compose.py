@@ -51,7 +51,7 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
         compositions cannot carry a figure-level title, so for a grid the
         title is dropped with a warning, and each panel should carry its own.
     tag_levels : {"A", "a", "1", "I", "i"}, sequence of str or None
-        How to tag the panels: capital or lower-case letters, Arabic numerals,
+        How to tag the panels: capital or lower-case letters, Arabic numerals
         or capital or lower-case Roman numerals, as patchwork's
         ``tag_levels`` takes them. A sequence of strings gives the tags
         themselves, one per panel in reading order. ``None`` leaves the panels
@@ -125,7 +125,7 @@ _TAG_LEVELS_MESSAGE = (
 
 
 def _check_tag_levels(tag_levels):
-    """A tag style, a tuple of custom tags, or None, from ``tag_levels``."""
+    """A tag style, a tuple of custom tags or None, from ``tag_levels``."""
     if tag_levels is None:
         return None
     if isinstance(tag_levels, str):
@@ -178,7 +178,7 @@ def _tag_panels(plot):
 
     Yields each panel with the composition holding it and its index there, or
     with None for a lone plot. A ``plot_spacer()`` is left out, as patchwork
-    gives a spacer no tag and :func:`depictr.check_figure` gives it no panel
+    gives a spacer no tag and ``depictr.check_figure()`` gives it no panel
     number.
     """
     from plotnine.composition import Compose, plot_spacer
@@ -197,8 +197,9 @@ def _tagged(items, style, size):
     """Copies of the plots to arrange, each panel carrying its tag.
 
     A composition among them is copied and its panels tagged in place, through
-    the item assignment plotnine's own ``&`` operator uses, so the tags run on
-    through it in reading order. The caller's plots are left as they were.
+    the item assignment plotnine's own ``&`` operator uses, so the tags
+    continue through its panels in reading order. The caller's plots are left
+    as they were.
     """
     from plotnine import element_text, labs, theme
     from plotnine.composition import Compose
@@ -445,7 +446,7 @@ def _failed_checks(report) -> list[str]:
 
 
 def _and_list(items: list[str]) -> str:
-    """Join items as "a, b and c"."""
+    """Join items as ``"a, b and c"``."""
     if len(items) < 2:
         return "".join(items)
     return f"{', '.join(items[:-1])} and {items[-1]}"
@@ -454,8 +455,8 @@ def _and_list(items: list[str]) -> str:
 def _with_embedded_fonts(plot):
     """The plot to save, with a theme that cannot undo the TrueType setting.
 
-    plotnine saves a plot inside its theme's rcParams, which win over the
-    surrounding rc_context. A theme that copies matplotlib's own, as
+    plotnine saves a plot inside its theme's rcParams, which take precedence
+    over the surrounding rc_context. A theme that copies matplotlib's own, as
     theme_matplotlib() does, carries the Type 3 default with it, so the plot is
     saved from a copy whose theme carries the embedded font types. A
     composition is saved outside its panels' rcParams and needs no copy.
@@ -510,8 +511,8 @@ def _translucent_layers(plot) -> int:
     """How many layers draw with an alpha below 1, over a composition's panels.
 
     The layers' alpha is known only once the plot is built, so a copy is drawn,
-    since drawing builds the layers in place. Its warnings are muffled because
-    the save has already shown them.
+    since drawing builds the layers in place. Its warnings are suppressed
+    because the save has already shown them.
     """
     import matplotlib.pyplot as plt
     from plotnine import ggplot

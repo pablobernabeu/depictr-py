@@ -46,8 +46,8 @@ def random_effects_plot(model, title=None):
     Each point is one group level's predicted random effect, the deviation of
     that group from the population fit. Levels are sorted by their effect, so the
     points rise from the most negative to the most positive group, against a
-    zero reference line. A group whose interval excludes zero differs from the
-    average, and one whose interval includes zero does not.
+    zero reference line. A group whose interval excludes zero is set apart from
+    the average, and one whose interval includes zero is not.
 
     The points are those of ``model.random_effects``. When the fit exposes
     the conditional covariance of each group's effects

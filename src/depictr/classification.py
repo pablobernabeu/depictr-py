@@ -53,18 +53,19 @@ def _require_sklearn():
 def _positive_count(y_true, message) -> int:
     """Number of positive cases, refusing a single-class outcome.
 
-    None of the curves in this module survives a single class. The gains and
-    lift curves divide by this count, and substituting 1 for a zero denominator
-    draws a curve flat along the axis: a reader sees a catastrophically bad
-    model where the truth is that the quantity does not exist. An all-positive
-    outcome is as meaningless the other way, every depth capturing everything.
+    None of the curves in this module is defined for a single class. The gains
+    and lift curves divide by this count, and substituting 1 for a zero
+    denominator draws a curve flat along the axis: a reader sees a model that
+    captures no positives, where in fact the quantity does not exist. An
+    all-positive outcome is as uninformative, since every case targeted at any
+    depth is a positive.
     scikit-learn does not refuse a single-class input: it computes an AUC of
     nan and an average precision of zero under a warning, numbers the
     annotations would then print as if they measured something. The R twin
     words the error per curve, so each caller passes its own ``message``.
 
     The count is of values equal to 1, so the outcome is first read as 0/1 by
-    :func:`_binary_outcome`.
+    ``_binary_outcome()``.
     """
     y_true = np.asarray(y_true)
     n_pos = int(np.sum(y_true == 1))
@@ -80,7 +81,7 @@ def _binary_outcome(y_true) -> np.ndarray:
     must have at most two categories, and its last declared category is the
     positive class, the convention ``as_binary()`` follows. Anything else must
     already be coded 0/1, as numbers or as their text, so a 1/2 or -1/1 coding
-    and text such as ``"yes"``/``"no"`` are refused, as R refuses them.
+    and text such as ``"yes"`` and ``"no"`` are refused, as R refuses them.
     Counting the values equal to 1 would instead find no positives in a
     categorical and read a 1/2 coding with 1 as the positive class. A missing
     value stays missing, for the caller to refuse.
@@ -179,7 +180,7 @@ def _gain_table(y_true, y_score):
 def _wilson_interval(successes, n, conf_level):
     """Wilson score interval for a binomial proportion, as the R twin computes it.
 
-    The interval stays within [0, 1]. In small samples its coverage stays close
+    The interval stays within [0, 1]. In small samples, its coverage stays close
     to the nominal level where the Wald interval's is erratic, though it dips
     for rates very close to 0 or 1 (Brown et al., 2001). The formula and its
     order of operations are those of the R twin's ``wilson_interval()``.
@@ -381,7 +382,7 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
 
     The cases are grouped into bins by their predicted probability, and each
     bin is drawn at its mean predicted probability and its observed event rate,
-    with the dashed diagonal marking perfect calibration. By default the bins
+    with the dashed diagonal marking perfect calibration. By default, the bins
     hold nearly equal numbers of cases. Each point is sized by its number of
     cases and carries a Wilson interval for its observed rate (Wilson, 1927),
     so that a bin of few cases is not given too much weight. Brown et al.

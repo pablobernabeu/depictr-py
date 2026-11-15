@@ -50,7 +50,7 @@ def _km_limits(surv, se_log, conf_level, conf_type):
     scale, they are ``S exp(-z se)`` and ``S exp(z se)``, with the upper limit
     capped at 1, and untransformed they are ``S - z S se`` and ``S + z S se``,
     kept between 0 and 1. Where S is 1, the log-log formula is 0/0 and the
-    limits are 1, as survfit gives. Where S is 0, every formula breaks down,
+    limits are 1, as survfit gives. Where S is 0, every formula is undefined,
     and the limits keep the previous row's values, as in the R twin. The
     lifelines interval is 0 at both ends there, and survfit gives missing
     values, which would end a band drawn as steps at the previous event.
@@ -99,8 +99,9 @@ def _greenwood_se(table):
 def _nice_breaks(tmax, n=5):
     """Round, evenly spaced axis breaks from 0 to at most ``tmax``.
 
-    Picks a 1/2/2.5/5/10 step so the time axis reads in round numbers rather
-    than the arbitrary values an even split would give.
+    Picks a step of 1, 2, 2.5, 5 or 10 times a power of 10, so the time axis
+    reads in round numbers rather than the arbitrary values an even split would
+    give.
     """
     # Not finite: the step search below compares `raw <= m * mag`, and every
     # comparison against a NaN is False, so the generator would run dry and

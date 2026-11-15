@@ -78,14 +78,14 @@ def _as_series(x):
 
 
 def _as_complete_series(x):
-    """Coerce to a Series, trim missing ends, and refuse internal missing values.
+    """Coerce to a Series, trim missing ends and refuse internal missing values.
 
     The ACF and the decomposition read position in the sequence as time, and so
     does the seasonal plot of a series without a calendar index. Dropping an
     internal missing value closes up the gap: the ACF correlates values across
-    it, the decomposition misaligns, and every later observation lands on the
+    it, the decomposition misaligns and every later observation lands on the
     wrong within-period position. Whether to drop or impute is the analyst's
-    call, not something to make silently on their behalf. Missing values at
+    decision, which this function does not make for them. Missing values at
     either end only shorten the series, so they are trimmed.
     """
     series = _as_series(x)
@@ -134,7 +134,7 @@ def _index_period(x):
 
 
 def _infer_period(x, period):
-    """Return the seasonal period, inferred from a datetime/period index if absent.
+    """Return the seasonal period, inferred from a datetime or period index if absent.
 
     A monthly index gives 12, a quarterly index 4 and a daily index 7 (the
     weekly cycle, the only seasonality a bare daily index implies). Anything
@@ -566,7 +566,7 @@ def _moving_average(values, window):
     """Centred moving average over ``window`` observations, as the R twin's.
 
     Equal weights over an odd window centre the average on an observation.
-    Over an even window they centre it between two observations: pandas'
+    Over an even window, they centre it between two observations: pandas'
     ``rolling(4, center=True)`` puts the mean of observations 1 to 4 at
     observation 3. An even window m therefore gives the 2 x m average, an
     m-point average followed by a 2-point one (Hyndman & Athanasopoulos, 2021,

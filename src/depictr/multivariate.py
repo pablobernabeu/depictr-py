@@ -73,9 +73,9 @@ def _standardise(num):
     A numpy z-score with scikit-learn's ``StandardScaler`` semantics: the
     population (ddof=0) standard deviation, and a scale of 1 substituted where
     the deviation is zero, so a constant column is centred to zeros rather than
-    divided by zero. Kept sklearn-free because ``dendrogram_plot`` shares this
-    helper, and the dendrogram's contract is that scipy, a core dependency, is
-    all it needs.
+    divided by zero. Kept free of scikit-learn because ``dendrogram_plot``
+    shares this helper, and the dendrogram needs nothing beyond scipy, a core
+    dependency.
     """
     X = num.to_numpy(dtype=float)
     scale = X.std(axis=0)

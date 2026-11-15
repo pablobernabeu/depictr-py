@@ -105,7 +105,7 @@ def _estimation_frame(model) -> pd.DataFrame:
 
 
 def _response_label(model) -> str:
-    """A readable name for the response, unwrapping a formula Q(\"...\") guard."""
+    """A readable name for the response, unwrapping a formula ``Q(\"...\")`` guard."""
     name = str(model.model.endog_names)
     return re.sub(r'Q\("([^"]+)"\)', r"\1", name)
 
@@ -149,10 +149,10 @@ def _formula_design(model):
 
     Returns a function from rows to their design matrix, with the columns each
     term fills, keyed by the term's name. statsmodels up to 0.14 keeps the
-    formula's patsy DesignInfo as ``data.design_info``. From 0.15 it keeps it as
+    formula's patsy DesignInfo as ``data.design_info``. From 0.15, it keeps it as
     ``data.model_spec``, which holds a formulaic ModelSpec instead when the
     formula engine is set to formulaic. Both are looked for, since
-    ``design_info`` alone would skip the grid check under 0.15 without a word.
+    ``design_info`` alone would skip the grid check under 0.15 without a warning.
     A statistic of one row can be NaN, as x.std() is, and either engine would
     drop such a row as missing, so nothing counts as missing here.
     """
@@ -281,7 +281,7 @@ def _prediction_band(model, grid: pd.DataFrame, conf_level: float) -> pd.DataFra
     """Run get_prediction over a grid and return mean and CI on the grid's index.
 
     Both OLS and GLM expose ``mean``, ``mean_ci_lower`` and ``mean_ci_upper`` from
-    ``summary_frame``. For a GLM these are on the response scale (probabilities),
+    ``summary_frame``. For a GLM, these are on the response scale (probabilities),
     which is what a reader expects from a prediction plot. An offset or exposure
     is held at its mean (see ``_offset_arguments``).
     """
