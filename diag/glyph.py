@@ -62,10 +62,10 @@ if MODE == "main":
     print("plotnine base_family", plotnine.options.base_family)
     for fam in ["sans-serif", "DejaVu Sans", plotnine.options.base_family]:
         try:
-            print("findfont", fam, "->", findfont(FontProperties(family=fam)))
+            print("findfont", fam, "->", findfont(FontProperties(family=[fam])))
         except Exception as e:  # noqa: BLE001
             print("findfont", fam, "ERR", e)
-    path = findfont(FontProperties(family="sans-serif"))
+    path = findfont(FontProperties(family=["sans-serif"]))
     flags = {n: getattr(LoadFlags, n) for n in
              ["DEFAULT", "NO_HINTING", "FORCE_AUTOHINT", "NO_AUTOHINT",
               "TARGET_LIGHT"] if hasattr(LoadFlags, n)}
