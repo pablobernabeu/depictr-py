@@ -400,6 +400,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names the argument, where they raised a `TypeError` from the arithmetic.
 - The package metadata declares the licence as the SPDX expression `MIT`.
 - The `docs` extra requires markdown-exec 1.12.3 or later, where it allowed 1.8.
+- The package metadata lists Python 3.15. It is tested there without the
+  `survival` extra: lifelines 0.30.3 requires pandas 2, and pandas 2 publishes
+  no wheels for Python 3.15.
 
 ### Deprecated
 
