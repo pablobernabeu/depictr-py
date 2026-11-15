@@ -6,7 +6,7 @@ confidence interval, so the reader sees the size of the effect and its
 uncertainty directly. The standardised effect size (Hedges' g by default, or
 Cohen's d) is annotated beside each difference, which is what separates an
 estimation plot from a plain mean-difference plot. The bootstrap and the effect
-size are computed in numpy here; there is no DABEST dependency.
+size are computed with numpy, so DABEST is not needed.
 
 Cumming, G. (2012). Understanding the new statistics: Effect sizes, confidence
 intervals, and meta-analysis. Routledge.
@@ -98,12 +98,11 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
     For each non-reference group, the mean difference from the reference group is
     drawn as a point with a bootstrap confidence interval, in that group's
     column. The reference's column is left empty, a dashed line marks a
-    difference of zero, and the standardised effect size is annotated beside
+    difference of zero and the standardised effect size is annotated beside
     each point. A caption names the interval and the number of resamples. With
     ``two_panel=True``, the differences sit beneath a panel of the raw data and
     group means, each in its group's column. This is the Cumming estimation plot
-    (Cumming, 2012) that the R twin draws, and its two panels have independent
-    outcome axes.
+    (Cumming, 2012), and its two panels have independent outcome axes.
 
     Parameters
     ----------
@@ -118,7 +117,7 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         the first level of ``group`` among those observed: a categorical's first
         category in its declared order, otherwise the first value in sorted
         order, with numbers sorted by value as R's ``factor()`` sorts them. The
-        bundled datasets' groups are categoricals in the R twin's level order,
+        bundled datasets' groups are categoricals in the R package's level order,
         so their default reference is R's. depictr 0.3.0 took the group of the
         first row instead, so the order of the rows decided the sign of every
         difference. Where that rule would have chosen another group, a
@@ -129,10 +128,10 @@ def estimation_plot(data, y, group, reference=None, conf_level=0.95,
         number strictly between 0 and 1.
     n_boot : int
         Number of bootstrap resamples for each difference interval, a positive
-        whole number. The default of 5,000 is the R twin's.
+        whole number.
     effsize : {"hedges_g", "cohens_d", "none"}
-        Standardised effect size annotated beside each difference. Hedges' g is
-        the small-sample corrected default; pass ``"none"`` to omit it.
+        Standardised effect size annotated beside each difference. Hedges' g,
+        the default, is corrected for small samples. Pass ``"none"`` to omit it.
     two_panel : bool
         When ``True``, place the differences beneath a panel of the raw data
         and group means, returning a composition.

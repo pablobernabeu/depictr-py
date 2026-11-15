@@ -1,13 +1,12 @@
 """Time-series plots, themed consistently.
 
-The correlation structure and the seasonal decomposition come from
-``statsmodels`` (the de-facto standard for these); the figures are re-drawn under
-the depictr theme so an ACF stem plot or a decomposition sits in the same visual
-language as the rest of a report. The plain series and the seasonal plot (one
-line per cycle) need only the depictr stack.
+The autocorrelations and the seasonal decomposition come from ``statsmodels``,
+and the figures are drawn with the depictr theme, so an ACF stem plot or a
+decomposition looks like the other figures of a report. The plain series and
+the seasonal plot (one line per cycle) need only depictr's core dependencies.
 
-``statsmodels`` arrives with the core install (plotnine itself requires it);
-the ``depictr[models]`` extra remains to pin the tested floor.
+``statsmodels`` comes with the core install, since plotnine requires it. The
+``depictr[models]`` extra states the tested floor.
 """
 
 from __future__ import annotations
@@ -79,14 +78,14 @@ def _as_series(x):
 
 
 def _as_complete_series(x):
-    """Coerce to a Series, trim missing ends, and refuse internal missing values.
+    """Coerce to a Series, trim missing ends and refuse internal missing values.
 
     The ACF and the decomposition read position in the sequence as time, and so
     does the seasonal plot of a series without a calendar index. Dropping an
     internal missing value closes up the gap: the ACF correlates values across
-    it, the decomposition misaligns, and every later observation lands on the
+    it, the decomposition misaligns and every later observation lands on the
     wrong within-period position. Whether to drop or impute is the analyst's
-    call, not something to make silently on their behalf. Missing values at
+    decision, which this function does not make for them. Missing values at
     either end only shorten the series, so they are trimmed.
     """
     series = _as_series(x)
@@ -135,7 +134,7 @@ def _index_period(x):
 
 
 def _infer_period(x, period):
-    """Return the seasonal period, inferred from a datetime/period index if absent.
+    """Return the seasonal period, inferred from a datetime or period index if absent.
 
     A monthly index gives 12, a quarterly index 4 and a daily index 7 (the
     weekly cycle, the only seasonality a bare daily index implies). Anything
@@ -233,14 +232,14 @@ def _seasons(series, period):
 def acf_plot(x, kind="acf", lags=None, title=None):
     """Autocorrelation or partial autocorrelation as a stem plot.
 
-    The correlations come from statsmodels (``acf``/``pacf``). The approximate
+    The correlations come from statsmodels (``acf()`` and ``pacf()``). The approximate
     95% significance band, plus or minus 1.96 / sqrt(n), is drawn as a shaded
     ribbon: stems reaching past it are the candidate lags.
 
     The partial autocorrelations are the Yule-Walker estimates from the sample
     autocorrelations, without the small-sample adjustment
-    (``pacf(method="ywm")``). They are the values R's ``pacf()`` gives, so the
-    twins draw the same stems. statsmodels' default, the adjusted estimator,
+    (``pacf(method="ywm")``). They are the values R's ``pacf()`` gives.
+    statsmodels' default, the adjusted estimator,
     differs from R by up to 0.18 on R's ``AirPassengers``, and statsmodels'
     documentation reports that it performed consistently worse than the other
     estimators in simulations.
@@ -248,10 +247,10 @@ def acf_plot(x, kind="acf", lags=None, title=None):
     Parameters
     ----------
     x : pandas.Series or array-like
-        The series. Any index is ignored here; only the values are used.
-        Missing values at either end are trimmed; an internal missing value is
+        The series. Any index is ignored, and only the values are used.
+        Missing values at either end are trimmed. An internal missing value is
         an error, since dropping it would correlate values across the
-        closed-up gap. The R twin keeps such a value in place and computes the
+        closed-up gap. The R package keeps such a value in place and computes the
         correlations from the pairs of observations both present, with a
         warning. A frame or 2-D array with one column is read as that column,
         and one with several columns is refused.
@@ -329,15 +328,16 @@ def decompose_plot(x, period=None, model="additive", title=None):
     Parameters
     ----------
     x : pandas.Series or array-like
-        The series. A datetime or period index sets the x-axis; otherwise the
-        observation number is used. Missing values at either end are trimmed;
-        an internal missing value is an error, since dropping it would shift
+        The series. A datetime or period index sets the x-axis, and otherwise
+        the observation number is used. Missing values at either end are
+        trimmed. An internal missing value is an error, since dropping it would shift
         every later observation and misalign the components. A frame or 2-D
         array with one column is read as that column, and one with several
         columns is refused.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
-        omitted (12, 4 and 7 respectively; a daily index is assumed weekly).
+        omitted (12, 4 and 7 respectively, since a daily index is taken as
+        weekly).
     model : {"additive", "multiplicative"}
         The decomposition model.
     title : str, optional
@@ -408,10 +408,10 @@ def seasonal_plot(x, period=None, title=None):
 
     A monthly, quarterly or daily index carries the calendar. When its
     frequency implies the period, the position is read from it: the month for
-    12, labelled Jan to Dec, the quarter for 4, labelled Q1 to Q4, and the
-    weekday for 7, labelled Mon to Sun. A series that starts in April then
-    draws April at position 4, and each cycle runs from January to December,
-    as in the R twin. A quarterly ``PeriodIndex`` with a fiscal year numbers
+    12 (labelled Jan to Dec), the quarter for 4 (Q1 to Q4) and the weekday for
+    7 (Mon to Sun). A series that starts in April then draws April at position
+    4, and each cycle runs from January to December. A quarterly
+    ``PeriodIndex`` with a fiscal year numbers
     its quarters from that year's start, as pandas does. Without such an
     index, as for a bare array, the positions are counted from the first
     observation and labelled by number.
@@ -421,23 +421,22 @@ def seasonal_plot(x, period=None, title=None):
     against white. Past about six cycles, neighbouring cycles take colours too
     close to tell apart, and the colours then show the order of the cycles more
     than which is which. When individual cycles must be told apart, plot fewer
-    cycles, or use the R twin's ``style = "subseries"``. It gives each season a
-    panel, in which every cycle keeps its own place on the axis.
+    cycles.
 
     Parameters
     ----------
     x : pandas.Series or array-like
-        The series. Missing values at either end are trimmed; an internal
+        The series. Missing values at either end are trimmed. An internal
         missing value is an error, since dropping it would assign every later
         observation to the wrong position in the period. A frame or 2-D array
         with one column is read as that column, and one with several columns is
         refused.
     period : int, optional
         Seasonal period. Inferred from a monthly, quarterly or daily index when
-        omitted (12, 4 and 7 respectively; a daily index is assumed weekly). A
-        period that is not a whole number, such as 365.25 / 7 for weekly data,
-        is rounded down to whole seasons with a ``UserWarning``, as the R twin
-        rounds a frequency down. A period below 2 is refused, as in the R twin.
+        omitted (12, 4 and 7 respectively, since a daily index is taken as
+        weekly). A period that is not a whole number, such as 365.25 / 7 for
+        weekly data, is rounded down to whole seasons with a ``UserWarning``. A
+        period below 2 is refused.
     title : str, optional
 
     Returns
@@ -507,21 +506,20 @@ def timeseries_plot(x, rolling=None, title=None):
     Parameters
     ----------
     x : pandas.Series or array-like
-        The series. A datetime or period index sets the x-axis; otherwise the
-        observation number is used. A missing value keeps its place on the axis
-        and leaves a break in the line. A frame or 2-D array with one column is
-        read as that column, and one with several columns is refused. The R
-        twin draws one line per column of a multivariate ``ts``.
+        The series. A datetime or period index sets the x-axis, and otherwise
+        the observation number is used. A missing value keeps its place on the
+        axis and leaves a break in the line. A frame or 2-D array with one
+        column is read as that column, and one with several columns is refused.
     rolling : int, optional
         Window length for a centred moving average, drawn over the series in
         the accent colour. An odd window averages each observation with the
         same number of neighbours on either side. An even window, such as 12
         for monthly data, gives the 2×12 moving average, a 12-point average
         followed by a 2-point one (Hyndman & Athanasopoulos, 2021, Section
-        3.3), as in the R twin. The two observations at the ends of the 13 it
-        spans count half, which centres the average on its observation, as
-        equal weights over an even window cannot. A window
-        that runs off either end of the series, or reaches a missing value, is
+        3.3). The two observations at the ends of the 13 it spans count half,
+        which centres the average on its observation, as equal weights over an
+        even window cannot. A window that runs off either end of the series, or
+        reaches a missing value, is
         missing too, so the overlay breaks where the line does. Omit for the
         raw line only.
     title : str, optional
@@ -568,7 +566,7 @@ def _moving_average(values, window):
     """Centred moving average over ``window`` observations, as the R twin's.
 
     Equal weights over an odd window centre the average on an observation.
-    Over an even window they centre it between two observations: pandas'
+    Over an even window, they centre it between two observations: pandas'
     ``rolling(4, center=True)`` puts the mean of observations 1 to 4 at
     observation 3. An even window m therefore gives the 2 x m average, an
     m-point average followed by a 2-point one (Hyndman & Athanasopoulos, 2021,

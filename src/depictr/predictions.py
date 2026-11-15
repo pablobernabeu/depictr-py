@@ -1,23 +1,23 @@
 """Model-prediction plots for fitted statsmodels results.
 
-These turn a fitted model into the predictions readers actually want to see: how
-the response moves as one predictor varies, how that movement differs across the
-levels of a grouping variable (the interaction), and how a coefficient compares
+These turn a fitted model into the predictions readers want to see: how the
+response changes as one predictor varies, how that change differs across the
+levels of a grouping variable (the interaction) and how a coefficient compares
 across competing models. The predictions and their confidence bands come from
-statsmodels' ``get_prediction``; the figures are re-drawn under the depictr theme
-so a prediction plot sits in the same visual language as the rest of a report.
+statsmodels' ``get_prediction()``, and the figures are drawn with the depictr
+theme, so a prediction plot looks like the other figures of a report.
 
-For a single-predictor effect the other numeric predictors are held at their mean
+For a single-predictor effect, the other numeric predictors are held at their mean
 and each categorical at its most common level (the mode), the usual convention
-for an "effects" plot, so the line shows the partial relationship rather than a
+for an effects plot, so the line shows the partial relationship rather than a
 marginal average over the sample. The predictors are the columns the formula
 names, and their means, levels and ranges are taken over the rows the model was
 fitted to. A model fitted with an ``offset`` or ``exposure`` is predicted at the
 mean offset over those rows on the link scale, which for an exposure is its
-geometric mean, as in the R twin.
+geometric mean.
 
-``statsmodels`` arrives with the core install (plotnine itself requires it);
-the ``depictr[models]`` extra remains to pin the tested floor.
+``statsmodels`` comes with the core install, since plotnine requires it. The
+``depictr[models]`` extra states the tested floor.
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def _estimation_frame(model) -> pd.DataFrame:
 
 
 def _response_label(model) -> str:
-    """A readable name for the response, unwrapping a formula Q(\"...\") guard."""
+    """A readable name for the response, unwrapping a formula ``Q(\"...\")`` guard."""
     name = str(model.model.endog_names)
     return re.sub(r'Q\("([^"]+)"\)', r"\1", name)
 
@@ -149,10 +149,10 @@ def _formula_design(model):
 
     Returns a function from rows to their design matrix, with the columns each
     term fills, keyed by the term's name. statsmodels up to 0.14 keeps the
-    formula's patsy DesignInfo as ``data.design_info``. From 0.15 it keeps it as
+    formula's patsy DesignInfo as ``data.design_info``. From 0.15, it keeps it as
     ``data.model_spec``, which holds a formulaic ModelSpec instead when the
     formula engine is set to formulaic. Both are looked for, since
-    ``design_info`` alone would skip the grid check under 0.15 without a word.
+    ``design_info`` alone would skip the grid check under 0.15 without a warning.
     A statistic of one row can be NaN, as x.std() is, and either engine would
     drop such a row as missing, so nothing counts as missing here.
     """
@@ -281,7 +281,7 @@ def _prediction_band(model, grid: pd.DataFrame, conf_level: float) -> pd.DataFra
     """Run get_prediction over a grid and return mean and CI on the grid's index.
 
     Both OLS and GLM expose ``mean``, ``mean_ci_lower`` and ``mean_ci_upper`` from
-    ``summary_frame``; for a GLM these are on the response scale (probabilities),
+    ``summary_frame``. For a GLM, these are on the response scale (probabilities),
     which is what a reader expects from a prediction plot. An offset or exposure
     is held at its mean (see ``_offset_arguments``).
     """
@@ -302,7 +302,7 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     common level (the mode). The line is the predicted response and the ribbon its
     confidence band, both read from statsmodels' ``get_prediction``. The band
     takes t or z as the result's ``use_t`` says, so a GLM whose dispersion is
-    estimated, fitted with ``use_t=True``, gets the t band of the R twin.
+    estimated, fitted with ``use_t=True``, gets the t band of the R package.
 
     The predictors are the columns the formula names, so a column of the source
     frame outside the model plays no part. The range, means and levels come from
@@ -313,13 +313,13 @@ def effects_plot(model, var, conf_level: float = 0.95, n: int = 100, title=None)
     ``center()`` and ``standardize()`` keep the values of the fit and are safe.
     A model fitted with an ``offset`` is predicted at the mean offset over the
     estimation rows, and one fitted with an ``exposure`` at the geometric mean
-    exposure. The y-axis label then ends in "at the mean offset".
+    exposure. The y-axis label then ends in 'at the mean offset'.
 
     Parameters
     ----------
     model : statsmodels results object
-        A fitted OLS/GLM result from a formula and a DataFrame (so the source
-        data is retained for building the grid).
+        A fitted OLS or GLM result from a formula and a DataFrame, so that the
+        source data are available for building the grid.
     var : str
         The predictor to vary along the x-axis: a numeric column that the
         formula names.
@@ -381,9 +381,9 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     """Predicted response across ``x`` for each level of a categorical ``group``.
 
     One coloured line per group shows how the predicted response changes with
-    ``x`` within that group, so a fan of non-parallel lines is the visible mark of
-    an interaction. The remaining predictors are held at their mean if numeric,
-    and at their most common level (the mode) if categorical. As in
+    ``x`` within that group, so non-parallel lines show an interaction. The
+    remaining predictors are held at their mean if numeric, and at their most
+    common level (the mode) if categorical. As in
     [`effects_plot`][depictr.effects_plot], the predictors are the columns
     the formula names, the range, means and levels come from the rows the
     model was fitted to, a term computed from statistics of its rows is
@@ -393,7 +393,7 @@ def interaction_plot(model, x, group, conf_level: float = 0.95, n: int = 100,
     Parameters
     ----------
     model : statsmodels results object
-        A fitted OLS/GLM result from a formula and a DataFrame.
+        A fitted OLS or GLM result from a formula and a DataFrame.
     x : str
         The numeric predictor on the x-axis.
     group : str
@@ -481,16 +481,15 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
 
     Each model contributes its estimates and confidence intervals (read with
     [`depictr.models.tidy_estimates`][], so a fitted model or a tidy frame both
-    work); the terms share a y-axis and the models are dodged apart and coloured,
-    so a coefficient that shifts from one specification to the next is easy to
-    spot.
+    work). The terms share a y-axis, and the models are dodged apart and
+    coloured, so a coefficient that changes from one specification to the next
+    is easy to spot.
 
     The terms are labelled as in [`depictr.coefficient_plot`][]: a factor
     level names its variable and level (``treatment: enhanced``), read from
     the design of each fitted model, and other names are tidied with
     [`depictr.format_terms`][]. Terms that take the same label share a row,
-    so ``stress`` and a brms-style ``b_stress`` are drawn as one term, as in
-    the R twin.
+    so ``stress`` and a brms-style ``b_stress`` are drawn as one term.
 
     Parameters
     ----------
@@ -513,7 +512,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
         a log10 axis, as odds or rate ratios. A tidy frame among the models
         must hold estimates on the link scale, since it is exponentiated too.
         The axis is named as in [`depictr.coefficient_plot`][] when the
-        fitted models agree on the ratio, and "exp(Estimate)" when they do
+        fitted models agree on the ratio, and 'exp(Estimate)' when they do
         not. Defaults to ``False``.
     labels : dict, list or "raw", optional
         Display labels for the terms. A dict maps raw term names to labels and
@@ -530,7 +529,7 @@ def compare_models(models, intercept: bool = False, conf_level: float = 0.95,
     Returns
     -------
     plotnine.ggplot
-        The plot's data keeps the raw names in ``term`` and the drawn ones in
+        The plot's data keep the raw names in ``term`` and the drawn ones in
         ``label``.
 
     Examples

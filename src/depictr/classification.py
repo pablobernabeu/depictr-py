@@ -1,10 +1,10 @@
 """Classification-metric plots.
 
 The ROC and precision-recall metrics and the confusion matrix are computed by
-``scikit-learn`` (the de-facto standard), and the figures are re-drawn under
-the depictr theme, so a ROC curve sits in the same visual language as the rest
-of a report. The cumulative gains, lift and calibration curves are computed
-here with numpy, as the R twin computes them, and need no optional dependency.
+``scikit-learn``, and the figures are drawn with the depictr theme, so a ROC
+curve looks like the other figures of a report. The cumulative gains, lift,
+calibration and threshold curves are computed with numpy and need no optional
+dependency.
 
 Install the optional dependency with ``pip install "depictr[classification]"``.
 """
@@ -53,18 +53,19 @@ def _require_sklearn():
 def _positive_count(y_true, message) -> int:
     """Number of positive cases, refusing a single-class outcome.
 
-    None of the curves in this module survives a single class. The gains and
-    lift curves divide by this count, and substituting 1 for a zero denominator
-    draws a curve flat along the axis: a reader sees a catastrophically bad
-    model where the truth is that the quantity does not exist. An all-positive
-    outcome is as meaningless the other way, every depth capturing everything.
+    None of the curves in this module is defined for a single class. The gains
+    and lift curves divide by this count, and substituting 1 for a zero
+    denominator draws a curve flat along the axis: a reader sees a model that
+    captures no positives, where in fact the quantity does not exist. An
+    all-positive outcome is as uninformative, since every case targeted at any
+    depth is a positive.
     scikit-learn does not refuse a single-class input: it computes an AUC of
     nan and an average precision of zero under a warning, numbers the
     annotations would then print as if they measured something. The R twin
     words the error per curve, so each caller passes its own ``message``.
 
     The count is of values equal to 1, so the outcome is first read as 0/1 by
-    :func:`_binary_outcome`.
+    ``_binary_outcome()``.
     """
     y_true = np.asarray(y_true)
     n_pos = int(np.sum(y_true == 1))
@@ -80,7 +81,7 @@ def _binary_outcome(y_true) -> np.ndarray:
     must have at most two categories, and its last declared category is the
     positive class, the convention ``as_binary()`` follows. Anything else must
     already be coded 0/1, as numbers or as their text, so a 1/2 or -1/1 coding
-    and text such as ``"yes"``/``"no"`` are refused, as R refuses them.
+    and text such as ``"yes"`` and ``"no"`` are refused, as R refuses them.
     Counting the values equal to 1 would instead find no positives in a
     categorical and read a 1/2 coding with 1 as the positive class. A missing
     value stays missing, for the caller to refuse.
@@ -179,7 +180,7 @@ def _gain_table(y_true, y_score):
 def _wilson_interval(successes, n, conf_level):
     """Wilson score interval for a binomial proportion, as the R twin computes it.
 
-    The interval stays within [0, 1]. In small samples its coverage stays close
+    The interval stays within [0, 1]. In small samples, its coverage stays close
     to the nominal level where the Wald interval's is erratic, though it dips
     for rates very close to 0 or 1 (Brown et al., 2001). The formula and its
     order of operations are those of the R twin's ``wilson_interval()``.
@@ -235,7 +236,7 @@ def roc_curve_plot(y_true, y_score, title=None):
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Both classes must be present: with only one, the true or false
+        package. Both classes must be present: with only one, the true or false
         positive rate has no denominator and the AUC is undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
@@ -282,8 +283,8 @@ def pr_curve_plot(y_true, y_score, title=None):
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Both classes must be present: with only one, precision or recall
-        has no denominator and the average precision is undefined.
+        package. Both classes must be present: with only one, precision or
+        recall has no denominator and the average precision is undefined.
     y_score : array-like
         Predicted scores or probabilities for the positive class.
     title : str, optional
@@ -381,21 +382,21 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
 
     The cases are grouped into bins by their predicted probability, and each
     bin is drawn at its mean predicted probability and its observed event rate,
-    with the dashed diagonal marking perfect calibration. By default the bins
-    hold equal numbers of cases, as in the R twin, so each point rests on about
-    the same evidence. Each point is sized by its number of cases and carries a
-    Wilson interval for its observed rate (Wilson, 1927), so a bin backed by
-    few cases is not over-read. Brown et al. (2001) recommend the Wilson
-    interval for small samples. Its coverage stays close to the nominal level
-    where the Wald interval's is erratic, though it dips for rates very close
-    to 0 or 1.
+    with the dashed diagonal marking perfect calibration. By default, the bins
+    hold nearly equal numbers of cases. Each point is sized by its number of
+    cases and carries a Wilson interval for its observed rate (Wilson, 1927),
+    so that a bin of few cases is not given too much weight. Brown et al.
+    (2001) recommend the Wilson interval for small samples. Its coverage stays
+    close to the nominal level where the Wald interval's is erratic, though it
+    dips for rates very close to 0 or 1.
 
     Parameters
     ----------
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Any other value, a missing one included, raises ``ValueError``.
+        package. Any other value, a missing one included, raises
+        ``ValueError``.
     y_score : array-like
         Predicted probabilities from a fitted model, on the probability scale.
         Unlike the ROC and gains charts, which only rank cases, a reliability
@@ -419,9 +420,9 @@ def calibration_plot(y_true, y_score, n_bins=10, title=None, conf_level=0.95,
         raise ``ValueError``. ``"uniform"`` cuts [0, 1] into ``n_bins`` bins
         of equal width and drops the empty ones.
         A rare outcome whose scores never approach 1 then leaves fewer points
-        than bins, the highest of them often resting on a handful of cases.
+        than bins, the highest of them often based on a handful of cases.
     bins : int, optional
-        The R twin's name for ``n_bins``, which it replaces when given.
+        The R package's name for ``n_bins``, which it replaces when given.
 
     Returns
     -------
@@ -508,7 +509,7 @@ def gain_plot(y_true, y_score, title=None):
     the share of all positive cases captured by each depth. The dashed diagonal
     is random targeting.
 
-    Cases with tied scores are targeted together, as in the R twin. The curve
+    Cases with tied scores are targeted together. The curve
     takes a point only once every case of a run of equal scores is in, and it
     runs straight to that point, which is the share expected when tied cases
     are reached in random order (Fawcett, 2006). The curve therefore does not
@@ -520,7 +521,7 @@ def gain_plot(y_true, y_score, title=None):
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Both classes must be present: with no positives the share
+        package. Both classes must be present: with no positives the share
         captured has no denominator, and with no negatives every depth captures
         everything. A missing outcome raises ``ValueError``.
     y_score : array-like
@@ -566,17 +567,16 @@ def lift_plot(y_true, y_score, title=None):
     line at 1 is random targeting.
 
     Cases with tied scores are targeted together, as in
-    [`depictr.gain_plot`][] and the R twin, so the curve has a point at the
-    end of each run of equal scores and does not depend on the order of the
-    rows. It starts at the first such point, since lift has no value at a depth
-    of zero.
+    [`depictr.gain_plot`][], so the curve has a point at the end of each run
+    of equal scores and does not depend on the order of the rows. It starts
+    at the first such point, since lift has no value at a depth of zero.
 
     Parameters
     ----------
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Both classes must be present: lift is a ratio to the baseline
+        package. Both classes must be present: lift is a ratio to the baseline
         positive rate, which is zero with no positives and one at every depth
         with no negatives. A missing outcome raises ``ValueError``.
     y_score : array-like
@@ -636,22 +636,21 @@ def threshold_plot(y_true, y_score, title=None):
     """Sensitivity, specificity, precision and F1 across the decision threshold.
 
     Sweeps the probability cut-off and plots each metric, so the trade-off when
-    choosing an operating point can be read straight off the curves.
+    choosing an operating point can be read from the curves.
 
     A case is predicted positive when its score is at or above the threshold.
     The metrics are evaluated at every distinct score, the points at which the
     confusion matrix can change, so the curves are exact step functions. Between
     two adjacent scores, each metric keeps its value at the upper one, so each
     step changes at a score and runs flat below it. Where no positive case is
-    predicted positive, precision and recall are 0 and F1 is taken as 0. The R
-    twin computes and draws the same values.
+    predicted positive, precision and recall are 0 and F1 is taken as 0.
 
     Parameters
     ----------
     y_true : array-like
         Binary outcomes, coded 0/1, as booleans or as a categorical with two
         categories, whose last category is the positive class, as in the R
-        twin. Both classes must be present: with only one, sensitivity or
+        package. Both classes must be present: with only one, sensitivity or
         specificity has no denominator at any threshold. A missing outcome
         raises ``ValueError``.
     y_score : array-like
@@ -671,7 +670,6 @@ def threshold_plot(y_true, y_score, title=None):
     >>> score = 1 / (1 + np.exp(-ct["biomarker"]))
     >>> p = dp.threshold_plot(ct["adverse_event"], score)
     """
-    _require_sklearn()
     y_true, y_score = _outcome_and_score(_binary_outcome(y_true), y_score)
     # A missing score would rank as a run of its own and a missing outcome
     # would count as neither class, so the cumulative counts need both.

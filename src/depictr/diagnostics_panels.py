@@ -1,20 +1,19 @@
 """Multi-panel regression reports for fitted statsmodels results.
 
-A single diagnostic plot answers one question; a regression check usually means
-looking at several at once. These functions gather the everyday diagnostics into
-one composed figure so the whole picture sits on a single page in the depictr
-visual language. The four-panel residual report mirrors the set R draws from
-``plot.lm`` (Fox & Weisberg, 2019), and the dashboard pairs the coefficient plot
-with the two panels people read first. As in the R twin, a GLM, Logit or Probit
-fit gets panels made for it. They plot randomised quantile residuals (Dunn &
-Smyth, 1996) and, for a binomial model, binned residuals (Gelman & Hill, 2007).
+A single diagnostic plot answers one question, and a regression check usually
+means looking at several at once. These functions gather the everyday
+diagnostics into one composed figure with the depictr theme. The four-panel
+residual report has the four panels that R's ``plot.lm()`` draws (Fox &
+Weisberg, 2019), and the dashboard pairs the coefficient plot with the two
+panels people read first. A GLM, Logit or Probit fit gets panels made for it.
+They plot randomised quantile residuals (Dunn & Smyth, 1996) and, for a
+binomial model, binned residuals (Gelman & Hill, 2007).
 
-The panels reuse the single-plot diagnostics in :mod:`depictr.diagnostics` and
-the forest plot in :mod:`depictr.models`, and join them with
-:func:`depictr.compose.arrange_plots`.
+The panels are the single-plot diagnostics of ``depictr.diagnostics`` and the
+forest plot of ``depictr.models``, joined with ``arrange_plots()``.
 
-``statsmodels`` arrives with the core install (plotnine itself requires it);
-the ``depictr[models]`` extra remains to pin the tested floor.
+``statsmodels`` comes with the core install, since plotnine requires it. The
+``depictr[models]`` extra states the tested floor.
 
 References
 ----------
@@ -72,8 +71,8 @@ def _check_model(model, func_name: str) -> None:
 def _residuals_vs_fitted(model, title=None):
     """Residuals against fitted values, with a lowess smoother and a zero line.
 
-    A flat smoother near zero means the linear fit has caught the structure; a
-    bend or funnel points to a missing term or non-constant variance. A GLM,
+    A flat smoother near zero means the residuals show no systematic pattern. A
+    bend or funnel suggests a missing term or non-constant variance. A GLM,
     Logit or Probit fit plots its deviance residuals against its fitted means.
     """
     resid, label = _raw_residuals(model)
@@ -89,11 +88,11 @@ def _residuals_vs_fitted(model, title=None):
 
 
 def _scale_location(model, title=None):
-    """Scale-location plot: sqrt of the absolute studentised residuals vs fitted.
+    """Scale-location plot: sqrt(|studentised residual|) against fitted values.
 
-    Taking the square root of the absolute residual flattens the cloud, so a
-    rising or falling smoother reads as a change in spread (heteroscedasticity)
-    rather than in level.
+    Taking the square root of the absolute residual makes its distribution less
+    skewed, so a rising or falling smoother shows a change in spread
+    (heteroscedasticity) rather than in level.
     """
     fitted = _fitted_values(model)
     root_abs = np.sqrt(np.abs(_studentised_residuals(model)))
@@ -111,9 +110,9 @@ def _scale_location(model, title=None):
 def _residuals_vs_leverage(model, title=None):
     """Studentised residuals against leverage, with a zero line.
 
-    Leverage measures how unusual an observation's predictors are. A point that
-    sits far right and far from zero is the kind that can pull the fit on its
-    own, so it is worth a second look.
+    Leverage measures how unusual an observation's predictors are. A point
+    with high leverage and a residual far from zero can change the fitted
+    coefficients substantially on its own, so it should be checked.
     """
     infl = model.get_influence()
     df = pd.DataFrame({
@@ -150,7 +149,7 @@ def _residual_and_qq_panels(model, glm_panels, seed):
     false, as in the R twin. They are a Q-Q plot of its quantile residuals and
     a residual panel: binned residuals for a binomial model, and the deviance
     residuals against the fitted values for other families. The R twin bins
-    those too, but :func:`depictr.binned_residual_plot` takes binomial models
+    those too, but ``depictr.binned_residual_plot()`` takes binomial models
     only. Any other model gets the classic panels.
     """
     if glm_panels and (_is_glm(model) or _is_binary(model)):
@@ -166,15 +165,15 @@ def _residual_and_qq_panels(model, glm_panels, seed):
 def residual_diagnostics_plot(model, title=None, glm_panels=True, seed=None):
     """Four-panel residual report for a fitted OLS, GLM, Logit or Probit model.
 
-    Composes the four checks R draws from ``plot.lm`` into a 2x2 grid: residuals
-    against fitted values, the scale-location plot, a normal quantile-quantile
-    plot of the residuals, and residuals against leverage. Read together they
-    cover the usual assumptions of a linear fit: the right functional form,
-    constant variance, approximately normal residuals, and no single point
-    dominating the fit.
+    Composes the four checks that R's ``plot.lm()`` draws into a 2x2 grid:
+    residuals against fitted values, the scale-location plot, a normal
+    quantile-quantile plot of the residuals and residuals against leverage.
+    Read together, they cover the usual assumptions of a linear fit: the right
+    functional form, constant variance, approximately normal residuals and no
+    single point dominating the fit.
 
     A GLM, Logit or Probit fit gets panels made for it (``glm_panels=True``), as
-    in the R twin. The Q-Q panel plots randomised quantile residuals (Dunn &
+    in the R package. The Q-Q panel plots randomised quantile residuals (Dunn &
     Smyth, 1996), which are standard normal under a correctly specified model
     whatever the family. The studentised residuals of a binary or count model
     are not expected to be normal, even when the model is right. The quantile
@@ -182,8 +181,8 @@ def residual_diagnostics_plot(model, title=None, glm_panels=True, seed=None):
     acting on is one that persists when the panel is drawn again with another
     ``seed``. A binomial model's residual panel is
     [`depictr.binned_residual_plot`][] (Gelman & Hill, 2007). Other families
-    plot their deviance residuals against the fitted values. The R twin bins
-    them too, but the binned plot here takes binomial models only. A family
+    plot their deviance residuals against the fitted values, since the binned
+    plot takes binomial models only. A family
     other than the binomial, Poisson, Gaussian and Gamma has no quantile
     residual here. Its Q-Q panel plots the deviance residuals, and the axis
     says so. A Logit or Probit fit is plotted against its fitted probabilities,
@@ -262,9 +261,9 @@ def model_report(model, title=None, glm_panels=True, seed=None):
 
     Puts the three plots a reader usually wants first side by side: the
     coefficient (forest) plot of the estimates and their confidence intervals,
-    a residual panel, and the normal quantile-quantile plot. It is a quick "is
-    the model worth trusting, and what does it say" view, with the full set of
-    checks left to [`depictr.residual_diagnostics_plot`][]. A GLM, Logit or
+    a residual panel and the normal quantile-quantile plot. It shows at a
+    glance what the model says and whether it can be trusted, and leaves the
+    full set of checks to [`depictr.residual_diagnostics_plot`][]. A GLM, Logit or
     Probit fit gets the panels that function draws for it: a Q-Q plot of
     randomised quantile residuals and, for a binomial model, binned residuals
     in place of the scatter.
@@ -292,7 +291,7 @@ def model_report(model, title=None, glm_panels=True, seed=None):
     -------
     plotnine.composition.Compose
         A composition with ``.draw`` and ``.save``, its panels tagged A, B and
-        C, as the R twin tags its own.
+        C, as the R package tags its own.
 
     Examples
     --------

@@ -1,14 +1,15 @@
 """Regression-diagnostic plots for fitted statsmodels results.
 
 These cover the everyday checks on a fitted OLS or GLM: the normality of the
-residuals, points that pull the fit around, collinearity among the predictors,
-and the fit of a logistic model averaged over its predicted probabilities. The
-quantities come from statsmodels (its influence machinery and the coefficient
-covariance of the fit); each figure is re-drawn under the depictr theme so a
-diagnostic sits in the same visual language as the rest of a report.
+residuals, points with a large influence on the fit, collinearity among the
+predictors and the fit of a logistic model averaged over its predicted
+probabilities. The quantities come from statsmodels, from its influence
+measures and the coefficient covariance of the fit, and each figure is drawn
+with the depictr theme, so a diagnostic looks like the other figures of a
+report.
 
-``statsmodels`` arrives with the core install (plotnine itself requires it);
-the ``depictr[models]`` extra remains to pin the tested floor.
+``statsmodels`` comes with the core install, since plotnine requires it. The
+``depictr[models]`` extra states the tested floor.
 """
 
 from __future__ import annotations
@@ -49,15 +50,16 @@ def _require_statsmodels():
 
 
 def _is_fitted_model(obj) -> bool:
-    """True for a fitted statsmodels result (OLS/GLM), as opposed to raw data."""
+    """True for a fitted statsmodels result with influence measures, such as an
+    OLS or GLM fit, as opposed to raw data."""
     return hasattr(obj, "get_influence") and hasattr(obj, "model")
 
 
 def _studentised_residuals(model) -> np.ndarray:
     """Studentised residuals, whichever name the influence object uses.
 
-    OLS exposes ``resid_studentized_internal`` and GLM ``resid_studentized``;
-    both are the residual divided by its estimated standard deviation, so a value
+    OLS exposes ``resid_studentized_internal`` and GLM ``resid_studentized``.
+    Both are the residual divided by its estimated standard deviation, so a value
     is roughly on a standard-normal scale.
     """
     infl = model.get_influence()
@@ -161,7 +163,7 @@ def _quantile_residuals(model, seed=None):
 
     The supported families are those of the R twin's ``quantile_residuals()``:
     binomial (including Logit and Probit fits), Poisson, Gaussian and Gamma.
-    For any other model the deviance residuals come back, flagged, so that a
+    For any other model, the deviance residuals come back, flagged, so that a
     caller can label them as such.
 
     Parameters
@@ -235,10 +237,10 @@ def qq_plot(model, title=None):
     """Normal quantile-quantile plot of the residuals, with a reference line.
 
     The sample residual quantiles are plotted against the matching standard-normal
-    quantiles. Points near the line mean the residuals are close to normal; a
-    systematic bend away from it flags skew or heavy tails. The line is drawn
-    through the first and third quartiles, the robust choice R's ``qqline`` uses,
-    so a few outliers do not tilt it.
+    quantiles. Points near the line mean the residuals are close to normal. A
+    systematic bend away from it shows skew or heavy tails. The line is drawn
+    through the first and third quartiles, the robust choice that R's
+    ``qqline()`` makes, so a few outliers do not tilt it.
 
     The residuals of a linear model should follow the line. The studentised
     residuals of a non-Gaussian GLM are not expected to, even when the model
@@ -251,7 +253,7 @@ def qq_plot(model, title=None):
     Parameters
     ----------
     model : statsmodels results object or array-like
-        A fitted OLS/GLM result, from which the internally studentised residuals
+        A fitted OLS or GLM result, from which the internally studentised residuals
         are read (the raw residuals if studentised ones are not available), or a
         1-D array of residuals to plot directly.
     title : str, optional
@@ -305,16 +307,17 @@ def qq_plot(model, title=None):
 def influence_plot(model, title=None):
     """Bubble plot of studentised residuals against leverage.
 
-    Each point is one observation; the bubble area is proportional to its Cook's
-    distance, the standard measure of how much the fit would move if the point
-    were dropped (Cook, 1977). Points to the right have high leverage (an unusual
-    predictor combination), points far above or below zero are poorly fitted, and
-    large bubbles are the ones that combine both into real influence.
+    Each point is one observation, and the bubble area is proportional to its
+    Cook's distance, the standard measure of how much the fitted values would
+    change if the point were dropped (Cook, 1977). Points to the right have high
+    leverage (an unusual combination of predictor values), points far above or
+    below zero are poorly fitted and large bubbles combine both into influence
+    on the fit.
 
     Parameters
     ----------
     model : statsmodels results object
-        A fitted OLS/GLM result.
+        A fitted OLS or GLM result.
     title : str, optional
         Plot title.
 
@@ -363,11 +366,11 @@ def _model_terms(model):
     ``data.design_info``, and from 0.15 as ``data.model_spec``, which holds a
     formulaic ModelSpec when the formula engine is formulaic. Each names the
     terms and the columns they fill, and the intercept is the term
-    "Intercept" or "1". The spec is read according to its own type, because
-    statsmodels' FormulaManager reads one through whichever engine is set at
-    the time, which need not be the engine that built it. A model fitted from
-    arrays has no terms, so each column stands for itself, and the intercept
-    is the constant column statsmodels found.
+    ``"Intercept"`` or ``"1"``. The spec is read according to its own type,
+    because statsmodels' FormulaManager reads one through whichever engine is
+    set at the time, which need not be the engine that built it. A model fitted
+    from arrays has no terms, so each column stands for itself, and the
+    intercept is the constant column statsmodels found.
 
     Returns
     -------
@@ -429,8 +432,8 @@ def _has_coefficient_covariance(obj) -> bool:
     """True for a fitted statsmodels result that holds its coefficients' covariance.
 
     With the design, that covariance is all a VIF needs. WLS and GLS results
-    lack the influence machinery that _is_fitted_model() looks for, so a fit
-    of any of statsmodels' linear regression models counts as well, as a
+    lack the ``get_influence()`` method that _is_fitted_model() looks for, so a
+    fit of any of statsmodels' linear regression models counts as well, as a
     weighted lm() does in the R twin.
     """
     from statsmodels.regression.linear_model import RegressionModel
@@ -536,7 +539,7 @@ def vif_plot(model, threshold=5, title=None):
     weights of its fit. For an unweighted linear model with an intercept, they
     give the values the formula gives with R the correlation matrix of the
     predictor columns, as Fox and Monette state it. The values are those of
-    the R twin and of R's ``car::vif()``. A Probit result differs slightly,
+    R's ``car::vif()``. A Probit result differs slightly,
     because statsmodels takes its covariance from the observed information
     matrix, where R's ``glm()`` uses the expected one. A GLM with a probit
     link gives R's values.
@@ -627,8 +630,8 @@ def binned_residual_plot(model, n_bins=None, title=None, band="model"):
 
     Raw residuals from a logistic model are uninformative point by point, so the
     fitted probabilities are split into equal-count bins and the mean residual is
-    plotted against the mean fitted value in each bin. The bins are the R
-    twin's. Rows are ranked by their fitted probability with ties in row order,
+    plotted against the mean fitted value in each bin. Rows are ranked by
+    their fitted probability with ties in row order,
     and the ranks are cut at multiples of n / n_bins. A row with zero weight
     takes no part in the fit and is left out.
 
@@ -640,7 +643,7 @@ def binned_residual_plot(model, n_bins=None, title=None, band="model"):
     residual, the band gives the mean of the n_b residuals in a bin the
     standard error sqrt(sum of their variances) / n_b. The fit absorbs a little
     of each row's variance, so a residual varies slightly less than this and
-    the band errs on the wide side. Under a well-fitting model, about 95% of
+    the band is slightly too wide. Under a well-fitting model, about 95% of
     the points fall inside the band. A run of points outside it, or a clear
     trend in them, points to a missing predictor or the wrong functional form.
 
@@ -652,7 +655,7 @@ def binned_residual_plot(model, n_bins=None, title=None, band="model"):
 
     ``band="empirical"`` takes the standard error from the residuals in the bin,
     as their standard deviation over sqrt(n_b), the band of R's
-    ``arm::binnedplot()``. It collapses in a bin whose outcomes are all alike,
+    ``arm::binnedplot()``. It narrows sharply in a bin whose outcomes are all alike,
     such as a bin without events, and so flags such bins even when the model is
     right.
 

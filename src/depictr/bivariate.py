@@ -1,9 +1,8 @@
 """Two-variable exploratory plots, themed consistently.
 
-These cover the second look at a dataset, once you have moved past single-variable
-distributions and want to see how two columns relate. :func:`scatter_trend` is
-the explicit numeric-by-numeric case; :func:`explore_bivariate` picks a sensible
-plot from the column types so you do not have to.
+These show how two columns of a dataset relate, once the distributions of
+single columns have been looked at. ``scatter_trend()`` plots two numeric
+columns. ``explore_bivariate()`` chooses the plot from the column types.
 """
 
 from __future__ import annotations
@@ -96,19 +95,18 @@ def explore_bivariate(data, x, y, title=None):
 
     The plot is selected from the column dtypes:
 
-    - two numeric columns give a scatter plot with a trend line
-      ([`scatter_trend`][depictr.scatter_trend]);
-    - one numeric and one categorical column give boxplots of the numeric
-      variable across the categories, with the raw points jittered over them;
-    - two categorical columns give a tile of joint counts, shaded by frequency.
+    - Two numeric columns give a scatter plot with a trend line
+      ([`scatter_trend`][depictr.scatter_trend]).
+    - One numeric and one categorical column give boxplots of the numeric
+      variable across the categories, with the raw points jittered over them.
+    - Two categorical columns give a tile of joint counts, shaded by frequency.
 
     Datetime and timedelta columns count as numeric, so against a numeric
     column they give a scatter plot with a trend, and against a categorical one
     boxplots of their values across the categories. A boolean column counts as
-    categorical, as a logical vector does in the R twin. A duration is drawn as a
-    number in the unit [`summary_table`][depictr.summary_table] reports it in,
-    named in the axis title, as in ``stay (days)``. The R twin draws a
-    ``difftime`` the same way, in its own units.
+    categorical, as a logical vector does in the R package. A duration is drawn
+    as a number in the unit [`summary_table`][depictr.summary_table] reports it
+    in, named in the axis title, as in ``stay (days)``.
 
     Parameters
     ----------
@@ -175,7 +173,7 @@ def explore_bivariate(data, x, y, title=None):
 
 def _durations_as_numbers(data, cols):
     """Return ``data`` with each timedelta column among ``cols`` as a number in
-    the unit :func:`summary_table` reports it in, and each column's axis title,
+    the unit ``summary_table()`` reports it in, and each column's axis title,
     which names that unit.
 
     A number in a stated unit is how the R twin draws a ``difftime``, for which

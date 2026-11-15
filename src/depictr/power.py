@@ -1,10 +1,10 @@
 """Statistical-power plots, themed consistently.
 
 Power analysis answers how large a sample needs to be to detect an effect of a
-given size. The curve of power against sample size is the usual way to read off
-that number. This plots a power curve from a tidy table you have already
-computed (with statsmodels' power solvers, G*Power, simulation, pilotr or a
-paper); it does no power calculation of its own.
+given size. The curve of power against sample size is the usual way to read
+that number. ``power_curve_plot()`` draws a power curve from a tidy table
+computed elsewhere, such as with statsmodels' power solvers, G*Power, a
+simulation, pilotr or a paper. It does no power calculation of its own.
 """
 
 from __future__ import annotations
@@ -147,12 +147,13 @@ def power_curve_plot(data, n=None, power=None, group=None, title=None,
     lower, upper : str, optional
         Columns holding the lower and upper confidence limits. Name both or
         neither. By default, ``<power>_lo`` and ``<power>_hi`` are used, then
-        ``lower``/``upper``, ``ci_low``/``ci_high`` or ``conf.low``/``conf.high``.
+        ``lower`` and ``upper``, ``ci_low`` and ``ci_high`` or ``conf.low`` and
+        ``conf.high``.
     ribbon : bool
         Whether to draw the confidence band as a shaded ribbon (``True``) or as
         error bars (``False``).
     y_lab : str, optional
-        Y-axis label. By default, "Power" when the power column is one of the
+        Y-axis label. By default, 'Power' when the power column is one of the
         default names, and the column's name otherwise.
     solved : dict or pandas.DataFrame, optional
         A sample size solved from the curve, with its confidence interval: a

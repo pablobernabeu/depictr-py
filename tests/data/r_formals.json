@@ -1,5 +1,5 @@
 {
-  "source": "depictr 0.3.0 (R)",
+  "source": "depictr 0.4.0 (R)",
   "functions": {
     "acf_plot": ["x", "lag_max", "type", "conf_level", "title", "x_lab", "y_lab"],
     "arrange_plots": ["...", "ncol", "nrow", "guides", "title", "subtitle", "tag_levels"],

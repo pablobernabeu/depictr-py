@@ -2,50 +2,49 @@
 
 This guide works through a short analysis with depictr, from a first look at the
 data to a fitted model and its diagnostics. Every plotting function returns a
-[plotnine](https://plotnine.org) object, so any figure shown here can be refined
-further with the usual `+` syntax.
+[plotnine](https://plotnine.org) object, so you can customise it further with
+the usual `+` syntax.
 
 ## Install
 
 The first command below installs the core (plotnine, pandas, numpy, matplotlib
-and scipy), and the second adds the optional computation back-ends. The double
-quotes keep zsh, the default shell on macOS, from reading the brackets as a
-filename pattern.
+and scipy), and the second adds the optional computation back-ends and
+Streamlit, which the web app uses. The double quotes keep zsh, the default
+shell on macOS, from reading the brackets as a filename pattern.
 
 ```bash
 pip install depictr
 pip install "depictr[all]"
 ```
 
-The exploratory, theme and accessibility tools work with the core install, and
-so do the model and time-series plots: they delegate to statsmodels, which
-plotnine itself requires. The classification and survival plots delegate to
-scikit-learn and lifelines, each an optional extra (`depictr[classification]`,
-`depictr[survival]`). The PCA, scree, cluster and silhouette plots need
-scikit-learn too, from the `depictr[classification]` extra, while the dendrogram
-needs only scipy, a core dependency. The gains, lift and calibration curves are
-computed by depictr itself and need neither. The `depictr[models]` extra remains
-to pin the tested statsmodels floor.
+The exploratory, theme and accessibility tools work with the core install. So
+do the model and time-series plots, which use statsmodels, a requirement of
+plotnine itself. The classification and survival plots use scikit-learn and
+lifelines, which come with the optional extras `depictr[classification]` and
+`depictr[survival]`. The PCA, scree, cluster and silhouette plots need
+scikit-learn too, from the `depictr[classification]` extra, while the
+dendrogram needs only scipy, a core dependency. The gains, lift, calibration
+and threshold curves are computed by depictr itself and need neither. The
+`depictr[models]` extra only sets the tested minimum version of statsmodels.
 
 ## The idea
 
-The whole workflow gets one theme, one colourblind-safe palette (based on the
-Okabe-Ito set) and one calling convention. Specialist computations stay with the
-packages that do them well, and each result is redrawn under the shared theme,
-so a ROC curve, a coefficient plot and a survival curve read as parts of one
-figure set.
+All plotting functions follow the same calling convention, and all plots use
+the same theme and colourblind-safe palette, which is based on the Okabe-Ito
+set. Specialist computations are left to the packages that provide them, and
+each result is redrawn under the shared theme.
 
 ```python
 import depictr as dp
 ```
 
-Each call returns a plotnine object. In a Jupyter notebook it renders on
-display. In a script, call `.show()`, or save it with `dp.save_plot(p, "fig.png")`.
+In a Jupyter notebook, a returned plot renders on display. In a script, call
+`.show()`, or save it with `dp.save_plot(p, "fig.png")`.
 
 ## A first look at the data
 
-depictr ships the R package's synthetic datasets. Here is a lexical-decision
-experiment with reaction times in two priming conditions.
+depictr includes the R package's synthetic datasets, among them a
+lexical-decision experiment with reaction times in two priming conditions.
 
 ```python
 ld = dp.lexical_decision()
@@ -54,8 +53,9 @@ dp.explore_distribution(ld, "RT", group="condition", kind="density",
 ```
 
 The legend sits inside the panel, in the corner the distribution leaves empty.
-For a wider survey, a correlation heatmap and a missing-data map give a quick
-overview:
+
+A correlation heatmap and a missing-data map give a quick overview of a whole
+dataset:
 
 ```python
 wb = dp.wellbeing_survey()
@@ -66,8 +66,8 @@ dp.missingness_map(wb, legend_inside=True)
 ## Fitting and reading a model
 
 depictr does not fit models. It reads a model you have fitted, or a tidy table
-of estimates. Fit an ordinary least-squares model with statsmodels, then read it
-from several angles.
+of estimates. Fit an ordinary least-squares model with statsmodels, then plot
+its estimates, effects and diagnostics.
 
 ```python
 import statsmodels.formula.api as smf
@@ -82,21 +82,21 @@ dp.effects_plot(model, "fertiliser")
 dp.residual_diagnostics_plot(model)
 ```
 
-The forest labels each term for a reader. The treatment row reads
+The forest plot gives each term a readable label. The treatment row reads
 `treatment: enhanced`, the contrast of enhanced fields with the reference level,
 standard, and `soil_ph` reads `soil ph`. `labels` renames any term,
 `labels="raw"` keeps the model's own names, and `format_terms` applies the same
 rules to any list of names.
 
-`coefficient_plot` also accepts a plain data frame of estimates (with columns
-`term`, `estimate`, `conf_low`, `conf_high`), so estimates from any source (a
-Bayesian fit, a bootstrap, a table copied from a paper) plot the same way.
-`tidy_estimates` is the shared converter that produces that standard table from
-a fitted model exposing `params` and `conf_int`, such as a statsmodels OLS, GLM
-or MixedLM result. `coefficient_plot`, `compare_models` and
-`frequentist_bayesian_plot` accept either the model or that table. The
-prediction, random-effects and diagnostic plots need the fitted model itself
-(`qq_plot` also takes an array of residuals), and `posterior_plot` takes
+`coefficient_plot` also accepts a plain data frame of estimates with columns
+`term`, `estimate`, `conf_low` and `conf_high`, so estimates from any source,
+such as Bayesian posteriors, bootstrap intervals or figures taken from a paper,
+plot the same way. `tidy_estimates` is the shared converter that produces that
+standard table from a fitted model exposing `params` and `conf_int`, such as a
+statsmodels OLS, GLM or MixedLM result. `coefficient_plot`, `compare_models`
+and `frequentist_bayesian_plot` accept either the model or that table. The
+prediction, random-effects and diagnostic plots need the fitted model itself,
+although `qq_plot` also takes an array of residuals. `posterior_plot` takes
 posterior draws.
 
 ```python
@@ -105,8 +105,8 @@ dp.tidy_estimates(model)
 
 ## Survival and classification
 
-These families delegate to lifelines and scikit-learn. Kaplan-Meier curves with
-confidence limits, a log-rank test and a number-at-risk table are one call:
+Kaplan-Meier curves with confidence limits, a log-rank test and a
+number-at-risk table take one call:
 
 ```python
 ct = dp.clinical_trial()
@@ -117,23 +117,23 @@ dp.roc_curve_plot(ct["adverse_event"], ct["biomarker"])
 
 ## Checking the accessibility claim
 
-The default palette is based on the Okabe-Ito set, and the claim behind that
-choice is testable. A simulator of colour-vision deficiency, based on the model
-of Machado, Oliveira and Fernandes (2009), and a CIEDE2000 colour-difference
-test measure how far apart the palette's colours stay under each form of
-deficiency.
+The claim that the default palette is colourblind-safe can be tested with a
+simulator of colour-vision deficiency, based on the model of Machado, Oliveira
+and Fernandes (2009), and a CIEDE2000 colour-difference test. Together, they
+measure how far apart the palette's colours stay under each form of deficiency.
 
 ```python
 dp.palette_safety()
 # {'min_delta_e': ..., 'safe': True, 'by_condition': {...}, ...}
 ```
 
-A safe palette is not a safe figure, though, so `check_figure` audits a finished
-plot. It measures how separable the encoding colours are under each dichromacy
-and in greyscale, how small the text becomes at the width the figure will be
-printed at, how well text and geometry contrast with their backgrounds under
-WCAG, and whether any distinction rests on colour alone. Each row reports the
-value it measured beside the threshold, so a verdict can be argued with.
+A figure built from a safe palette can still be inaccessible, so `check_figure`
+audits the finished plot. It measures how separable the encoding colours are
+under each dichromacy and in greyscale, and how small the text becomes at the
+width the figure will be printed at. It also measures how well text and
+geometry contrast with their backgrounds under WCAG, and whether any
+distinction rests on colour alone. Each row reports the value it measured next
+to the threshold it was measured against.
 
 ```python
 dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
@@ -141,15 +141,14 @@ dp.check_figure(dp.explore_distribution(ld, "RT", group="condition"),
 ```
 
 The gallery's [accessibility page](gallery/accessibility.md) renders both reports
-in full, and states the limitations worth knowing: the colourblind-safety
-guarantee covers hue confusion alone, and two of the palette's colours print as
-the same grey. The palette's orange, the second colour, also falls below the 3:1
-contrast against white that WCAG asks of a graphical object.
+in full and states the palette's limitations. The Okabe-Ito guarantee covers
+hue confusion alone, and two of the palette's colours print as the same grey.
+The palette's orange, the second colour, also falls below the 3:1 contrast
+against white that WCAG asks of a graphical object.
 
 ## Extending and composing
 
-Because every plotting function returns a plotnine object, the
-grammar-of-graphics extensions apply:
+plotnine's grammar-of-graphics extensions apply to every depictr plot:
 
 ```python
 from plotnine import labs
@@ -167,8 +166,8 @@ untagged:
 dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)
 ```
 
-`theme_depictr`, `scale_colour_depictr` and `depictr_palette` style your own
-plots too, so a figure depictr did not draw still matches the set:
+`theme_depictr`, `depictr_palette` and `scale_colour_depictr` style your own
+plots too:
 
 ```python
 from plotnine import ggplot, aes, geom_point

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+import depictr
+
 ROOT = Path(__file__).resolve().parents[1]
 CITATION = ROOT / "CITATION.cff"
 CHANGELOG = ROOT / "CHANGELOG.md"
@@ -81,3 +83,23 @@ def test_the_changelog_dates_the_cited_release_as_citation_cff_does():
     assert heading.group(1) == released, (
         f"CHANGELOG.md dates {version} {heading.group(1)}, CITATION.cff {released}"
     )
+
+
+def test_citation_cff_cites_the_newest_dated_release():
+    """The citation moves to a version on the day the changelog dates it.
+
+    Until then the changelog keeps the version's entries under [Unreleased] and
+    CITATION.cff cites the release before, with that release's date, so that the
+    version, the comment and date-released change together on the release day.
+    Once no [Unreleased] heading is left, the cited version is the one the
+    package reports.
+    """
+    cited = _field(_lines(CITATION), "version")
+    text = "\n".join(_lines(CHANGELOG))
+    dated = re.findall(r"^## \[([^\]]+)\] - \S+[ \t]*$", text, flags=re.M)
+    assert dated, "CHANGELOG.md has no dated heading"
+    assert cited == dated[0], f"CITATION.cff cites {cited}, the newest dated release is {dated[0]}"
+    if not re.search(r"^## \[Unreleased\]", text, flags=re.M):
+        assert cited == depictr.__version__, (
+            f"CITATION.cff cites {cited}, the package reports {depictr.__version__}"
+        )

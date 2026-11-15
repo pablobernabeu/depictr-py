@@ -183,10 +183,15 @@ def audited_good():
 
 
 def audited_bad():
+    # The figure names DejaVu Sans, which ships with matplotlib, so that it is
+    # drawn in the same font on every platform. plotnine lists Helvetica first
+    # among its sans-serif fonts, and on macOS matplotlib 3.11.2 raises 'failed
+    # to load glyph' when it hints the system's Helvetica at 7 pixels per em or
+    # fewer, as the 5 pt text is at 72 dpi (run 43726985192).
     return (ggplot(CY, aes("rainfall", "yield", colour="treatment"))
             + geom_point()
             + scale_colour_manual(values=["#d62728", "#309208"])
-            + dp.theme_depictr(base_size=5))
+            + dp.theme_depictr(base_size=5, base_family="DejaVu Sans"))
 
 
 def test_check_audits_at_the_saved_width_given_as_both_widths(tmp_path,

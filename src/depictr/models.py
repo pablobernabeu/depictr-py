@@ -1,9 +1,9 @@
-"""Model-estimate plots that accept a fitted model *or* a tidy data frame.
+"""Model-estimate plots that accept a fitted model or a tidy data frame.
 
-The dual input is the point: hand :func:`coefficient_plot` a fitted statsmodels
-result and it reads the estimates and confidence intervals itself, or hand it a
-tidy data frame of estimates from any source (a Bayesian fit, a bootstrap, a
-table from a paper) and it plots those directly.
+``coefficient_plot()`` takes a fitted statsmodels result, from which it reads
+the estimates and confidence intervals, or a tidy data frame of estimates from
+any source, such as a Bayesian fit, a bootstrap or a table from a paper, which
+it plots directly.
 """
 
 from __future__ import annotations
@@ -73,18 +73,17 @@ def tidy_estimates(model, conf_level: float = 0.95,
     The intervals are those of the result's ``conf_int()``, so they follow its
     ``use_t``. An OLS result uses t. A GLM uses z by default, as statsmodels'
     own GLM summary does, and t on the residual degrees of freedom when fitted
-    with ``use_t=True``. The R twin gives a family whose dispersion is
+    with ``use_t=True``. The R package gives a family whose dispersion is
     estimated (Gaussian, Gamma, inverse Gaussian) the t interval that R's
     ``summary.glm()`` tests with, so fit such a GLM with ``use_t=True`` to get
-    the R twin's intervals. At 12 residual degrees of freedom, the t interval
+    the R package's intervals. At 12 residual degrees of freedom, the t interval
     is about 11% wider than the z interval, and at 100 about 1% wider.
 
-    For a mixed model, only the fixed effects are kept, as the R twin keeps
-    ``lme4::fixef()``. The variance and covariance entries that follow them in
-    a ``MixedLM`` result's ``params`` are not coefficients, and statsmodels
-    reports them divided by the residual scale. The intervals kept are Wald
-    intervals on the normal distribution, as the R twin computes them for an
-    lme4 fit.
+    For a mixed model, only the fixed effects are kept. The variance and
+    covariance entries that follow them in a ``MixedLM`` result's ``params``
+    are not coefficients, and statsmodels reports them divided by the
+    residual scale. The intervals kept are Wald intervals on the normal
+    distribution.
 
     A model fitted from arrays has unnamed estimates, so its terms are named
     from the model's ``exog_names`` (``const``, ``x1``, ...), as statsmodels'
@@ -148,7 +147,7 @@ def _ratio_label(model) -> str:
     exp() of a logit coefficient is an odds ratio. exp() of a log-link
     coefficient is a rate ratio in a count model and a risk ratio in a
     binomial one. Anything else, a data frame or an identity link among them,
-    is "exp(Estimate)": exp() of a slope on log(y), for one, is a ratio of
+    is ``"exp(Estimate)"``: exp() of a slope on log(y), for one, is a ratio of
     geometric means. The R twin names them the same way.
     """
     if isinstance(model, pd.DataFrame):
@@ -174,7 +173,7 @@ def _ratio_label(model) -> str:
 
 
 def _reference_position(reference_line, exponentiate: bool):
-    """Where the reference line goes: 0, 1 for ratios, or None for no line."""
+    """Where the reference line goes: 0, 1 for ratios or None for no line."""
     if reference_line is None:
         return 1.0 if exponentiate else 0.0
     value = float(reference_line)
@@ -240,7 +239,7 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
                      interaction: str = "times"):
     """Forest (dot-and-whisker) plot of model coefficients.
 
-    By default each term is labelled for a reader. The coefficient of a factor
+    By default, each term is labelled for a reader. The coefficient of a factor
     level names its variable and level, so patsy's ``treatment[T.enhanced]``
     is drawn as ``treatment: enhanced``, the contrast of enhanced with the
     reference level, and ``rainfall:treatment[T.enhanced]`` as
@@ -248,8 +247,7 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     from the model's design, so a level holding a colon or a bracket is kept
     whole. Other names, and the terms of a data frame, are tidied with
     [`format_terms`][depictr.format_terms], which also drops the ``Q()`` and
-    ``C()`` wrappers of a formula. The R twin labels its terms by the same
-    rules.
+    ``C()`` wrappers of a formula.
 
     Parameters
     ----------
@@ -261,9 +259,8 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
         Order of the terms. ``"ascending"`` puts the smallest estimate at the
         bottom and the largest at the top, so estimates increase up the axis.
         ``"descending"`` does the reverse, and ``"model"`` keeps the model's
-        order from top to bottom. ``"none"``, the R twin's name for model
-        order, is accepted as an alias. The R twin reads ``order`` the same
-        way. Any other value raises ``ValueError``.
+        order from top to bottom. ``"none"``, the R package's name for model
+        order, is accepted as an alias. Any other value raises ``ValueError``.
     conf_level : float
         Confidence level passed to [`tidy_estimates`][depictr.tidy_estimates],
         a single number strictly between 0 and 1.
@@ -271,15 +268,14 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     reference_line : float, optional
         Position of the dashed vertical reference line. ``None``, the default,
         puts it at 0, or at 1 when ``exponentiate`` is set, where a ratio of 1
-        means no effect. ``float("nan")`` leaves it out, as ``NA`` does in the
-        R twin.
+        means no effect. ``float("nan")`` leaves it out.
     exponentiate : bool
         Whether to draw the exponentiated estimates and intervals on a log10
         axis, which shows the coefficients of a logistic regression as odds
         ratios and those of a Poisson or negative binomial model as rate
-        ratios. The axis is labelled "Odds ratio" for a logit link, "Rate
-        ratio" for a log link in a count model, "Risk ratio" for a binomial
-        model with a log link and "exp(Estimate)" otherwise. A data frame
+        ratios. The axis is labelled 'Odds ratio' for a logit link, 'Rate
+        ratio' for a log link in a count model, 'Risk ratio' for a binomial
+        model with a log link and 'exp(Estimate)' otherwise. A data frame
         ``model`` must hold estimates on the link scale. Defaults to
         ``False``.
     labels : dict, list or "raw", optional
@@ -301,7 +297,7 @@ def coefficient_plot(model, intercept: bool = False, order: str = "model",
     Returns
     -------
     plotnine.ggplot
-        The plot's data keeps the raw names in ``term`` and the drawn ones in
+        The plot's data keep the raw names in ``term`` and the drawn ones in
         ``label``.
 
     Examples
