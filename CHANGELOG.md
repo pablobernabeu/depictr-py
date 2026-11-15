@@ -399,6 +399,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `conf_level` that is not a number, such as `None`, with a `ValueError` that
   names the argument, where they raised a `TypeError` from the arithmetic.
 - The package metadata declares the licence as the SPDX expression `MIT`.
+- The `docs` extra requires markdown-exec 1.12.3 or later, where it allowed 1.8.
 
 ### Deprecated
 

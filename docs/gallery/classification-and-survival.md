@@ -17,7 +17,7 @@ from _exec import show as _show
 show = partial(_show, width=7)
 ```
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 import numpy as np
 
 import depictr as dp
@@ -30,7 +30,7 @@ score = 1 / (1 + np.exp(-ct["biomarker"]))  # a probability-like score
 
 An ROC curve with the area under the curve.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.roc_curve_plot(ct["adverse_event"], score)
 print(show(p))
 ```
@@ -40,7 +40,7 @@ print(show(p))
 When the positive class is rare, the precision-recall curve is more informative
 than the ROC curve, because it ignores the many true negatives.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.pr_curve_plot(ct["adverse_event"], score)
 print(show(p))
 ```
@@ -50,12 +50,12 @@ print(show(p))
 The cumulative gains and lift charts show how many positive cases are captured
 as more of the score-ordered population is targeted.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.gain_plot(ct["adverse_event"], score)
 print(show(p))
 ```
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.lift_plot(ct["adverse_event"], score)
 print(show(p))
 ```
@@ -63,7 +63,7 @@ print(show(p))
 The threshold plot sweeps the decision threshold across the range of scores and
 plots how each metric trades off against the others.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.threshold_plot(ct["adverse_event"], score)
 print(show(p))
 ```
@@ -75,7 +75,7 @@ borne out by an event in about 30% of such cases. It therefore needs
 probabilities from a fitted model, whereas the charts above need only a ranking
 score. We fit a logistic regression and pass its predicted probabilities.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 from sklearn.linear_model import LogisticRegression
 
 X = ct[["biomarker", "age"]]
@@ -96,7 +96,7 @@ highest with four, none of whom had an event.
 
 A confusion-matrix heatmap, normalised by the true class.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.confusion_matrix_plot(ct["adverse_event"], (score > 0.6).astype(int),
                              normalise="true")
 print(show(p, width=6))
@@ -109,7 +109,7 @@ steps are 95% confidence limits, built on the log-log scale as in the R twin,
 and each + marks a censored patient. The descending curves leave the top-right
 corner empty, and `legend_inside=True` puts the legend there.
 
-```python exec="1" html="1" source="material-block" session="clf"
+```python exec="1" html="1" source="block" session="clf"
 p = dp.survival_plot(ct["time"], ct["event"], group=ct["arm"],
                      risk_table=True, legend_inside=True, logrank=True,
                      title="Survival by arm")

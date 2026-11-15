@@ -21,7 +21,7 @@ across normal vision and each deficiency at full severity. The distance is the
 CIEDE2000 colour difference
 ([Sharma, Wu and Dalal, 2005](https://doi.org/10.1002/col.20070)).
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 import depictr as dp
 
 report = dp.palette_safety()
@@ -34,7 +34,7 @@ A grouped distribution in the default palette, a histogram with its density
 curve. `legend_inside` puts the legend in the empty top-right corner, so the
 figure needs no separate margin.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 ld = dp.lexical_decision()
 p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
                             legend_inside=True)
@@ -49,7 +49,7 @@ in turn, so the rows can be read against one another. The closest pair is the
 reddish purple and the grey under deuteranopia, whose distance of 6.43 in the
 report still clears the threshold of 5.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 import pandas as pd
 from plotnine import (aes, element_blank, geom_tile, ggplot, labs,
                       scale_fill_identity, scale_y_discrete, theme)
@@ -82,7 +82,7 @@ print(show(p, width=8, height=2.6))
 The hex codes behind those rows, for the deficiency the palette comes closest
 to failing.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 simulated = dp.simulate_cvd(palette, "deutan")
 lines = [f"{original}  ->  {seen}"
          for original, seen in zip(palette, simulated)]
@@ -99,7 +99,7 @@ colour-vision toggle this way. Below, the grouped distribution from the top of
 the page appears under normal vision, which is severity zero, and then under
 each deficiency at full severity.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 import numpy as np
 
 p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
@@ -126,7 +126,7 @@ enough together that the same check fails them. The package warns when that
 happens, and the check in the report below agrees with the warning. Eight
 colours pass, and nine already fail.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 import warnings
 
 with warnings.catch_warnings():
@@ -151,7 +151,7 @@ whether the only thing separating two groups is their colour. `check_figure`
 reads the built plot and reports each value it measured next to the threshold
 it was measured against.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 p = dp.explore_distribution(ld, "RT", group="condition", kind="both",
                             legend_inside=True)
 print(table(dp.check_figure(p)))
@@ -168,7 +168,7 @@ fails without being noticed. Text is drawn in points, so the text of a figure
 saved seven inches wide and then printed in an 8.9 cm column is half the size
 it was on screen.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 column = dp.check_figure(p, width_cm=8.9)
 print(table(column[column["check"] == "text_size"]))
 ```
@@ -196,7 +196,7 @@ well-separated colours drawn opaque, a redundant shape and no shrinking passes
 every row it can be held to. It draws no text inside the panel, so
 `annotation_text_size` is not applicable.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 from plotnine import aes, geom_point, ggplot, scale_colour_manual
 
 cy = dp.crop_yield()
@@ -227,7 +227,7 @@ its lightness, so prefer one whose lightness changes evenly, such as viridis
 or depictr's sequential and diverging ramps, over a rainbow
 ([Crameri, Shephard and Heron, 2020](https://doi.org/10.1038/s41467-020-19160-7)).
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 heatmap = dp.check_figure(dp.correlation_heatmap(dp.wellbeing_survey()))
 print(table(heatmap[heatmap["check"].isin(
     ["colour_separability", "text_size", "annotation_text_size"])]))
@@ -241,7 +241,7 @@ so a black-and-white printer renders them as the same grey. The Okabe-Ito
 guarantee covers hue confusion alone. The check holds depictr's own palette to
 the same threshold as any other.
 
-```python exec="1" html="1" source="material-block" session="a11y"
+```python exec="1" html="1" source="block" session="a11y"
 eight = pd.DataFrame({"g": list("abcdefgh"), "x": range(8), "y": range(8)})
 p8 = (ggplot(eight, aes("x", "y", colour="g")) + geom_point()
       + dp.scale_colour_depictr() + dp.theme_depictr())

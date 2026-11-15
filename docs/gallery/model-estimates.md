@@ -10,7 +10,7 @@ import sys; sys.path.insert(0, "docs")
 from _exec import show
 ```
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 import statsmodels.formula.api as smf
 
 import depictr as dp
@@ -28,7 +28,7 @@ A point-and-interval forest plot of the coefficients. The treatment row is
 labelled `treatment: enhanced`, which names the level compared with the
 reference.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.coefficient_plot(model, title="Drivers of crop yield")
 print(show(p))
 ```
@@ -37,7 +37,7 @@ print(show(p))
 
 The predicted response as one predictor varies, with a confidence band.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.effects_plot(model, "fertiliser")
 print(show(p))
 ```
@@ -47,7 +47,7 @@ print(show(p))
 One line per treatment level, showing how the predicted fertiliser slope differs
 between them. The diverging lines are the fertiliser-by-treatment interaction.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 m_int = smf.ols('Q("yield") ~ fertiliser * treatment + rainfall', cy).fit()
 p = dp.interaction_plot(m_int, "fertiliser", "treatment")
 print(show(p))
@@ -58,7 +58,7 @@ print(show(p))
 A reduced and the full model side by side, so a coefficient that moves across
 specifications stands out. The dict keys label and colour the models.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 reduced = smf.ols('Q("yield") ~ fertiliser + rainfall', cy).fit()
 p = dp.compare_models({"Reduced": reduced, "Full": model})
 print(show(p))
@@ -69,7 +69,7 @@ print(show(p))
 A two-panel Cumming estimation plot of the group difference, drawn beneath the
 group it belongs to.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.estimation_plot(cy, "yield", "treatment", two_panel=True, seed=1)
 print(show(p, width=9))
 ```
@@ -78,7 +78,7 @@ print(show(p, width=9))
 
 The four-panel residual-diagnostic dashboard.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.residual_diagnostics_plot(model)
 print(show(p, width=9, height=7))
 ```
@@ -90,7 +90,7 @@ usual threshold of 5. Bars past it flag terms whose coefficients' variance is
 inflated by collinearity. A factor with more than two levels gets a single
 generalised VIF, which does not depend on its reference level.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.vif_plot(model)
 print(show(p))
 ```
@@ -100,7 +100,7 @@ print(show(p))
 Raw residuals from a logistic fit take few values, so the plot shows the mean
 residual per fitted-value bin against a two-standard-error band.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 import statsmodels.api as sm
 
 ct = dp.clinical_trial()
@@ -116,7 +116,7 @@ A caterpillar plot of the conditional modes from a mixed model. Each point is on
 participant's predicted departure from the population fit, sorted against a zero
 reference line.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 ld = dp.lexical_decision()
 mm = smf.mixedlm("RT ~ condition", ld, groups=ld["participant"]).fit()
 p = dp.random_effects_plot(mm, title="Participant intercepts")
@@ -128,7 +128,7 @@ print(show(p))
 A Bayesian fit or a bootstrap gives a sample of draws per term. Here the draws
 are simulated around the fitted estimates to stand in for a posterior.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 import numpy as np
 
 rng = np.random.default_rng(0)
@@ -142,7 +142,7 @@ In `frequentist_bayesian_plot`, the frequentist estimate and the posterior share
 a row and are told apart by colour. The posterior is drawn as its median with
 inner 66% and outer 95% credible intervals.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.frequentist_bayesian_plot(model, draws)
 print(show(p))
 ```
@@ -156,7 +156,7 @@ The dashed reference line at 0.8 marks the conventional target. The sample size
 at which each curve crosses it is the number needed per group to detect that
 effect.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 import pandas as pd
 from statsmodels.stats.power import TTestIndPower
 
@@ -182,7 +182,7 @@ GLM, Logit or Probit fit gets the Q-Q plot of quantile residuals that
 `residual_diagnostics_plot` draws for it, and a binomial one its binned
 residuals.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.model_report(model)
 print(show(p, width=9, height=8))
 ```
@@ -193,7 +193,7 @@ Any plots can be placed in one figure with `arrange_plots`, which the composed
 reports above also use. It tags the panels A, B and so on, as the R function
 does.
 
-```python exec="1" html="1" source="material-block" session="models"
+```python exec="1" html="1" source="block" session="models"
 p = dp.arrange_plots(dp.qq_plot(model), dp.influence_plot(model), ncol=2)
 print(show(p, width=9))
 ```

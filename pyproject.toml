@@ -75,7 +75,9 @@ test = [
     "colorspacious>=1.1",
 ]
 docs = [
-    "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",
+    # The guides' example blocks show their source with source="block", which
+    # markdown-exec first accepts in 1.12.3.
+    "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.12.3",
     # Keeps the retired per-group reference paths resolving after the reference
     # was gathered into the single api.md page.
     "mkdocs-redirects>=1.2",

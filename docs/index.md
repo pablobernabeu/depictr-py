@@ -35,7 +35,7 @@ import sys; sys.path.insert(0, "docs")
 from _exec import show
 ```
 
-```python exec="1" html="1" source="material-block" session="home"
+```python exec="1" html="1" source="block" session="home"
 import depictr as dp
 
 ld = dp.lexical_decision()
