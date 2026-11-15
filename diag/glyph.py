@@ -83,7 +83,8 @@ if MODE == "main":
     # Each scenario in a fresh process, so no state is shared.
     for scenario in ["plotnine72", "plotnine100", "save72", "save100",
                      "check_then_plotnine72", "audit_only", "save72_check",
-                     "rc_diff"]:
+                     "rc_diff", "helvetica_grid", "pure_mpl", "fixture_dejavu", "plotnine_rc",
+                     "audit_fonts"]:
         print(f"--- {scenario}", flush=True)
         subprocess.run([sys.executable, __file__, scenario], check=False)
     sys.exit(0)
@@ -128,3 +129,75 @@ elif MODE == "rc_diff":
     after = dict(matplotlib.rcParams)
     print("rcParams changed by check_figure:",
           {k: (before[k], after[k]) for k in before if before[k] != after[k]})
+
+elif MODE == "helvetica_grid":
+    from matplotlib.font_manager import get_font
+    from matplotlib.ft2font import LoadFlags
+    path = "/System/Library/Fonts/Helvetica.ttc"
+    if not os.path.exists(path):
+        print("no Helvetica.ttc on this system")
+    else:
+        flags = {n: getattr(LoadFlags, n) for n in
+                 ["DEFAULT", "NO_HINTING", "FORCE_AUTOHINT", "NO_AUTOHINT",
+                  "TARGET_LIGHT"] if hasattr(LoadFlags, n)}
+        res = {}
+        for size in [3, 4, 5, 6, 7, 8, 9, 10, 12]:
+            for dpi in [72, 100, 150, 300]:
+                for name, flag in flags.items():
+                    font = get_font(path)
+                    try:
+                        font.set_size(size, dpi)
+                        font.set_text("yield", 0.0, flags=flag)
+                        res[f"{size}pt@{dpi} {name}"] = "ok"
+                    except RuntimeError as e:
+                        res[f"{size}pt@{dpi} {name}"] = str(e)
+        print("Helvetica.ttc grid, failures only:",
+              json.dumps({k: v for k, v in res.items() if v != "ok"}))
+        print("ppem of failures:", sorted({round(int(k.split("pt")[0]) * int(k.split("@")[1].split()[0]) / 72, 2)
+                                           for k, v in res.items() if v != "ok"}))
+elif MODE == "pure_mpl":
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    for fam, size, dpi in [("Helvetica", 5, 72), ("Helvetica", 5, 100),
+                           ("Helvetica", 10, 72), ("DejaVu Sans", 5, 72)]:
+        def f(fam=fam, size=size, dpi=dpi):
+            fig = plt.figure(figsize=(3.5, 2.4))
+            fig.text(0.5, 0.5, "yield", fontfamily=fam, fontsize=size)
+            fig.savefig(os.path.join(tmp, "m.png"), dpi=dpi)
+            plt.close(fig)
+        run(f"pure matplotlib {fam} {size}pt {dpi}dpi", f)
+elif MODE == "fixture_dejavu":
+    import warnings
+    from plotnine import aes, geom_point, ggplot, scale_colour_manual
+    cy = dp.crop_yield()
+    p = (ggplot(cy, aes("rainfall", "yield", colour="treatment"))
+         + geom_point()
+         + scale_colour_manual(values=["#d62728", "#309208"])
+         + dp.theme_depictr(base_size=5, base_family="DejaVu Sans"))
+    def g():
+        with warnings.catch_warnings(record=True) as rec:
+            warnings.simplefilter("always")
+            dp.save_plot(p, out, width=8.9, height=6, units="cm", dpi=72,
+                         check=True)
+        print("warnings:", [str(w.message)[:200] for w in rec
+                            if str(w.message).startswith("The figure fails")])
+    run("save_plot 72 check with DejaVu Sans", g)
+elif MODE == "plotnine_rc":
+    t = bad().theme
+    rc = getattr(t, "rcParams", None) or getattr(t, "_rcParams", {})
+    print("theme font rcParams:", {k: v for k, v in dict(rc).items()
+                                   if k.startswith("font")})
+elif MODE == "audit_fonts":
+    from matplotlib.backends.backend_agg import RendererAgg
+    from matplotlib.font_manager import findfont
+    real2 = RendererAgg.get_text_width_height_descent
+    seen = set()
+    def w2(self, s, prop, ismath):
+        if s == "yield":
+            seen.add((prop.get_size_in_points(), self.dpi, findfont(prop)))
+        return real2(self, s, prop, ismath)
+    RendererAgg.get_text_width_height_descent = w2
+    run("check_figure", lambda: dp.check_figure(bad(), width_cm=8.9,
+                                                render_width_cm=8.9))
+    print("audit measured 'yield' at:", sorted(seen))
