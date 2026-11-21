@@ -495,6 +495,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The accessibility guide shows a figure drawn by `simulate_figure()` and
   covers four publishers' text floors, Nature's ceiling, the contrast-first
   palette order and how the audit treats a continuous colour scale.
+- Citations were checked against their published records. WCAG 2.2 is dated
+  2024, where it was dated 2023, since its address serves the Recommendation
+  of 12 December 2024. Its title and the title of Okabe and Ito's page
+  capitalise the names 'Web Content Accessibility Guidelines' and 'Color
+  Universal Design', as the R twin does. The docstring of `check_figure()` and
+  the accessibility guide cite Crameri et al. (2020) for preferring a
+  perceptually uniform map, such as viridis, to a rainbow, and no longer for
+  depictr's own ramps. The docstring of `raincloud_plot()` cites Allen et al.
+  (2021) for the bimodality and other features of a distribution that a
+  boxplot can hide, where it also named a thin tail, which the paper does not
+  mention. The docstring of `save_plot()` capitalises the word after the colon
+  in the title of Nature's figure guide.
 
 ## [0.3.0] - 2026-09-24
 

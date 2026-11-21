@@ -15,7 +15,7 @@ figure once supplies everything. The layers' data give the colours that
 encode groups, and the matplotlib artists give the text as it will be drawn,
 at its point size and in its colour.
 
-World Wide Web Consortium. (2023). Web content accessibility guidelines (WCAG)
+World Wide Web Consortium. (2024). Web Content Accessibility Guidelines (WCAG)
 2.2. W3C Recommendation. https://www.w3.org/TR/WCAG22/
 """
 
@@ -122,9 +122,10 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     nothing else in the figure encodes by colour, each of them abstains with a
     ``detail`` that says so. Whether a ramp reads in order, to a reader with a
     colour-vision deficiency and in greyscale as well, depends on how evenly
-    its lightness changes, which the audit does not measure. Prefer a
-    perceptually ordered map, such as viridis or depictr's sequential and
-    diverging ramps, over a rainbow (Crameri et al., 2020).
+    its lightness changes, which the audit does not measure. A perceptually
+    uniform map, such as viridis, is preferable to a rainbow (Crameri et al.,
+    2020). depictr's own sequential and diverging ramps are perceptually
+    ordered.
 
     ``greyscale_separability`` is the smallest difference in CIE lightness
     between those same colours, which is the difference that remains when the
@@ -310,7 +311,7 @@ def check_figure(plot, width_cm: float = 17.78, render_width_cm: float = 17.78,
     observations. Color Research & Application, 30(1), 21-30.
     https://doi.org/10.1002/col.20070
 
-    World Wide Web Consortium. (2023). Web content accessibility guidelines
+    World Wide Web Consortium. (2024). Web Content Accessibility Guidelines
     (WCAG) 2.2. W3C Recommendation. https://www.w3.org/TR/WCAG22/
 
     Examples

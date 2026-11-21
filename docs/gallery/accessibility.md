@@ -223,9 +223,10 @@ each plot that should use it.
 The audit does not measure a continuous colour or fill scale, such as a
 heatmap's. Its colour rows then report 'not applicable' and give the reason,
 and the cell values are measured as text inside the panel. A ramp is read by
-its lightness, so prefer one whose lightness changes evenly, such as viridis
-or depictr's sequential and diverging ramps, over a rainbow
+its lightness, so prefer one whose lightness changes evenly. A perceptually
+uniform map, such as viridis, is preferable to a rainbow
 ([Crameri, Shephard and Heron, 2020](https://doi.org/10.1038/s41467-020-19160-7)).
+depictr's own sequential and diverging ramps are perceptually ordered.
 
 ```python exec="1" html="1" source="block" session="a11y"
 heatmap = dp.check_figure(dp.correlation_heatmap(dp.wellbeing_survey()))

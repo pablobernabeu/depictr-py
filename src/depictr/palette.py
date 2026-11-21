@@ -13,7 +13,7 @@ are close enough together to fail ``palette_safety()``: nine colours come
 within a CIEDE2000 difference of 4.96 and ten within 1.87, against a threshold
 of 5. That case therefore warns and says what to do instead.
 
-Okabe, M., & Ito, K. (2008). Color universal design (CUD): How to make figures
+Okabe, M., & Ito, K. (2008). Color Universal Design (CUD): How to make figures
 and presentations that are friendly to colorblind people.
 https://jfly.uni-koeln.de/color/
 """

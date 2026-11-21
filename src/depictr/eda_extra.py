@@ -39,7 +39,7 @@ def raincloud_plot(data, x, group=None, title=None):
     half-violin density (the 'cloud'), a narrow boxplot for the median and
     quartiles and the jittered raw points (the 'rain'). Seeing the shape, the
     summary and every observation together guards against the boxplot hiding
-    bimodality or a thin tail (Allen et al., 2021).
+    bimodality or other features of the distribution (Allen et al., 2021).
 
     Parameters
     ----------
