@@ -22,7 +22,7 @@ ORCID = "https://orcid.org/0000-0003-1083-2460"
 DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 # The earliest day each released version was public on any channel.
-FIRST_PUBLIC = {"0.3.0": "2026-09-24"}
+FIRST_PUBLIC = {"0.3.0": "2026-09-24", "0.4.0": "2026-11-22"}
 
 
 def _lines(path: Path) -> list[str]:
