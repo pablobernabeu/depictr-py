@@ -515,7 +515,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at 100 dpi). plotnine puts the system's Helvetica first, and matplotlib
   3.11.2 with FreeType 2.14.3 cannot hint `Helvetica.ttc` at that size. Saving
   at a higher dpi, or setting `base_family="DejaVu Sans"` in `theme_depictr()`,
-  avoids the error.
+  avoids the error. It is reported as
+  [matplotlib issue 32650](https://github.com/matplotlib/matplotlib/issues/32650).
 - On Python 3.15, the `survival` and `all` extras install lifelines, which
   requires pandas 2. pandas 2 publishes no wheels for Python 3.15, so pip
   builds it from source, and such a build crashed in this project's tests.
