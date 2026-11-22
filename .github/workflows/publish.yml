@@ -6,7 +6,8 @@
 # environment "pypi" (the depictr project already exists on PyPI, so this is a
 # regular trusted publisher, not a pending one). The workflow runs when a
 # GitHub release is published. The manual trigger, run on the release's tag,
-# gives a fresh run when a failed one cannot simply be re-run.
+# gives a fresh run when a failed one cannot simply be re-run, and it refuses
+# any other ref.
 name: Publish to PyPI
 
 on:
@@ -36,10 +37,15 @@ jobs:
       # prepared, but CITATION.cff and the changelog heading take the new
       # version only in the later commit that dates it. The sdist carries
       # CITATION.cff, so a tag on a commit before that one stops here as well,
-      # before PyPI receives a release that cites the one before.
+      # before PyPI receives a release that cites the one before. A run that is
+      # not on a tag, such as a dispatch on a branch, stops here too, since it
+      # would publish whatever version that branch declares.
       - name: Check that the tag names the package version
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
+          if [[ "${GITHUB_REF}" != refs/tags/* ]]; then
+            echo "::error::This run is on ${GITHUB_REF}. Run it on a release tag."
+            exit 1
+          fi
           version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/depictr/__init__.py)
           cited=$(sed -n 's/^version: "\(.*\)"$/\1/p' CITATION.cff)
           echo "Tag ${GITHUB_REF_NAME}, package version ${version}, CITATION.cff version ${cited}"

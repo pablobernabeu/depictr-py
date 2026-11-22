@@ -139,6 +139,10 @@ dependency. The model and time-series plots delegate to statsmodels, which
 plotnine requires, so the core install includes it. The `depictr[models]` extra
 is kept to set the tested minimum version of statsmodels.
 
+On Python 3.15, leave out the `survival` and `all` extras for now. lifelines
+requires pandas 2, which publishes no wheels for Python 3.15, so pip would build
+pandas from source, and such a build crashed in this project's tests.
+
 The development version can be installed from GitHub:
 
 ```bash
