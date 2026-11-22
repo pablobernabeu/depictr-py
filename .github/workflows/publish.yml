@@ -5,8 +5,9 @@
 # repository as a trusted publisher with workflow file "publish.yml" and
 # environment "pypi" (the depictr project already exists on PyPI, so this is a
 # regular trusted publisher, not a pending one). The workflow runs when a
-# GitHub release is published; the manual trigger exists so a release cut
-# before this workflow was added can still be shipped from the same commit.
+# GitHub release is published. The manual trigger, run on the release's tag,
+# gives a fresh run when a failed one cannot simply be re-run, and it refuses
+# any other ref.
 name: Publish to PyPI
 
 on:
@@ -24,10 +25,33 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
+      # skip-existing below lets a run upload nothing and still pass, so a tag
+      # on a commit that still carries the previous version would build that
+      # version and publish nothing. On any tag, from a release or from a
+      # dispatch on the tag, the version the package declares has to be the
+      # one the tag names. The package version is bumped when a release is
+      # prepared, but CITATION.cff and the changelog heading take the new
+      # version only in the later commit that dates it. The sdist carries
+      # CITATION.cff, so a tag on a commit before that one stops here as well,
+      # before PyPI receives a release that cites the one before. A run that is
+      # not on a tag, such as a dispatch on a branch, stops here too, since it
+      # would publish whatever version that branch declares.
+      - name: Check that the tag names the package version
+        run: |
+          if [[ "${GITHUB_REF}" != refs/tags/* ]]; then
+            echo "::error::This run is on ${GITHUB_REF}. Run it on a release tag."
+            exit 1
+          fi
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/depictr/__init__.py)
+          cited=$(sed -n 's/^version: "\(.*\)"$/\1/p' CITATION.cff)
+          echo "Tag ${GITHUB_REF_NAME}, package version ${version}, CITATION.cff version ${cited}"
+          test "v${version}" = "${GITHUB_REF_NAME}"
+          test "v${cited}" = "${GITHUB_REF_NAME}"
+          grep -E "^## \[${version//./\\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
       - name: Build the sdist and wheel
         run: |
           python -m pip install --upgrade build
@@ -36,7 +60,7 @@ jobs:
         run: |
           python -m pip install --upgrade twine
           python -m twine check dist/*
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: dist
           path: dist/
@@ -50,7 +74,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: dist
           path: dist/

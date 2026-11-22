@@ -25,34 +25,33 @@ def arrange_plots(*plots, ncol: int | None = None, nrow: int | None = None,
 
     Builds a grid by joining plots side by side (plotnine's ``|``) into rows of
     ``ncol``, then stacking the rows (``/``). The result is a plotnine
-    composition, so it still has ``.draw`` and ``.save``. This is the building
-    block behind the multi-panel reports (for example
-    [`depictr.residual_diagnostics_plot`][]).
+    composition, so it still has ``.draw`` and ``.save``. The multi-panel
+    reports, such as [`depictr.residual_diagnostics_plot`][], are built with
+    it.
 
     Each panel is tagged A, B, C and so on by default, in reading order, as
-    the R twin's patchwork annotation tags them. The tags run on through a
-    composition passed as one of the plots, and a ``plot_spacer()`` takes
+    the R package's patchwork annotation tags them. The tags continue through
+    a composition passed as one of the plots, and a ``plot_spacer()`` takes
     none. A tag is drawn in the top-left corner of its panel at the theme's
-    ``plot_tag`` size, 1.2 times the base size, as in ggplot2. In this twin
-    each tag belongs to its panel's plot, so [`depictr.check_figure`][]
-    measures it with the rest of the panel's text, where the R twin's audit
-    leaves out the tags that patchwork draws around the panels.
+    ``plot_tag`` size, 1.2 times the base size, as in ggplot2. Each tag
+    belongs to its panel's plot, so [`depictr.check_figure`][] measures it
+    with the rest of the panel's text.
 
     Parameters
     ----------
     *plots : plotnine.ggplot or plotnine.composition.Compose
         The plots to arrange. ``None`` entries are dropped.
     ncol, nrow : int, optional
-        The grid shape. Give one and the other is derived from the count; give
-        neither and a sensible default is chosen (one column for a single plot,
-        two up to four plots, three beyond). When both are given, ``ncol``
-        decides and ``nrow`` is ignored.
+        The grid shape. Give one and the other is derived from the count.
+        Given neither, the grid has one column for a single plot, two for up
+        to four plots and three beyond. When both are given, ``ncol`` decides and
+        ``nrow`` is ignored.
     title : str, optional
         A title. Applied only when a single plot is passed: plotnine
         compositions cannot carry a figure-level title, so for a grid the
         title is dropped with a warning, and each panel should carry its own.
     tag_levels : {"A", "a", "1", "I", "i"}, sequence of str or None
-        How to tag the panels: capital or lower-case letters, Arabic numerals,
+        How to tag the panels: capital or lower-case letters, Arabic numerals
         or capital or lower-case Roman numerals, as patchwork's
         ``tag_levels`` takes them. A sequence of strings gives the tags
         themselves, one per panel in reading order. ``None`` leaves the panels
@@ -126,7 +125,7 @@ _TAG_LEVELS_MESSAGE = (
 
 
 def _check_tag_levels(tag_levels):
-    """A tag style, a tuple of custom tags, or None, from ``tag_levels``."""
+    """A tag style, a tuple of custom tags or None, from ``tag_levels``."""
     if tag_levels is None:
         return None
     if isinstance(tag_levels, str):
@@ -179,7 +178,7 @@ def _tag_panels(plot):
 
     Yields each panel with the composition holding it and its index there, or
     with None for a lone plot. A ``plot_spacer()`` is left out, as patchwork
-    gives a spacer no tag and :func:`depictr.check_figure` gives it no panel
+    gives a spacer no tag and ``depictr.check_figure()`` gives it no panel
     number.
     """
     from plotnine.composition import Compose, plot_spacer
@@ -198,8 +197,9 @@ def _tagged(items, style, size):
     """Copies of the plots to arrange, each panel carrying its tag.
 
     A composition among them is copied and its panels tagged in place, through
-    the item assignment plotnine's own ``&`` operator uses, so the tags run on
-    through it in reading order. The caller's plots are left as they were.
+    the item assignment plotnine's own ``&`` operator uses, so the tags
+    continue through its panels in reading order. The caller's plots are left
+    as they were.
     """
     from plotnine import element_text, labs, theme
     from plotnine.composition import Compose
@@ -224,7 +224,7 @@ def _tagged(items, style, size):
 def save_plot(plot, filename, width: float = 7, height: float = 4.5,
               dpi: int = 300, units: str = "in", check: bool = False,
               **kwargs) -> str:
-    """Save a depictr/plotnine plot at publication resolution.
+    """Save a depictr or plotnine plot at publication resolution.
 
     Missing directories on the way to ``filename`` are created, and PDF, EPS
     and TIFF files are written to pass the technical checks journals run on
@@ -241,7 +241,7 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     background composited onto white. matplotlib alone writes uncompressed
     RGBA, which PLOS refuses on both counts: the figure in the example below
     takes 10.8 MiB that way. Passing ``pil_kwargs`` leaves the TIFF to
-    matplotlib as it was.
+    matplotlib.
 
     Which formats three publishers accepted on 2 October 2026:
 
@@ -256,27 +256,16 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     layers therefore goes to Nature as a PDF. Elsevier asks for a graph sent as
     a TIFF at 1000 dpi, so pass ``dpi=1000`` for one.
 
-    The R twin takes the file name first, as ``save_plot(filename, plot)``. For
-    an EPS, it rasterises the translucent layers and whatever they overlap,
-    where matplotlib draws them opaque.
-
-    PLOS ONE. Figures. https://journals.plos.org/plosone/s/figures
-
-    Nature. Guide to preparing final artwork.
-    https://www.nature.com/documents/nature-final-artwork.pdf
-
-    Nature research figure guide. Preparing figures: our specifications.
-    https://research-figure-guide.nature.com/figures/preparing-figures-our-specifications/
-
-    Elsevier. Artwork overview.
-    https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-overview
+    The R package's ``save_plot()`` takes the file name first, as
+    ``save_plot(filename, plot)``, and with ``check = TRUE`` attaches the
+    audit report to the filename it returns.
 
     Parameters
     ----------
     plot : plotnine.ggplot or plotnine.composition.Compose
         The plot to save, or a composition of several.
     filename : str
-        Output path; the extension sets the format (``.png``, ``.pdf``,
+        Output path. Its extension sets the format (``.png``, ``.pdf``,
         ``.eps``, ``.tiff``, ``.svg``).
     width, height : float
         Figure size, in ``units``. A composition is saved at this size too.
@@ -302,14 +291,26 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     Returns
     -------
     str
-        The filename written. With ``check=True``, the R twin attaches the
-        audit report to it, and this twin returns the filename alone.
+        The filename written, with ``check=True`` too.
 
     Warns
     -----
     UserWarning
         When an EPS or PostScript file is saved from a plot with translucent
         layers, and, with ``check=True``, when the figure fails a check.
+
+    References
+    ----------
+    Elsevier. Artwork overview.
+    https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-overview
+
+    Nature. Guide to preparing final artwork.
+    https://www.nature.com/documents/nature-final-artwork.pdf
+
+    Nature research figure guide. Preparing figures: Our specifications.
+    https://research-figure-guide.nature.com/figures/preparing-figures-our-specifications/
+
+    PLOS ONE. Figures. https://journals.plos.org/plosone/s/figures
 
     Examples
     --------
@@ -331,7 +332,8 @@ def save_plot(plot, filename, width: float = 7, height: float = 4.5,
     True
 
     Audited at the 8.9 cm column it is saved for, where its text prints at the
-    size it is drawn. It passes every check that applies, so nothing is said.
+    size it is drawn. It passes every check that applies, so no warning is
+    given.
 
     >>> column = os.path.join(tempfile.mkdtemp(), "rt-column.png")
     >>> path = dp.save_plot(p, column, width=8.9, height=6, units="cm",
@@ -444,7 +446,7 @@ def _failed_checks(report) -> list[str]:
 
 
 def _and_list(items: list[str]) -> str:
-    """Join items as "a, b and c"."""
+    """Join items as ``"a, b and c"``."""
     if len(items) < 2:
         return "".join(items)
     return f"{', '.join(items[:-1])} and {items[-1]}"
@@ -453,8 +455,8 @@ def _and_list(items: list[str]) -> str:
 def _with_embedded_fonts(plot):
     """The plot to save, with a theme that cannot undo the TrueType setting.
 
-    plotnine saves a plot inside its theme's rcParams, which win over the
-    surrounding rc_context. A theme that copies matplotlib's own, as
+    plotnine saves a plot inside its theme's rcParams, which take precedence
+    over the surrounding rc_context. A theme that copies matplotlib's own, as
     theme_matplotlib() does, carries the Type 3 default with it, so the plot is
     saved from a copy whose theme carries the embedded font types. A
     composition is saved outside its panels' rcParams and needs no copy.
@@ -509,8 +511,8 @@ def _translucent_layers(plot) -> int:
     """How many layers draw with an alpha below 1, over a composition's panels.
 
     The layers' alpha is known only once the plot is built, so a copy is drawn,
-    since drawing builds the layers in place. Its warnings are muffled because
-    the save has already shown them.
+    since drawing builds the layers in place. Its warnings are suppressed
+    because the save has already shown them.
     """
     import matplotlib.pyplot as plt
     from plotnine import ggplot

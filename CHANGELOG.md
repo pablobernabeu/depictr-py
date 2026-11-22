@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-22
 
 ### Upgrading from 0.3.0
 
@@ -385,7 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `ridgeline_plot()` draws much faster.
-- `calibration_plot()` no longer needs scikit-learn.
+- `calibration_plot()` and `threshold_plot()` no longer need scikit-learn.
 - `coefficient_plot()` accepts `order="none"`, and `calibration_plot()` accepts
   `bins`, the R twin's names for model order and `n_bins`.
 - `pca_plot()` names a misspelt `group` column and the argument in its
@@ -399,12 +399,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `conf_level` that is not a number, such as `None`, with a `ValueError` that
   names the argument, where they raised a `TypeError` from the arithmetic.
 - The package metadata declares the licence as the SPDX expression `MIT`.
+- The `docs` extra requires markdown-exec 1.12.3 or later, where it allowed 1.8.
+- The package metadata lists Python 3.15. It is tested there without the
+  `survival` extra: lifelines 0.30.3 requires pandas 2, and pandas 2 publishes
+  no wheels for Python 3.15.
 
 ### Deprecated
 
 - `metric="cie76"` in `palette_safety()` and `check_figure()`, kept to
-  reproduce colour distances computed before this release. The default,
-  `"ciede2000"`, replaces it, and a later release will remove it.
+  reproduce colour distances computed before this release, gives a
+  `FutureWarning` once per session. The default, `"ciede2000"`, replaces it,
+  and a later release will remove it.
 - The `seed` argument of the dataset loaders, which no longer generate data.
   Passing a value raises a `FutureWarning` and has no effect.
 - The log-rank subtitle that `survival_plot()` prints by default for grouped
@@ -463,6 +468,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Okabe-Ito set. The docstring of `depictr_palette()` says that it keeps six of
   that set's eight colours, with the brand blue and a grey in place of its blue
   and black.
+- The abstract in `CITATION.cff`, which Zenodo copies into its record, calls
+  the palette based on the Okabe-Ito set and names the CIEDE2000 distance
+  check, where it called it the Okabe-Ito palette checked by a CIE-Lab
+  distance.
 - The README's Status section lists the differences between the twins that
   change what a figure shows or how it is computed, where it said that they
   share nearly all of an API.
@@ -486,6 +495,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The accessibility guide shows a figure drawn by `simulate_figure()` and
   covers four publishers' text floors, Nature's ceiling, the contrast-first
   palette order and how the audit treats a continuous colour scale.
+- Citations were checked against their published records. WCAG 2.2 is dated
+  2024, where it was dated 2023, since its address serves the Recommendation
+  of 12 December 2024. Its title and the title of Okabe and Ito's page
+  capitalise the names 'Web Content Accessibility Guidelines' and 'Color
+  Universal Design', as the R twin does. The docstring of `check_figure()` and
+  the accessibility guide cite Crameri et al. (2020) for preferring a
+  perceptually uniform map, such as viridis, to a rainbow, and no longer for
+  depictr's own ramps. The docstring of `raincloud_plot()` cites Allen et al.
+  (2021) for the bimodality and other features of a distribution that a
+  boxplot can hide, where it also named a thin tail, which the paper does not
+  mention. The docstring of `save_plot()` capitalises the word after the colon
+  in the title of Nature's figure guide.
+
+### Known issues
+
+- On macOS, saving a figure can fail with matplotlib's 'failed to load glyph'
+  error when its text comes to 7 pixels per em or fewer (7 pt at 72 dpi, 5 pt
+  at 100 dpi). plotnine puts the system's Helvetica first, and matplotlib
+  3.11.2 with FreeType 2.14.3 cannot hint `Helvetica.ttc` at that size. Saving
+  at a higher dpi, or setting `base_family="DejaVu Sans"` in `theme_depictr()`,
+  avoids the error.
+- On Python 3.15, the `survival` and `all` extras install lifelines, which
+  requires pandas 2. pandas 2 publishes no wheels for Python 3.15, so pip
+  builds it from source, and such a build crashed in this project's tests.
+  Leave these extras out on Python 3.15 for now.
 
 ## [0.3.0] - 2026-09-24
 
@@ -781,7 +815,8 @@ The functions fall into nine families.
   `lme4::allFit`), `k_diagnostic`, `palette_preview`, `model_fit_table` and
   `ts_forecast`.
 
-[Unreleased]: https://github.com/pablobernabeu/depictr-py/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/pablobernabeu/depictr-py/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/pablobernabeu/depictr-py/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/pablobernabeu/depictr-py/compare/v0.2.0...v0.2.1

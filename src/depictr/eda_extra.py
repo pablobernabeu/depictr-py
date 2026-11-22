@@ -1,6 +1,6 @@
 """Further exploratory-data-analysis plots, themed consistently.
 
-These pick up where :mod:`depictr.eda` leaves off: a raincloud for looking at a
+These add to the plots of ``depictr.eda``: a raincloud for looking at a
 distribution and its raw points at once, and a scatter-plot matrix for the
 pairwise relationships among a handful of numeric variables. Both return a
 plotnine object you can extend with ``+`` (the matrix is a composition, so it
@@ -36,10 +36,10 @@ def raincloud_plot(data, x, group=None, title=None):
     """Raincloud plot of a numeric variable, optionally split by a group.
 
     A raincloud sets three views of the same distribution side by side: a
-    half-violin density (the "cloud"), a narrow boxplot for the median and
-    quartiles, and the jittered raw points (the "rain"). Seeing the shape, the
+    half-violin density (the 'cloud'), a narrow boxplot for the median and
+    quartiles and the jittered raw points (the 'rain'). Seeing the shape, the
     summary and every observation together guards against the boxplot hiding
-    bimodality or a thin tail (Allen et al., 2021).
+    bimodality or other features of the distribution (Allen et al., 2021).
 
     Parameters
     ----------
@@ -49,7 +49,7 @@ def raincloud_plot(data, x, group=None, title=None):
         Name of the numeric column whose distribution is shown.
     group : str, optional
         A categorical column. Each level gets its own raincloud along the
-        horizontal axis, coloured by the depictr palette. With no group a single
+        horizontal axis, coloured by the depictr palette. With no group, a single
         raincloud is drawn. A numeric code counts as a group, but a numeric
         column with more than 20 distinct values raises ``ValueError``. Rows
         with a missing group are dropped with a warning, and categories without

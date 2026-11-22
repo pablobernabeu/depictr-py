@@ -1,9 +1,9 @@
-"""depictr gallery: a Streamlit shop window for the package.
+"""depictr gallery: a Streamlit app that shows what the package draws.
 
-Pick a bundled dataset (or upload a CSV), choose a plot, and see the depictr
-figure together with the exact Python call that made it. A colourblind-vision
-toggle re-renders the whole figure as each deficiency would be seen, so a reader
-can judge the accessibility of the default palette on the figure itself.
+Pick a bundled dataset or upload a CSV, choose a plot and see the depictr figure
+together with the exact Python call that made it. A colour-vision selector
+redraws the whole figure as a reader with each deficiency would see it, so the
+accessibility of the default palette can be judged on the figure itself.
 
 Run with:  streamlit run app/streamlit_app.py
 """
@@ -68,7 +68,7 @@ def draw(fn: str, *args, setup: str = "", **kwargs):
     """Call ``dp.<fn>`` and show its figure beside the call that made it.
 
     The call is written from the arguments the function receives, so the two
-    cannot drift apart. ``setup`` holds any lines the call needs first, such as
+    always match. ``setup`` holds any lines the call needs first, such as
     a model fit.
     """
     plot = getattr(dp, fn)(*map(_value, args),
@@ -105,8 +105,8 @@ def _choose(label, options, why, **kwargs):
     """A selectbox the pane cannot draw without.
 
     Given no options, ``st.selectbox`` returns None, and the plot fails on
-    ``data[None]`` with the bare message "None". With no options, this raises
-    instead, and the handler at the foot of the file shows ``why``, what the
+    ``data[None]`` with the bare message 'None'. With no options, this raises
+    instead, and the handler at the end of the file shows ``why``, what the
     pane needs, in place of a figure.
     """
     options = list(options)
@@ -201,7 +201,7 @@ def _column(name):
 
 
 def _opt(label, options):
-    """A '(none)' + options selectbox returning None for '(none)'."""
+    """A selectbox of '(none)' and the options, returning None for '(none)'."""
     choice = st.selectbox(label, ["(none)"] + list(options))
     return None if choice == "(none)" else choice
 
@@ -212,8 +212,8 @@ def _term(name):
     patsy reads a bare name as Python, so a keyword (crop_yield's ``yield``)
     or a name that is not an identifier (one with a space) must be quoted. A
     name that NFKC normalisation changes must be quoted too, since Python
-    normalises identifiers when it compiles them, and a bare "ﬁeld" would look
-    up a column "field". Any other name stays bare, keeping the model's term
+    normalises identifiers when it compiles them, and a bare 'ﬁeld' would look
+    up a column 'field'. Any other name stays bare, keeping the model's term
     names and the call free of quoting. A JSON string is also a valid Python
     string literal, escapes included, so ``json.dumps`` quotes any name safely.
     """

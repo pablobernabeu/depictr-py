@@ -1,9 +1,9 @@
-"""Descriptive summary tables ("Table 1").
+"""Descriptive summary tables ('Table 1').
 
 The descriptive table that opens many empirical papers: numeric variables as
 mean (SD), categorical variables as count (percent), optionally split into one
-column per level of a grouping variable. Like :func:`depictr.tidy_estimates`
-and :func:`depictr.check_figure`, this returns a pandas DataFrame rather than a
+column per level of a grouping variable. Like ``tidy_estimates()`` and
+``check_figure()``, ``summary_table()`` returns a pandas DataFrame rather than a
 plot, ready to pass to a formatter such as ``DataFrame.to_markdown`` or
 ``to_latex``.
 """
@@ -27,11 +27,11 @@ _DURATION_UNITS = (("days", 86400.0), ("hours", 3600.0), ("mins", 60.0),
 
 def summary_table(data, vars=None, group=None, digits=1, missing=True,
                   max_levels=20):
-    """Build a "Table 1" descriptive summary.
+    """Build a 'Table 1' descriptive summary.
 
     The first row always reports the sample size (``N``) overall and per group.
-    Numeric variables are summarised as mean (SD); categorical variables get one
-    row per level with count (percent). A ``Missing, n (%)`` row follows any
+    Numeric variables are summarised as mean (SD), and categorical variables get
+    one row per level with count (percent). A ``Missing, n (%)`` row follows any
     variable that has missing values, unless ``missing`` is ``False``.
 
     A datetime column gets a single ``Range`` row, written as ``<earliest> to
@@ -39,9 +39,7 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
     the column falls at midnight, and the time to the minute, or to the second
     when any time has seconds. A timedelta column is summarised as mean (SD) in
     the largest of days, hours, minutes and seconds that its median duration
-    reaches, and the statistic names the unit, as in ``Mean (SD), days``. The R
-    twin reports a ``difftime`` in the units it carries, which a timedelta
-    lacks.
+    reaches, and the statistic names the unit, as in ``Mean (SD), days``.
 
     Parameters
     ----------
@@ -52,8 +50,8 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
         used, with high-cardinality identifier-like columns skipped (see
         ``max_levels``).
     group : str, optional
-        A grouping column; one summary column is produced per level, alongside an
-        overall column. Categorical levels keep their declared category order and
+        A grouping column, with one summary column per level beside an overall
+        column. Categorical levels keep their declared category order and
         everything else is sorted, so the table does not depend on the row order.
         Records whose group value is missing get a ``Missing`` column, so the
         group sizes always sum to the overall ``N``.
@@ -65,14 +63,14 @@ def summary_table(data, vars=None, group=None, digits=1, missing=True,
         When ``vars`` is ``None``, a categorical or text column whose
         distinct-value count is at least ``max_levels`` and exceeds half the
         number of rows is treated as an identifier and skipped with a
-        ``UserWarning`` that names it, so it does not explode into one row per
+        ``UserWarning`` that names it, so that it does not produce one row per
         value. Pass such a column in ``vars`` to include it.
 
     Returns
     -------
     pandas.DataFrame
         Columns ``variable``, ``statistic``, ``Overall``, one column per group
-        level, and a trailing ``Missing`` column when the group column has any
+        level and a trailing ``Missing`` column when the group column has any
         missing values. The first row reports ``N``. The variable name is blanked
         on its repeated rows for readability.
 
@@ -262,7 +260,7 @@ def _duration_unit(col):
 def _levels(col):
     """Return a column's category levels in a stable, sensible order.
 
-    Categoricals keep their declared category order; everything else is sorted
+    Categoricals keep their declared category order. Everything else is sorted,
     so the table is reproducible.
     """
     if isinstance(col.dtype, pd.CategoricalDtype):

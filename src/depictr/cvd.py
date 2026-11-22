@@ -1,20 +1,19 @@
 """Colour-vision-deficiency simulation and a palette safety check.
 
-The simulator follows the physiologically-based model of Machado, Oliveira and
+The simulator follows the physiologically based model of Machado, Oliveira and
 Fernandes (2009), which maps a colour to the colour a person with a given form
 and severity of colour-vision deficiency would perceive. The transformation is
 defined on linear-light RGB, so a colour is decoded from sRGB to linear RGB (the
 IEC 61966-2-1 transfer functions), transformed, then re-encoded.
 
-This drives three things: :func:`simulate_figure`, which shows a whole figure
-as a reader with a deficiency sees it and backs the colour-vision toggle in the
-web app, :func:`palette_safety`, which checks that the colours in a palette stay
-far enough apart for each deficiency that they remain distinguishable, and the
-colour-separability rows of :func:`depictr.audit.check_figure`, which asks the
-same question of a finished figure. depictr uses them to validate its default
-palette rather than merely assert that it is safe. How far apart two colours
-are is measured with the CIEDE2000 formula, as Sharma, Wu and Dalal (2005) set
-it out.
+Three parts of depictr use it. ``simulate_figure()`` shows a whole figure as
+a reader with a deficiency sees it, and the web app's colour-vision selector
+uses it. ``palette_safety()`` checks that the colours of a palette stay far
+enough apart under each deficiency to remain distinguishable. The
+colour-separability rows of ``check_figure()`` ask the same question of a
+finished figure. depictr uses them to test its default palette, rather than
+only asserting that it is safe. How far apart two colours are is measured
+with the CIEDE2000 formula, as Sharma, Wu and Dalal (2005) set it out.
 
 Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). A
 physiologically-based model for simulation of color vision deficiency. IEEE
@@ -31,6 +30,7 @@ from __future__ import annotations
 
 import math
 import numbers
+import warnings
 
 import matplotlib.colors as mcolors
 import numpy as np
@@ -205,6 +205,29 @@ def _check_metric(metric) -> None:
         raise ValueError("`metric` must be 'ciede2000' or 'cie76'.")
 
 
+# Whether this session has given the warning that metric="cie76" is
+# deprecated. palette_safety() and check_figure() give it the first time
+# either is asked for the 1976 distance.
+_cie76_warned = False
+
+
+def _warn_cie76() -> None:
+    """Warn, once per session, that ``metric="cie76"`` is deprecated.
+
+    Called by palette_safety() and check_figure() when they are asked for the
+    1976 distance. CHANGELOG.md lists the option under 'Deprecated'.
+    """
+    global _cie76_warned
+    if _cie76_warned:
+        return
+    _cie76_warned = True
+    warnings.warn(
+        '`metric="cie76"` is deprecated, and a later release will remove it. '
+        'Use the default, `metric="ciede2000"`.',
+        FutureWarning, stacklevel=3,
+    )
+
+
 def _srgb_to_linear(c: np.ndarray) -> np.ndarray:
     """Decode sRGB channel values in [0, 1] to linear light (IEC 61966-2-1)."""
     return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
@@ -236,8 +259,9 @@ def _machado_matrix(deficiency: str, severity: float) -> np.ndarray:
     the supplementary page suggests and as colorspacious and R's
     ``colorspace::interpolate_cvd_transform()`` do, so 0.25 lies halfway
     between the matrices for 0.2 and 0.3. Severities 0 and 1 take their
-    matrices exactly as published, which keeps full-severity results bit for
-    bit. The R twin's ``.cvd_matrix()`` computes the same expressions.
+    matrices exactly as published, so full-severity results use the published
+    values unchanged. The R twin's ``.cvd_matrix()`` computes the same
+    expressions.
     """
     table = _MACHADO[deficiency]
     scaled = 10 * severity
@@ -267,7 +291,7 @@ def simulate_cvd(colours: str | list[str], deficiency: str,
     colours : str or list of str
         Colours (any matplotlib-readable form) to transform. A single string
         is one colour, and an empty list gives an empty list back, as in the
-        R twin.
+        R package.
     deficiency : {"protan", "deutan", "tritan"}
         The deficiency to simulate (red-, green- or blue-weak vision).
     severity : float
@@ -311,9 +335,9 @@ def simulate_cvd(colours: str | list[str], deficiency: str,
 
 
 def _simulate_pixels(rgba: np.ndarray, deficiency: str, severity: float) -> np.ndarray:
-    """A copy of an RGBA image in [0, 1], its colours as a deficiency sees them.
+    """A copy of an RGBA image in [0, 1], its colours as seen with a deficiency.
 
-    Each pixel takes the transform that :func:`simulate_cvd` applies to a
+    Each pixel takes the transform that ``simulate_cvd()`` applies to a
     colour, without rounding to eight bits, and keeps its alpha.
     """
     seen = np.array(rgba, dtype=float)
@@ -340,17 +364,16 @@ def simulate_figure(plot, deficiency: str, severity: float = 1.0,
     """Show a finished figure as a reader with a colour-vision deficiency sees it.
 
     [`simulate_cvd`][depictr.simulate_cvd] simulates a list of colours, and
-    this function the figure they end up in, legend, colourbar, text and
+    this function simulates a whole figure, its legend, colourbar, text and
     background included. A copy of the plot is drawn and rasterised with
     matplotlib's Agg renderer. Every pixel then goes through the same
     transform: it is decoded from sRGB to linear light, multiplied by the
     matrix of Machado, Oliveira and Fernandes (2009) for the deficiency and
     severity and encoded again. The alpha channel is kept as drawn.
 
-    The R twin's ``simulate_figure()`` applies the same matrices to the
-    figure's vector elements and returns a gtable to draw or save. A solid
-    region comes out in the same colour in both, to within the rounding of an
-    eight-bit channel.
+    The R package's ``simulate_figure()`` applies the same matrices to the
+    figure's vector elements, so a solid region comes out in the same colour
+    in both, to within the rounding of an eight-bit channel.
 
     Parameters
     ----------
@@ -546,7 +569,7 @@ def _min_pairwise_delta_e(colours: list[str], groups=None,
     distance in CIELAB. ``groups``, when given, labels each colour, and a pair
     whose labels are equal is skipped: ``check_figure`` labels each drawn
     colour with the colour it was declared as, so that one group drawn in two
-    ways is not set against itself.
+    ways is not compared with itself.
     """
     lab = _rgb_to_lab(colours)
     best, pair = np.inf, (0, 0)
@@ -582,26 +605,27 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
 
     The default ``threshold`` of 5.0 is calibrated against the built-in palette
     of [`depictr.depictr_palette`][], which is based on the Okabe-Ito set. That
-    palette's tightest pair (reddish-purple against grey) sits at 6.43 under full
-    deuteranopia, so the cut must lie below that to pass the built-in palette,
-    while still flagging colours that become near-identical under a deficiency.
-    The difference includes lightness, which survives colour-vision deficiency,
-    so two colours that share a hue but differ in lightness are correctly
-    treated as distinguishable. Full severity is the worst case; most
-    colour-vision deficiency is milder.
+    palette's closest pair, the reddish purple and the grey, is 6.43 apart
+    under full deuteranopia, so the threshold must lie below 6.43 for the
+    built-in palette to pass, while still flagging colours that become nearly
+    identical under a deficiency. The difference includes lightness, which a
+    colour-vision deficiency does not remove, so two colours that share a hue
+    but differ in lightness are correctly treated as distinguishable. Full
+    severity is the worst case. Most colour-vision deficiency is milder.
 
     Parameters
     ----------
     colours : str or list of str, optional
         The palette to test. Defaults to the depictr qualitative palette. Needs
-        at least two colours: a pairwise distance over fewer than two has no
-        value, not an infinitely safe one. A single string is one colour, so
-        it raises with that message.
+        at least two colours, since fewer than two have no pairwise distance,
+        and raises ``ValueError`` otherwise. A single string is one colour, so
+        it raises too.
     threshold : float
         The smallest acceptable colour difference, on the scale of ``metric``.
     metric : {"ciede2000", "cie76"}
         The colour difference to measure: CIEDE2000, the default, or CIE76,
-        the Euclidean distance in CIELAB. ``"cie76"`` is kept so that results
+        the Euclidean distance in CIELAB. ``"cie76"`` is deprecated and gives a
+        ``FutureWarning`` once per session. It is kept so that results
         computed with it can be reproduced, and a later release will remove it.
 
     Returns
@@ -631,15 +655,17 @@ def palette_safety(colours: str | list[str] | None = None, threshold: float = 5.
     >>> dp.palette_safety()['safe']
     True
 
-    ggplot2's default palette of five colours, which passes under CIE76.
+    ggplot2's default palette of five colours fails under CIEDE2000.
 
     >>> hue5 = ["#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"]
-    >>> dp.palette_safety(hue5)['safe'], dp.palette_safety(hue5, metric="cie76")['safe']
-    (False, True)
+    >>> dp.palette_safety(hue5)['safe']
+    False
     """
     from .palette import depictr_palette
 
     _check_metric(metric)
+    if metric == "cie76":
+        _warn_cie76()
 
     # `colours or ...` would have swapped in the default palette for an empty
     # list, reporting on eight colours the caller never passed.

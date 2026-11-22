@@ -23,7 +23,7 @@ theme:
   font:
     text: Inter
     code: JetBrains Mono
-  # Header and footer sit at depictr's deep navy-blue; the accent is coral.
+  # The header and footer are depictr's deep navy blue, and the accent is coral.
   # primary: black is the closest preset, retuned to the exact colour in
   # stylesheets/brand.css.
   palette:
@@ -127,4 +127,4 @@ nav:
 
 # The released version shown beside the title in the header (updated on release).
 extra:
-  version: "0.3.0"
+  version: "0.4.0"

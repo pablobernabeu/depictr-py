@@ -1,26 +1,28 @@
 """The datasets of the depictr R package, shipped as files.
 
-Each loader returns a fresh :class:`pandas.DataFrame` holding the same data as
+Each loader returns a fresh ``pandas.DataFrame`` holding the same data as
 the R package's dataset of the same name, so an example gives the same numbers
-in both twins and every column an R example uses exists here. The data are read
-from CSV files under ``depictr/data``. The repository's
-``dev/export_r_datasets.R`` writes them from the R package's ``data/*.rda``,
-with a ``levels.json`` that records what a CSV cannot carry: each factor's levels
-and whether it is ordered, and the storage type of every column.
+in both packages and every column an R example uses exists here. The data are
+read from CSV files under ``depictr/data``, with a ``levels.json`` that records
+what a CSV cannot carry: each factor's levels and whether it is ordered, and the
+storage type of every column.
 
 The columns take the pandas types closest to R's. A factor becomes a
-:class:`pandas.Categorical` with R's levels in R's order (``education`` is
-ordered), so plots and tables list the levels as the R twin does. A date becomes
+``pandas.Categorical`` with R's levels in R's order (``education`` is
+ordered), so plots and tables list the levels as the R package does. A date becomes
 ``datetime64``, an identifier (``field``, ``id``, ``patient``) a string, a double
 ``float64`` and an integer ``int64``, or ``float64`` when it has missing values.
 
-The datasets are chosen to exercise different plot families: ``crop_yield`` for
-regression and interactions, ``wellbeing_survey`` for correlations and
-missingness, ``lexical_decision`` for mixed models, grouped distributions and
-classification, ``clinical_trial`` for survival and imbalanced outcomes, and
-``monthly_sales`` for time series. All five are synthetic, simulated with a fixed
-seed by the R package's ``data-raw/generate_datasets.R``, and describe no real
-people.
+The datasets are chosen to exercise different plot families:
+
+- ``crop_yield``: regression and interactions
+- ``wellbeing_survey``: correlations and missingness
+- ``lexical_decision``: mixed models, grouped distributions and classification
+- ``clinical_trial``: survival and imbalanced outcomes
+- ``monthly_sales``: time series
+
+All five are synthetic, simulated with a fixed seed by the R package's
+``data-raw/generate_datasets.R``, and describe no real people.
 """
 
 from __future__ import annotations

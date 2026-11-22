@@ -19,40 +19,63 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.python-version }}${{ matrix.os != 'ubuntu-latest' && format(', {0}', matrix.os) || '' }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # Every Python release from the declared minimum to the newest on
+        # Linux, and one release on Windows and on macOS, since the package
+        # declares that it runs on any operating system.
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        # The 3.15 cell leaves out the survival extra. lifelines declares
+        # pandas<3, and pandas 2 publishes no wheels for 3.15, so pip builds
+        # pandas 2.3.3 from source, which crashed in its datetime extension
+        # (run 43722004351). Without lifelines, pandas 3 installs from its
+        # wheel, the survival tests skip and the example of survival_plot(),
+        # which needs lifelines, is left out.
+        include:
+          - os: ubuntu-latest
+            python-version: "3.15"
+            extras: "models,classification,app,test"
+            pytest-args: "--deselect src/depictr/survival.py::depictr.survival.survival_plot"
+          - {os: windows-latest, python-version: "3.13"}
+          - {os: macos-latest, python-version: "3.13"}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install the package with its optional back-ends and test tools
-        run: python -m pip install -e ".[all,test]"
+        run: python -m pip install -e ".[${{ matrix.extras || 'all,test' }}]"
 
       # The whole repository, not src and tests alone, so app/ and docs/ are
       # linted too and a new top-level script is covered the day it is added
       # rather than whenever someone remembers to extend a list. This matches the
-      # scopusflow twin, which lints everything.
+      # scopusflow twin, which lints everything. The result is the same on
+      # every operating system, so the lint runs on Linux only.
       - name: Lint
+        if: runner.os == 'Linux'
         run: ruff check .
 
       - name: Run the test suite with coverage
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
         run: |
-          python -m pytest -q --cov=depictr --cov-report=term
+          python -m pytest -q --cov=depictr --cov-report=term ${{ matrix.pytest-args }}
           # Surface the overall figure in the job summary so it can be read at
           # a glance rather than dug out of the log. Coverage is reported, not
           # gated: there is deliberately no fail-under threshold.
-          echo "Coverage: $(python -m coverage report --format=total)% of lines (Python ${{ matrix.python-version }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "Coverage: $(python -m coverage report --format=total)% of lines (Python ${{ matrix.python-version }}, ${{ runner.os }})" >> "$GITHUB_STEP_SUMMARY"
 
   # The matrix above installs the package editable from the checkout, where a
   # missing packaged file is masked by the source tree sitting next to it. This
@@ -62,14 +85,18 @@ jobs:
     name: Installed wheel
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.12'
-      - name: Build the distributions
+      # publish.yml runs twine check before it uploads, so the same check
+      # here shows on the pull request a build backend release whose metadata
+      # twine cannot read, rather than on the release day.
+      - name: Build the distributions and check their metadata
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
+          python -m twine check --strict dist/*
       - name: Install the wheel outside the checkout and draw a plot
         env:
           MPLBACKEND: Agg   # headless: no display on the runner
@@ -114,8 +141,8 @@ jobs:
     name: Declared minimum dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.10'
       - name: Install the declared floors, then the package without resolution
@@ -144,8 +171,8 @@ jobs:
     name: Latest pandas, without lifelines
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.13'
           cache: pip

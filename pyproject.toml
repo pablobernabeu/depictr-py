@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
@@ -32,11 +33,11 @@ dependencies = [
     # 0.15 introduced the plot composition operators (| and /) that
     # arrange_plots and the multi-panel reports rely on.
     "plotnine>=0.15",
-    # The three floors below are plotnine 0.15's own requirements rather than
-    # independent choices. A lower floor could never be honoured, since the
-    # resolver takes the higher bound, so it would describe a stack nobody runs.
-    # A floor is a claim about what has been tested, so each matches what
-    # plotnine forces and the minimum-versions CI job installs.
+    # The pandas, matplotlib and scipy floors below are plotnine 0.15's own
+    # requirements. A lower floor could never be honoured, since the resolver
+    # takes the higher bound, so it would describe a stack nobody runs. The
+    # numpy floor, set in depictr 0.1.0, is one minor release above plotnine's
+    # 1.23.5. The minimum-versions CI job installs each floor.
     "pandas>=2.2",
     "matplotlib>=3.8",
     "scipy>=1.8",
@@ -45,7 +46,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Each plotting family delegates its computation to a specialist package and
-# re-skins the result under the depictr theme. The specialists are optional, so
+# redraws the result under the depictr theme. The specialists are optional, so
 # the core installs light and each is needed only for its own functions.
 # The classification extra also serves the multivariate plots whose principal
 # components, k-means and silhouettes come from scikit-learn.
@@ -66,7 +67,7 @@ all = [
 test = [
     "pytest>=7.0",
     # CI reads the overall figure with "coverage report --format=total", which
-    # needs coverage 7; pytest-cov 6 is the first release to require it.
+    # needs coverage 7. pytest-cov 6 is the first release to require it.
     "pytest-cov>=6",
     "ruff>=0.4",
     # An independent implementation of the Machado colour-vision transforms,
@@ -75,7 +76,9 @@ test = [
     "colorspacious>=1.1",
 ]
 docs = [
-    "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.8",
+    # The guides' example blocks show their source with source="block", which
+    # markdown-exec first accepts in 1.12.3.
+    "mkdocs-material>=9.5", "mkdocstrings[python]>=0.24", "markdown-exec>=1.12.3",
     # Keeps the retired per-group reference paths resolving after the reference
     # was gathered into the single api.md page.
     "mkdocs-redirects>=1.2",
@@ -95,8 +98,8 @@ path = "src/depictr/__init__.py"
 packages = ["src/depictr"]
 
 [tool.hatch.build.targets.sdist]
-# Keep the generated docs site out of the source distribution; it is gitignored
-# but can linger on disk from a local build.
+# Keep the generated docs site out of the source distribution. It is gitignored
+# but can remain on disk from a local build.
 exclude = [
     "site",
     "/images/**",  # README plots, served from GitHub raw, not needed in the package

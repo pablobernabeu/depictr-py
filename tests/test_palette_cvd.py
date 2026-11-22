@@ -44,6 +44,7 @@ def test_interpolating_past_the_base_set_warns():
         depictr_palette(len(OKABE_ITO) + 1)
 
 
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_interpolated_palette_is_not_colourblind_safe():
     # Pins the limit rather than leaving it to be discovered: past the eight
     # base colours the interpolated set fails the package's own check, which is
@@ -285,6 +286,7 @@ def test_red_and_green_converge_under_deuteranopia():
     assert d_rg < d_rb
 
 
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_default_palette_is_safe():
     report = palette_safety()
     assert report["safe"] is True
@@ -318,6 +320,7 @@ def test_ciede2000_reproduces_the_pairs_sharma_wu_and_dalal_published():
         assert _ciede2000(second, first) == pytest.approx(ours, rel=1e-12)
 
 
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_the_1976_distance_overstates_differences_between_saturated_colours():
     # Two blues a reader can barely tell apart, measured both ways. The R suite
     # pins the same numbers.
@@ -326,6 +329,7 @@ def test_the_1976_distance_overstates_differences_between_saturated_colours():
     assert palette_safety(blues, metric="cie76")["by_condition"]["normal"] == 8.2
 
 
+@pytest.mark.filterwarnings('ignore:`metric="cie76"` is deprecated:FutureWarning')
 def test_ggplot2s_five_colours_pass_under_cie76_and_fail_under_ciede2000():
     # Under deuteranopia the sky blue and the pink become #709df5 and #80a3ef,
     # 7.35 apart by the 1976 distance, which certified the palette as safe,

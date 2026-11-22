@@ -7,19 +7,19 @@ abstract: >-
   depictr gives one consistent, accessible, plotnine-based theme and calling
   convention across the whole statistical workflow (exploratory analysis, model
   estimates, diagnostics, classification, multivariate analysis, survival and
-  time series), delegating computation to specialist packages and re-skinning
-  the result. The default Okabe-Ito palette is validated with a colour-vision-
-  deficiency simulator and a CIE-Lab distance check. It is the Python sibling of
-  the depictr R package.
+  time series), delegating computation to specialist packages and redrawing
+  the result under that theme. The default palette, based on the Okabe-Ito
+  set, is validated with a colour-vision-deficiency simulator and a CIEDE2000
+  colour-distance check. It is the Python sibling of the depictr R package.
 type: software
 authors:
   - family-names: Bernabeu
     given-names: Pablo
     orcid: "https://orcid.org/0000-0003-1083-2460"
-version: "0.3.0"
-# 0.3.0 first became public on 2026-09-24, when the GitHub release appeared,
+version: "0.4.0"
+# 0.4.0 first became public on 2026-11-22, when the GitHub release appeared,
 # Zenodo archived it and PyPI published it.
-date-released: "2026-09-24"
+date-released: "2026-11-22"
 license: MIT
 # Zenodo's concept DOI, which archives every GitHub release of this repository,
 # and so the Python package alone. PyPI assigns no DOI. The R twin's citation

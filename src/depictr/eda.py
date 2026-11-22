@@ -1,8 +1,8 @@
 """Exploratory-data-analysis plots, themed consistently.
 
-These cover the high-traffic first look at a dataset -- distributions, category
-counts, correlations and missingness -- each as a one-call function returning a
-plotnine object you can extend with ``+``.
+These cover the first look at a dataset: distributions, category counts,
+correlations and missingness. Each is a function that returns a plotnine object
+you can extend with ``+``.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class _geom_density_linekey(geom_density):
     """A density geom whose legend key is a coloured line, not a filled box.
 
     ``geom_density`` inherits ``geom_polygon``'s legend drawer, which always
-    draws a filled rectangle. Borrowing ``geom_path``'s drawer makes the key a
+    draws a filled rectangle. Using ``geom_path``'s drawer makes the key a
     short coloured line segment that matches the curve it labels.
     """
 
@@ -66,9 +66,9 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
         The data.
     x : str
         Name of the numeric column to display. Any other column, a boolean one
-        included, raises ``TypeError``, as in the R twin.
+        included, raises ``TypeError``.
     group : str, optional
-        A grouping column mapped to colour/fill. A numeric code counts as a
+        A grouping column mapped to colour and fill. A numeric code counts as a
         group, but a numeric column with more than 20 distinct values raises
         ``ValueError``. Rows with a missing group are dropped with a warning,
         and categories without rows are left out of the plot and its palette.
@@ -79,7 +79,7 @@ def explore_distribution(data, x, group=None, kind="density", bins=30,
     alpha : float, optional
         Fill transparency, useful when groups overlap. ``None``, the default,
         fills a grouped density at 0.2, light enough for overlapping curves to
-        stay distinct, and everything else at 0.6. The R twin's default is 0.6
+        stay distinct, and everything else at 0.6. The R package's default is 0.6
         throughout. Over a histogram (``kind="both"``), a grouped density is
         drawn as an outline whatever ``alpha`` is, and the bars take the
         transparency.
@@ -171,7 +171,7 @@ def explore_categorical(data, x, group=None, proportion=True, title=None):
         The categorical column. A numeric column is accepted only when it has
         at most 20 distinct values, such as a 0/1 coding or a Likert item. A
         continuous one would be drawn as one bar per value, so it raises
-        ``ValueError``, as in the R twin.
+        ``ValueError``.
     group : str, optional
         A second categorical column mapped to fill, drawn side by side. A
         numeric code counts as a group, but a numeric column with more than 20
@@ -249,14 +249,14 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
     ----------
     data : pandas.DataFrame
     cols : list of str, optional
-        Columns to include; defaults to all numeric columns. A named column
+        Columns to include. Defaults to all numeric columns. A named column
         that is not numeric or boolean, such as text or a datetime, raises
         ``TypeError``, and fewer than two columns left once the zero-variance
         ones are dropped raise ``ValueError``.
     method : {"pearson", "spearman", "kendall"}
         The correlation coefficient, computed by
         ``pandas.DataFrame.corr`` over the pairwise-complete
-        observations, as the R twin's default ``use =
+        observations, as the R package's default ``use =
         "pairwise.complete.obs"`` computes it. Spearman's and Kendall's
         coefficients measure monotone association, which suits skewed or
         ordinal data. Kendall's is tau-b, as in R's ``cor()``.
@@ -350,8 +350,9 @@ def correlation_heatmap(data, cols=None, method="pearson", show_values=True,
 def missingness_map(data, sort=True, legend_inside=False, title=None):
     """Tile map of missing values, one column per variable and one row per record.
 
-    Variables are ordered most- to least-missing, so the worst offenders sit on
-    the left. The percentage missing is shown in each axis label.
+    Variables are ordered from most to least missing, so the columns with the
+    most missing values are on the left. The percentage missing is shown in
+    each axis label.
 
     Parameters
     ----------
@@ -361,12 +362,12 @@ def missingness_map(data, sort=True, legend_inside=False, title=None):
     legend_inside : bool
         When ``True`` (and ``sort`` is on), place the legend in the top-right.
         Because the columns are sorted, the right-hand ones are the most complete,
-        so a legend there sits over a solid "Present" block and hides no missing
+        so a legend there sits over a solid 'Present' block and hides no missing
         marks.
     title : str, optional
         Plot title. When none is given (``None`` or an empty string), the title
-        gives the share of all values that are missing, such as "2.2% of all
-        values are missing".
+        gives the share of all values that are missing, such as ``2.2% of all
+        values are missing``.
 
     Returns
     -------
