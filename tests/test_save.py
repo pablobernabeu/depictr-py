@@ -187,7 +187,8 @@ def audited_bad():
     # drawn in the same font on every platform. plotnine lists Helvetica first
     # among its sans-serif fonts, and on macOS matplotlib 3.11.2 raises 'failed
     # to load glyph' when it hints the system's Helvetica at 7 pixels per em or
-    # fewer, as the 5 pt text is at 72 dpi (run 43726985192).
+    # fewer, as the 5 pt text is at 72 dpi (run 43726985192; reported as
+    # https://github.com/matplotlib/matplotlib/issues/32650).
     return (ggplot(CY, aes("rainfall", "yield", colour="treatment"))
             + geom_point()
             + scale_colour_manual(values=["#d62728", "#309208"])
